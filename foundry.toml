@@ -5,3 +5,9 @@ libs = ['lib']
 solc = "0.8.10"
 
 # See more config options https://github.com/foundry-rs/foundry/tree/master/config
+
+remappings = [
+    "forge-std/=lib/forge-std/src/",
+    "solmate/=lib/solmate/src",
+    "velodrome/=lib/contracts/",
+]
