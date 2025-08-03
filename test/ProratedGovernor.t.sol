@@ -113,7 +113,7 @@ contract ProratedGovernorTest is Test {
         pool.finalizePool();
 
         // Update governor to use the one deployed by the pool
-        governor = pool.governor();
+        governor = ProratedGovernor(address(pool.governor()));
 
         // Create veNFT positions in the pool's venft for voting
         _createPoolVeNFTPositions();

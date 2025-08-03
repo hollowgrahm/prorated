@@ -9,6 +9,8 @@ import {ProratedToken} from "./ProratedToken.sol";
 import {IProratedToken} from "./interfaces/IProratedToken.sol";
 import {IProswapFactory} from "./interfaces/IProswapFactory.sol";
 import {IProswapRouter} from "./interfaces/IProswapRouter.sol";
+import {IProratedVENFT} from "./interfaces/IProratedVENFT.sol";
+import {IProratedGovernor} from "./interfaces/IProratedGovernor.sol";
 import {ProratedVENFT} from "./ProratedVENFT.sol";
 import {ProratedGovernor} from "./ProratedGovernor.sol";
 
@@ -41,8 +43,8 @@ contract ProratedPool is Owned, ReentrancyGuard {
     IProratedToken public proratedToken;
     address public lpToken;
     bool public isPoolFinalized;
-    ProratedVENFT public venftContract;
-    ProratedGovernor public governor;
+    IProratedVENFT public venftContract;
+    IProratedGovernor public governor;
 
     uint256 public totalContributions;
     uint256 public totalShares;
@@ -261,10 +263,14 @@ contract ProratedPool is Owned, ReentrancyGuard {
             100;
 
         // Deploy veNFT contract with LP token address
-        venftContract = new ProratedVENFT(address(lpToken));
+        venftContract = IProratedVENFT(
+            address(new ProratedVENFT(address(lpToken)))
+        );
 
         // Deploy Governor contract with veNFT address and pool owner as governor owner
-        governor = new ProratedGovernor(address(venftContract), address(this));
+        governor = IProratedGovernor(
+            address(new ProratedGovernor(address(venftContract), address(this)))
+        );
 
         // Add ProratedPool as approved target for governance
         governor.addApprovedTarget(address(this));
