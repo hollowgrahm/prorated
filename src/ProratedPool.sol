@@ -216,7 +216,7 @@ contract ProratedPool is Owned, ReentrancyGuard {
     /// @notice Allows contributors to claim refunds if pool doesn't reach minimum
     /// @dev Can only be called after pool ends and if minimum not reached
     function claimRefund() external nonReentrant hasContribution {
-        if (!hasReachedMinimum()) revert PoolReachedMinimum();
+        if (hasReachedMinimum()) revert PoolReachedMinimum();
         if (contributions[msg.sender].claimed) revert AlreadyClaimed();
 
         contributions[msg.sender].claimed = true;
@@ -313,19 +313,12 @@ contract ProratedPool is Owned, ReentrancyGuard {
         // Mark contribution as claimed
         contributions[msg.sender].claimed = true;
 
-        // Transfer LP tokens to veNFT contract
-        ERC20(lpToken).safeTransfer(address(venftContract), userLPTokens);
+        // Approve VENFT to spend LP tokens
+        ERC20(lpToken).approve(address(venftContract), userLPTokens);
 
         // Create veNFT position with user's lock duration
         uint256 lockDuration = userContribution.lockDuration * 1 weeks;
         uint256 tokenId = venftContract.createLock(userLPTokens, lockDuration);
-
-        // Transfer veNFT to user
-        venftContract.safeTransferFrom(
-            address(venftContract),
-            msg.sender,
-            tokenId
-        );
 
         emit VENFTPositionCreated(
             msg.sender,
