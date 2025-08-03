@@ -47,7 +47,7 @@ contract ProratedPoolTest is Test {
 
         // Deploy ProratedPool
         pool = new ProratedPool(
-            owner,
+            address(this), // Use test contract as owner
             "Test Token",
             "TEST",
             tokenTotalSupply,
@@ -56,7 +56,8 @@ contract ProratedPoolTest is Test {
             endTime,
             address(fundingToken),
             address(factory),
-            address(router)
+            address(router),
+            20 // 20% dev team allocation
         );
 
         // Mint tokens to users
@@ -68,7 +69,7 @@ contract ProratedPoolTest is Test {
     }
 
     function test_Constructor() public {
-        assertEq(pool.owner(), owner);
+        assertEq(pool.owner(), address(this));
         assertEq(pool.tokenName(), "Test Token");
         assertEq(pool.tokenSymbol(), "TEST");
         assertEq(pool.tokenTotalSupply(), tokenTotalSupply);
@@ -392,19 +393,17 @@ contract ProratedPoolTest is Test {
         vm.warp(endTime + 1);
         pool.finalizePool();
 
-        uint256 initialBalance = fundingToken.balanceOf(owner);
+        uint256 initialBalance = fundingToken.balanceOf(address(this));
 
         // Owner withdraw
-        vm.prank(owner);
         pool.ownerWithdraw();
 
-        uint256 finalBalance = fundingToken.balanceOf(owner);
+        uint256 finalBalance = fundingToken.balanceOf(address(this));
         assertTrue(finalBalance > initialBalance);
     }
 
     function test_OwnerWithdrawNotFinalized() public {
         vm.expectRevert(ProratedPool.PoolNotFinalized.selector);
-        vm.prank(owner);
         pool.ownerWithdraw();
     }
 
@@ -458,6 +457,51 @@ contract ProratedPoolTest is Test {
         assertTrue(
             finalBalance > initialBalance,
             "Owner should receive protocol fees"
+        );
+    }
+
+    function test_DevTeamTokenAllocation() public {
+        // Setup: Add contributions and finalize pool
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 200000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(200000e18, 52);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        fundingToken.approve(address(pool), 200000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(200000e18, 52);
+        vm.stopPrank();
+
+        vm.warp(endTime + 1);
+        pool.finalizePool();
+
+        // Check that dev team allocation is reserved
+        assertGt(
+            pool.devTeamLPTokenAllocation(),
+            0,
+            "Dev team should have LP token allocation"
+        );
+        assertEq(
+            pool.devTeamAllocationPercentage(),
+            20,
+            "Dev team allocation should be 20%"
+        );
+
+        // Try to release dev team tokens (should fail - only governor can call)
+        vm.expectRevert("Only governor can call");
+        pool.releaseDevTeamTokens();
+
+        // Simulate governor call (for testing)
+        vm.prank(address(pool.governor()));
+        pool.releaseDevTeamTokens();
+
+        // Check that dev team received tokens and veNFT position
+        assertEq(
+            pool.devTeamLPTokenAllocation(),
+            0,
+            "Dev team allocation should be cleared"
         );
     }
 

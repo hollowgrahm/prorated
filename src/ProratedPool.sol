@@ -10,6 +10,7 @@ import {IProratedToken} from "./interfaces/IProratedToken.sol";
 import {IProswapFactory} from "./interfaces/IProswapFactory.sol";
 import {IProswapRouter} from "./interfaces/IProswapRouter.sol";
 import {ProratedVENFT} from "./ProratedVENFT.sol";
+import {ProratedGovernor} from "./ProratedGovernor.sol";
 
 contract ProratedPool is Owned, ReentrancyGuard {
     using SafeTransferLib for ERC20;
@@ -41,10 +42,13 @@ contract ProratedPool is Owned, ReentrancyGuard {
     address public lpToken;
     bool public isPoolFinalized;
     ProratedVENFT public venftContract;
+    ProratedGovernor public governor;
 
     uint256 public totalContributions;
     uint256 public totalShares;
     uint256 public totalLPTokensReceived;
+    uint256 public devTeamAllocationPercentage;
+    uint256 public devTeamLPTokenAllocation;
 
     uint256 public constant MIN_LOCK = 1;
     uint256 public constant MAX_LOCK = 208;
@@ -78,6 +82,12 @@ contract ProratedPool is Owned, ReentrancyGuard {
         uint256 indexed tokenId,
         uint256 lpTokens,
         uint256 lockDuration
+    );
+
+    event DevTeamTokensReleased(
+        address indexed devTeam,
+        uint256 lpTokens,
+        uint256 tokenId
     );
 
     modifier poolActive() {
@@ -117,7 +127,8 @@ contract ProratedPool is Owned, ReentrancyGuard {
         uint256 _endTime,
         address _fundingToken,
         address _proswapFactory,
-        address _proswapRouter
+        address _proswapRouter,
+        uint256 _devTeamAllocationPercentage
     ) Owned(_owner) {
         tokenName = _tokenName;
         tokenSymbol = _tokenSymbol;
@@ -129,6 +140,7 @@ contract ProratedPool is Owned, ReentrancyGuard {
         fundingToken = ERC20(_fundingToken);
         proswapFactory = IProswapFactory(_proswapFactory);
         proswapRouter = IProswapRouter(_proswapRouter);
+        devTeamAllocationPercentage = _devTeamAllocationPercentage;
     }
 
     /// @notice Contributes tokens to the pool with a specified lock duration
@@ -242,8 +254,20 @@ contract ProratedPool is Owned, ReentrancyGuard {
 
         _seedLiquidity(fundingLiquidity);
 
+        // Calculate and reserve dev team's LP token allocation
+        uint256 totalLPTokens = ERC20(lpToken).balanceOf(address(this));
+        devTeamLPTokenAllocation =
+            (totalLPTokens * devTeamAllocationPercentage) /
+            100;
+
         // Deploy veNFT contract with LP token address
         venftContract = new ProratedVENFT(address(lpToken));
+
+        // Deploy Governor contract with veNFT address and pool owner as governor owner
+        governor = new ProratedGovernor(address(venftContract), address(this));
+
+        // Add ProratedPool as approved target for governance
+        governor.addApprovedTarget(address(this));
 
         isPoolFinalized = true;
         emit PoolFinalized(address(proratedToken), lpToken, fundingLiquidity);
@@ -337,5 +361,29 @@ contract ProratedPool is Owned, ReentrancyGuard {
             msg.sender,
             fundingToken.balanceOf(address(this))
         );
+    }
+
+    /// @notice Release dev team's LP tokens (governance function)
+    /// @dev Can only be called by approved governor after successful proposal
+    function releaseDevTeamTokens() external {
+        require(msg.sender == address(governor), "Only governor can call");
+        require(devTeamLPTokenAllocation > 0, "No tokens reserved");
+
+        uint256 tokensToRelease = devTeamLPTokenAllocation;
+
+        // Transfer LP tokens to dev team (owner)
+        ERC20(lpToken).safeTransfer(owner, tokensToRelease);
+
+        // Create max-locked veNFT position for dev team (4 years)
+        ERC20(lpToken).approve(address(venftContract), tokensToRelease);
+        uint256 devTeamTokenId = venftContract.createLock(
+            tokensToRelease,
+            4 * 365 * 86400
+        );
+
+        // Clear reserved amount
+        devTeamLPTokenAllocation = 0;
+
+        emit DevTeamTokensReleased(owner, tokensToRelease, devTeamTokenId);
     }
 }
