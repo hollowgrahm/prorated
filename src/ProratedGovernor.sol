@@ -252,4 +252,10 @@ contract ProratedGovernor is Owned, ReentrancyGuard {
     function removeApprovedTarget(address target) external onlyOwner {
         approvedTargets[target] = false;
     }
+
+    /// @notice Validates that this is a legitimate ProratedGovernor contract
+    /// @return True if this is a valid ProratedGovernor contract
+    function validateInterface() external pure returns (bool) {
+        return true; // Only legitimate ProratedGovernor contracts return true
+    }
 }

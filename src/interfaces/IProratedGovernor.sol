@@ -34,4 +34,8 @@ interface IProratedGovernor {
     /// @notice Adds a target contract as approved for governance proposals
     /// @param target The target contract address to approve
     function addApprovedTarget(address target) external;
+
+    /// @notice Validates that this is a legitimate ProratedGovernor contract
+    /// @return True if this is a valid ProratedGovernor contract
+    function validateInterface() external pure returns (bool);
 } 

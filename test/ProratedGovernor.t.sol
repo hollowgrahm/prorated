@@ -56,7 +56,8 @@ contract ProratedGovernorTest is Test {
             address(fundingToken),
             address(factory),
             address(router),
-            20 // 20% dev team allocation
+            20, // 20% dev team allocation
+            15 // 15% treasury allocation
         );
 
         // Governor will be deployed by ProratedPool during finalization
@@ -110,10 +111,13 @@ contract ProratedGovernorTest is Test {
 
         // Finalize the pool
         vm.warp(block.timestamp + 7 days + 1);
-        pool.finalizePool();
+        pool.deployToken();
+        pool.deployPair();
+        pool.deployLiquidity();
+        pool.calculateAllocations();
 
         // Update governor to use the one deployed by the pool
-        governor = ProratedGovernor(address(pool.governor()));
+        governor = ProratedGovernor(address(pool.proratedGovernor()));
 
         // Create veNFT positions in the pool's venft for voting
         _createPoolVeNFTPositions();
@@ -133,26 +137,26 @@ contract ProratedGovernorTest is Test {
         // Users create veNFT positions in the pool's venft
         vm.startPrank(user1);
         ERC20(lpToken).approve(
-            address(pool.venftContract()),
+            address(pool.proratedVENFT()),
             type(uint256).max
         );
-        user1TokenId = pool.venftContract().createLock(1000e18, 4 weeks);
+        user1TokenId = pool.proratedVENFT().createLock(1000e18, 4 weeks);
         vm.stopPrank();
 
         vm.startPrank(user2);
         ERC20(lpToken).approve(
-            address(pool.venftContract()),
+            address(pool.proratedVENFT()),
             type(uint256).max
         );
-        user2TokenId = pool.venftContract().createLock(600e18, 4 weeks);
+        user2TokenId = pool.proratedVENFT().createLock(600e18, 4 weeks);
         vm.stopPrank();
 
         vm.startPrank(user3);
         ERC20(lpToken).approve(
-            address(pool.venftContract()),
+            address(pool.proratedVENFT()),
             type(uint256).max
         );
-        user3TokenId = pool.venftContract().createLock(400e18, 4 weeks);
+        user3TokenId = pool.proratedVENFT().createLock(400e18, 4 weeks);
         vm.stopPrank();
     }
 

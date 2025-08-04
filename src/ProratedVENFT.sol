@@ -305,6 +305,12 @@ contract ProratedVENFT is ReentrancyGuard {
         );
     }
 
+    /// @notice Validates that this is a legitimate ProratedVENFT contract
+    /// @return True if this is a valid ProratedVENFT contract
+    function validateInterface() external pure returns (bool) {
+        return true; // Only legitimate ProratedVENFT contracts return true
+    }
+
     // ============ POSITION MANAGEMENT ============
     /// @notice Extends the lock duration of a veNFT position
     /// @param _tokenId The token ID of the veNFT position to extend

@@ -24,4 +24,12 @@ interface IProratedVENFT {
     /// @param _tokenId The token ID to check
     /// @return The owner address of the token
     function ownerOf(uint256 _tokenId) external view returns (address);
-} 
+
+    /// @notice Withdraws the decayed amount from a veNFT position
+    /// @param _tokenId The token ID to withdraw from
+    function withdrawDecayed(uint256 _tokenId) external;
+
+    /// @notice Validates that this is a legitimate ProratedVENFT contract
+    /// @return True if this is a valid ProratedVENFT contract
+    function validateInterface() external pure returns (bool);
+}

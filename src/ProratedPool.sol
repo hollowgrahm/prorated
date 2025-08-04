@@ -11,8 +11,10 @@ import {IProswapFactory} from "./interfaces/IProswapFactory.sol";
 import {IProswapRouter} from "./interfaces/IProswapRouter.sol";
 import {IProratedVENFT} from "./interfaces/IProratedVENFT.sol";
 import {IProratedGovernor} from "./interfaces/IProratedGovernor.sol";
+import {IProratedTreasury} from "./interfaces/IProratedTreasury.sol";
 import {ProratedVENFT} from "./ProratedVENFT.sol";
 import {ProratedGovernor} from "./ProratedGovernor.sol";
+import {ProratedTreasury} from "./ProratedTreasury.sol";
 
 contract ProratedPool is Owned, ReentrancyGuard {
     using SafeTransferLib for ERC20;
@@ -42,15 +44,22 @@ contract ProratedPool is Owned, ReentrancyGuard {
     IProswapRouter public proswapRouter;
     IProratedToken public proratedToken;
     address public lpToken;
-    bool public isPoolFinalized;
-    IProratedVENFT public venftContract;
-    IProratedGovernor public governor;
+
+    IProratedVENFT public proratedVENFT;
+    IProratedGovernor public proratedGovernor;
+    IProratedTreasury public proratedTreasury;
 
     uint256 public totalContributions;
     uint256 public totalShares;
     uint256 public totalLPTokensReceived;
     uint256 public devTeamAllocationPercentage;
     uint256 public devTeamLPTokenAllocation;
+    uint256 public treasuryAllocationPercentage;
+    uint256 public treasuryLPTokenAllocation;
+
+    // Deployment tracking
+    bool public venftDeployed;
+    bool public governorDeployed;
 
     uint256 public constant MIN_LOCK = 1;
     uint256 public constant MAX_LOCK = 208;
@@ -73,11 +82,6 @@ contract ProratedPool is Owned, ReentrancyGuard {
     );
 
     event RefundClaimed(address indexed contributor, uint256 amount);
-    event PoolFinalized(
-        address indexed poolToken,
-        address indexed lpToken,
-        uint256 liquidityAmount
-    );
 
     event VENFTPositionCreated(
         address indexed user,
@@ -91,6 +95,10 @@ contract ProratedPool is Owned, ReentrancyGuard {
         uint256 lpTokens,
         uint256 tokenId
     );
+
+    event TreasuryTokensReleased(address indexed treasury, uint256 lpTokens);
+    event VENFTDeployed(address indexed venft);
+    event GovernorDeployed(address indexed governor);
 
     modifier poolActive() {
         if (block.timestamp < startTime || block.timestamp > endTime)
@@ -130,7 +138,8 @@ contract ProratedPool is Owned, ReentrancyGuard {
         address _fundingToken,
         address _proswapFactory,
         address _proswapRouter,
-        uint256 _devTeamAllocationPercentage
+        uint256 _devTeamAllocationPercentage,
+        uint256 _treasuryAllocationPercentage
     ) Owned(_owner) {
         tokenName = _tokenName;
         tokenSymbol = _tokenSymbol;
@@ -143,6 +152,7 @@ contract ProratedPool is Owned, ReentrancyGuard {
         proswapFactory = IProswapFactory(_proswapFactory);
         proswapRouter = IProswapRouter(_proswapRouter);
         devTeamAllocationPercentage = _devTeamAllocationPercentage;
+        treasuryAllocationPercentage = _treasuryAllocationPercentage;
     }
 
     /// @notice Contributes tokens to the pool with a specified lock duration
@@ -239,80 +249,45 @@ contract ProratedPool is Owned, ReentrancyGuard {
         emit RefundClaimed(msg.sender, contributions[msg.sender].amount);
     }
 
-    /// @notice Finalizes the pool by creating the token and liquidity pool
-    function finalizePool() external nonReentrant {
+    /// @notice Deploys the token (first deployment function)
+    /// @dev Can only be called after minimum contributions are reached and pool has ended
+    function deployToken() external nonReentrant {
         if (!hasReachedMinimum()) revert PoolReachedMinimum();
-        if (isPoolFinalized) revert PoolAlreadyFinalized();
+        if (address(proratedToken) != address(0)) revert PoolAlreadyFinalized();
         if (block.timestamp < endTime) revert PoolNotEnded();
 
-        bytes32 salt = keccak256(abi.encodePacked(tokenName, tokenSymbol));
-        proratedToken = IProratedToken(_deployProratedToken(salt));
+        proratedToken = IProratedToken(
+            address(new ProratedToken("Prorated", "PRORATED"))
+        );
 
         proratedToken.mint(address(this), tokenTotalSupply);
-
-        uint256 fundingLiquidity = totalContributions - desiredContributions;
-
-        _createPair();
-
-        _seedLiquidity(fundingLiquidity);
-
-        // Calculate and reserve dev team's LP token allocation
-        uint256 totalLPTokens = ERC20(lpToken).balanceOf(address(this));
-        devTeamLPTokenAllocation =
-            (totalLPTokens * devTeamAllocationPercentage) /
-            100;
-
-        // Deploy veNFT contract with LP token address
-        venftContract = IProratedVENFT(
-            address(new ProratedVENFT(address(lpToken)))
-        );
-
-        // Deploy Governor contract with veNFT address and pool owner as governor owner
-        governor = IProratedGovernor(
-            address(new ProratedGovernor(address(venftContract), address(this)))
-        );
-
-        // Add ProratedPool as approved target for governance
-        governor.addApprovedTarget(address(this));
-
-        isPoolFinalized = true;
-        emit PoolFinalized(address(proratedToken), lpToken, fundingLiquidity);
     }
 
-    /// @notice Deploys a new ProratedToken using CREATE2
-    /// @param salt Unique salt for deterministic deployment
-    /// @return token Address of the deployed token
-    function _deployProratedToken(
-        bytes32 salt
-    ) internal returns (address token) {
-        bytes memory bytecode = type(ProratedToken).creationCode;
-        bytes memory initCode = abi.encodePacked(
-            bytecode,
-            abi.encode(tokenName, tokenSymbol)
-        );
+    /// @notice Deploys the pair (second deployment function)
+    /// @dev Can only be called after token is deployed
+    function deployPair() external nonReentrant {
+        if (address(proratedToken) == address(0)) revert PoolNotFinalized();
+        if (address(lpToken) != address(0)) revert PoolAlreadyFinalized();
 
-        assembly {
-            token := create2(0, add(initCode, 32), mload(initCode), salt)
-        }
-    }
-
-    /// @notice Creates Proswap pair with new token (80%) and funding token (20%)
-    /// @return pair Address of the created pair
-    function _createPair() internal returns (address pair) {
-        pair = proswapFactory.createPair(
+        // Create pair
+        address pair = proswapFactory.createPair(
             address(proratedToken),
             address(fundingToken)
         );
         lpToken = pair;
     }
 
-    /// @notice Seeds initial liquidity into the pool
-    /// @param fundingLiquidity Amount of funding tokens to use for liquidity
-    function _seedLiquidity(uint256 fundingLiquidity) internal {
+    /// @notice Seeds liquidity (third deployment function)
+    /// @dev Can only be called after pair is deployed
+    function deployLiquidity() external nonReentrant {
+        if (address(lpToken) == address(0)) revert PoolNotFinalized();
+
+        // Seed liquidity
+        uint256 fundingLiquidity = totalContributions - desiredContributions;
         proratedToken.approve(address(proswapRouter), type(uint256).max);
         fundingToken.safeApprove(address(proswapRouter), type(uint256).max);
 
-        (, , uint256 lpTokens) = proswapRouter.addLiquidity(
+        proswapRouter.addLiquidity(
             address(proratedToken),
             address(fundingToken),
             tokenTotalSupply,
@@ -322,13 +297,27 @@ contract ProratedPool is Owned, ReentrancyGuard {
             address(this)
         );
 
-        totalLPTokensReceived = lpTokens;
+        totalLPTokensReceived = ERC20(lpToken).balanceOf(address(this));
+    }
+
+    /// @notice Calculates and reserves token allocations (fourth deployment function)
+    /// @dev Can only be called after liquidity is deployed
+    function calculateAllocations() external nonReentrant {
+        if (totalLPTokensReceived == 0) revert PoolNotFinalized();
+
+        uint256 totalLPTokens = ERC20(lpToken).balanceOf(address(this));
+        devTeamLPTokenAllocation =
+            (totalLPTokens * devTeamAllocationPercentage) /
+            100;
+        treasuryLPTokenAllocation =
+            (totalLPTokens * treasuryAllocationPercentage) /
+            100;
     }
 
     /// @notice Creates a veNFT position for a user based on their contribution
     /// @dev Can only be called after pool is finalized and if user has unclaimed contribution
     function createVENFTPosition() external nonReentrant {
-        if (!isPoolFinalized) revert PoolNotFinalized();
+        if (address(proratedToken) == address(0)) revert PoolNotFinalized();
 
         Contribution memory userContribution = contributions[msg.sender];
         if (userContribution.amount == 0) revert NoContribution();
@@ -344,11 +333,11 @@ contract ProratedPool is Owned, ReentrancyGuard {
         contributions[msg.sender].claimed = true;
 
         // Approve VENFT to spend LP tokens
-        ERC20(lpToken).approve(address(venftContract), userLPTokens);
+        ERC20(lpToken).approve(address(proratedVENFT), userLPTokens);
 
         // Create veNFT position with user's lock duration
         uint256 lockDuration = userContribution.lockDuration * 1 weeks;
-        uint256 tokenId = venftContract.createLock(userLPTokens, lockDuration);
+        uint256 tokenId = proratedVENFT.createLock(userLPTokens, lockDuration);
 
         emit VENFTPositionCreated(
             msg.sender,
@@ -361,7 +350,7 @@ contract ProratedPool is Owned, ReentrancyGuard {
     /// @notice Allows owner to withdraw remaining funding tokens after pool is finalized
     /// @dev Can only be called by owner after pool has reached minimum and ended
     function ownerWithdraw() external onlyOwner {
-        if (!isPoolFinalized) revert PoolNotFinalized();
+        if (address(proratedToken) == address(0)) revert PoolNotFinalized();
 
         fundingToken.safeTransfer(
             msg.sender,
@@ -372,7 +361,11 @@ contract ProratedPool is Owned, ReentrancyGuard {
     /// @notice Release dev team's LP tokens (governance function)
     /// @dev Can only be called by approved governor after successful proposal
     function releaseDevTeamTokens() external {
-        require(msg.sender == address(governor), "Only governor can call");
+        require(
+            msg.sender == address(proratedGovernor),
+            "Only governor can call"
+        );
+        require(address(proratedToken) != address(0), "Token not deployed");
         require(devTeamLPTokenAllocation > 0, "No tokens reserved");
 
         uint256 tokensToRelease = devTeamLPTokenAllocation;
@@ -381,8 +374,8 @@ contract ProratedPool is Owned, ReentrancyGuard {
         ERC20(lpToken).safeTransfer(owner, tokensToRelease);
 
         // Create max-locked veNFT position for dev team (4 years)
-        ERC20(lpToken).approve(address(venftContract), tokensToRelease);
-        uint256 devTeamTokenId = venftContract.createLock(
+        ERC20(lpToken).approve(address(proratedVENFT), tokensToRelease);
+        uint256 devTeamTokenId = proratedVENFT.createLock(
             tokensToRelease,
             4 * 365 * 86400
         );
@@ -391,5 +384,91 @@ contract ProratedPool is Owned, ReentrancyGuard {
         devTeamLPTokenAllocation = 0;
 
         emit DevTeamTokensReleased(owner, tokensToRelease, devTeamTokenId);
+    }
+
+    /// @notice Release treasury's LP tokens (governance function)
+    /// @dev Can only be called by approved governor after successful proposal
+    function releaseTreasuryTokens() external {
+        require(
+            msg.sender == address(proratedGovernor),
+            "Only governor can call"
+        );
+        require(address(proratedToken) != address(0), "Token not deployed");
+        require(treasuryLPTokenAllocation > 0, "No treasury tokens reserved");
+
+        uint256 tokensToRelease = treasuryLPTokenAllocation;
+
+        // Transfer LP tokens to treasury
+        ERC20(lpToken).safeTransfer(address(proratedTreasury), tokensToRelease);
+
+        // Create veNFT position for treasury (4 years max lock)
+        proratedTreasury.createTreasuryVeNFTPosition(
+            tokensToRelease,
+            4 * 365 * 86400 // 4 years
+        );
+
+        // Clear reserved amount
+        treasuryLPTokenAllocation = 0;
+
+        emit TreasuryTokensReleased(address(proratedTreasury), tokensToRelease);
+    }
+
+    /// @notice Deploy VENFT contract (anyone can call, first deployment wins)
+    function deployVENFT() external {
+        require(!venftDeployed, "VENFT already deployed");
+        require(address(proratedToken) != address(0), "Token not deployed");
+
+        proratedVENFT = IProratedVENFT(
+            address(new ProratedVENFT(address(lpToken)))
+        );
+        venftDeployed = true;
+
+        emit VENFTDeployed(address(proratedVENFT));
+    }
+
+    /// @notice Deploy Governor contract (anyone can call, first deployment wins)
+    function deployGovernor() external {
+        require(!governorDeployed, "Governor already deployed");
+        require(venftDeployed, "VENFT not deployed");
+        require(address(proratedToken) != address(0), "Token not deployed");
+
+        // Validate VENFT interface
+        require(
+            IProratedVENFT(address(proratedVENFT)).validateInterface(),
+            "Invalid VENFT"
+        );
+
+        proratedGovernor = IProratedGovernor(
+            address(new ProratedGovernor(address(proratedVENFT), address(this)))
+        );
+        governorDeployed = true;
+
+        // Add pool as approved target
+        proratedGovernor.addApprovedTarget(address(this));
+
+        emit GovernorDeployed(address(proratedGovernor));
+    }
+
+    /// @notice Get current deployment status
+    /// @return tokenDeployed Whether the token has been deployed
+    /// @return pairDeployed Whether the pair has been deployed
+    /// @return venftDeployed_ Whether the VENFT has been deployed
+    /// @return governorDeployed_ Whether the governor has been deployed
+    function getDeploymentStatus()
+        external
+        view
+        returns (
+            bool tokenDeployed,
+            bool pairDeployed,
+            bool venftDeployed_,
+            bool governorDeployed_
+        )
+    {
+        return (
+            address(proratedToken) != address(0),
+            address(lpToken) != address(0),
+            address(proratedVENFT) != address(0),
+            address(proratedGovernor) != address(0)
+        );
     }
 }
