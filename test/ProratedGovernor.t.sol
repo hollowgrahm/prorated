@@ -45,20 +45,21 @@ contract ProratedGovernorTest is Test {
         venft = new ProratedVENFT(address(fundingToken)); // Using fundingToken as LP token for testing
 
         // Deploy ProratedPool
-        pool = new ProratedPool(
-            address(this), // owner
-            "Test Token",
-            "TEST",
-            1000000e18,
-            500000e18,
-            block.timestamp,
-            block.timestamp + 7 days,
-            address(fundingToken),
-            address(factory),
-            address(router),
-            20, // 20% dev team allocation
-            15 // 15% treasury allocation
-        );
+        ProratedPool.PoolConfig memory config = ProratedPool.PoolConfig({
+            owner: address(this), // owner
+            tokenName: "Test Token",
+            tokenSymbol: "TEST",
+            tokenTotalSupply: 1000000e18,
+            desiredContributions: 500000e18,
+            startTime: block.timestamp,
+            endTime: block.timestamp + 7 days,
+            fundingToken: address(fundingToken),
+            proswapFactory: address(factory),
+            proswapRouter: address(router),
+            devTeamAllocationPercentage: 20, // 20% dev team allocation
+            treasuryAllocationPercentage: 15 // 15% treasury allocation
+        });
+        pool = new ProratedPool(config);
 
         // Governor will be deployed by ProratedPool during finalization
         // For testing, we'll deploy it separately with owner as governor owner
@@ -95,7 +96,7 @@ contract ProratedGovernorTest is Test {
         vm.stopPrank();
     }
 
-    function _finalizePool() internal {
+    function _setupPoolAndGovernance() internal {
         // Add contributions to reach minimum (minTotalContributions = desiredContributions * 2 = 1000000e18)
         vm.startPrank(user1);
         fundingToken.approve(address(pool), 500000e18);
@@ -109,12 +110,13 @@ contract ProratedGovernorTest is Test {
         pool.contribute(500000e18, 52);
         vm.stopPrank();
 
-        // Finalize the pool
+        // Deploy all contracts in sequence
         vm.warp(block.timestamp + 7 days + 1);
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        pool.calculateAllocations();
+        pool.deployVENFT();
+        pool.deployGovernor();
 
         // Update governor to use the one deployed by the pool
         governor = ProratedGovernor(address(pool.proratedGovernor()));
@@ -125,18 +127,18 @@ contract ProratedGovernorTest is Test {
 
     function _createPoolVeNFTPositions() internal {
         // Get LP tokens from the pool for users
-        address lpToken = pool.lpToken();
+        address proswapPair = pool.proswapPair();
 
         // Transfer some LP tokens to users for veNFT positions
         vm.startPrank(address(pool));
-        ERC20(lpToken).transfer(user1, 1000e18);
-        ERC20(lpToken).transfer(user2, 600e18);
-        ERC20(lpToken).transfer(user3, 400e18);
+        ERC20(proswapPair).transfer(user1, 1000e18);
+        ERC20(proswapPair).transfer(user2, 600e18);
+        ERC20(proswapPair).transfer(user3, 400e18);
         vm.stopPrank();
 
         // Users create veNFT positions in the pool's venft
         vm.startPrank(user1);
-        ERC20(lpToken).approve(
+        ERC20(proswapPair).approve(
             address(pool.proratedVENFT()),
             type(uint256).max
         );
@@ -144,7 +146,7 @@ contract ProratedGovernorTest is Test {
         vm.stopPrank();
 
         vm.startPrank(user2);
-        ERC20(lpToken).approve(
+        ERC20(proswapPair).approve(
             address(pool.proratedVENFT()),
             type(uint256).max
         );
@@ -152,7 +154,7 @@ contract ProratedGovernorTest is Test {
         vm.stopPrank();
 
         vm.startPrank(user3);
-        ERC20(lpToken).approve(
+        ERC20(proswapPair).approve(
             address(pool.proratedVENFT()),
             type(uint256).max
         );
@@ -172,7 +174,7 @@ contract ProratedGovernorTest is Test {
 
     function test_CreateProposal() public {
         bytes memory proposalData = abi.encodeWithSignature(
-            "releaseDevTeamTokens()"
+            "releaseDevTeamLPTokens()"
         );
         string memory description = "Release dev team's locked LP tokens";
 
@@ -217,7 +219,7 @@ contract ProratedGovernorTest is Test {
 
     function test_CreateProposalMultiple() public {
         bytes memory proposalData = abi.encodeWithSignature(
-            "releaseDevTeamTokens()"
+            "releaseDevTeamLPTokens()"
         );
         string memory description = "Release dev team's locked LP tokens";
 
@@ -242,7 +244,7 @@ contract ProratedGovernorTest is Test {
     function test_VoteFor() public {
         // Create proposal
         bytes memory proposalData = abi.encodeWithSignature(
-            "releaseDevTeamTokens()"
+            "releaseDevTeamLPTokens()"
         );
         string memory description = "Release dev team's locked LP tokens";
         uint256 proposalId = governor.createProposal(
@@ -277,7 +279,7 @@ contract ProratedGovernorTest is Test {
     function test_VoteAgainst() public {
         // Create proposal
         bytes memory proposalData = abi.encodeWithSignature(
-            "releaseDevTeamTokens()"
+            "releaseDevTeamLPTokens()"
         );
         string memory description = "Release dev team's locked LP tokens";
         uint256 proposalId = governor.createProposal(
@@ -312,7 +314,7 @@ contract ProratedGovernorTest is Test {
     function test_VoteMultipleUsers() public {
         // Create proposal
         bytes memory proposalData = abi.encodeWithSignature(
-            "releaseDevTeamTokens()"
+            "releaseDevTeamLPTokens()"
         );
         string memory description = "Release dev team's locked LP tokens";
         uint256 proposalId = governor.createProposal(
@@ -353,7 +355,7 @@ contract ProratedGovernorTest is Test {
 
     function test_VoteBeforeVotingStarts() public {
         bytes memory proposalData = abi.encodeWithSignature(
-            "releaseDevTeamTokens()"
+            "releaseDevTeamLPTokens()"
         );
         string memory description = "Release dev team's locked LP tokens";
         uint256 proposalId = governor.createProposal(
@@ -370,7 +372,7 @@ contract ProratedGovernorTest is Test {
 
     function test_VoteAfterVotingEnds() public {
         bytes memory proposalData = abi.encodeWithSignature(
-            "releaseDevTeamTokens()"
+            "releaseDevTeamLPTokens()"
         );
         string memory description = "Release dev team's locked LP tokens";
         uint256 proposalId = governor.createProposal(
@@ -390,7 +392,7 @@ contract ProratedGovernorTest is Test {
 
     function test_VoteDoubleVote() public {
         bytes memory proposalData = abi.encodeWithSignature(
-            "releaseDevTeamTokens()"
+            "releaseDevTeamLPTokens()"
         );
         string memory description = "Release dev team's locked LP tokens";
         uint256 proposalId = governor.createProposal(
@@ -418,7 +420,7 @@ contract ProratedGovernorTest is Test {
         fundingToken.mint(100e18, user4);
 
         bytes memory proposalData = abi.encodeWithSignature(
-            "releaseDevTeamTokens()"
+            "releaseDevTeamLPTokens()"
         );
         string memory description = "Release dev team's locked LP tokens";
         uint256 proposalId = governor.createProposal(
@@ -440,7 +442,7 @@ contract ProratedGovernorTest is Test {
 
     function test_ProposalStatePending() public {
         bytes memory proposalData = abi.encodeWithSignature(
-            "releaseDevTeamTokens()"
+            "releaseDevTeamLPTokens()"
         );
         string memory description = "Release dev team's locked LP tokens";
         uint256 proposalId = governor.createProposal(
@@ -458,7 +460,7 @@ contract ProratedGovernorTest is Test {
 
     function test_ProposalStateActive() public {
         bytes memory proposalData = abi.encodeWithSignature(
-            "releaseDevTeamTokens()"
+            "releaseDevTeamLPTokens()"
         );
         string memory description = "Release dev team's locked LP tokens";
         uint256 proposalId = governor.createProposal(
@@ -479,7 +481,7 @@ contract ProratedGovernorTest is Test {
 
     function test_ProposalStateSucceeded() public {
         bytes memory proposalData = abi.encodeWithSignature(
-            "releaseDevTeamTokens()"
+            "releaseDevTeamLPTokens()"
         );
         string memory description = "Release dev team's locked LP tokens";
         uint256 proposalId = governor.createProposal(
@@ -513,7 +515,7 @@ contract ProratedGovernorTest is Test {
 
     function test_ProposalStateDefeated() public {
         bytes memory proposalData = abi.encodeWithSignature(
-            "releaseDevTeamTokens()"
+            "releaseDevTeamLPTokens()"
         );
         string memory description = "Release dev team's locked LP tokens";
         uint256 proposalId = governor.createProposal(
@@ -546,7 +548,7 @@ contract ProratedGovernorTest is Test {
 
     function test_QuorumReached() public {
         bytes memory proposalData = abi.encodeWithSignature(
-            "releaseDevTeamTokens()"
+            "releaseDevTeamLPTokens()"
         );
         string memory description = "Release dev team's locked LP tokens";
         uint256 proposalId = governor.createProposal(
@@ -574,7 +576,7 @@ contract ProratedGovernorTest is Test {
 
     function test_QuorumNotReached() public {
         bytes memory proposalData = abi.encodeWithSignature(
-            "releaseDevTeamTokens()"
+            "releaseDevTeamLPTokens()"
         );
         string memory description = "Release dev team's locked LP tokens";
         uint256 proposalId = governor.createProposal(
@@ -607,7 +609,7 @@ contract ProratedGovernorTest is Test {
 
     function test_CancelProposal() public {
         bytes memory proposalData = abi.encodeWithSignature(
-            "releaseDevTeamTokens()"
+            "releaseDevTeamLPTokens()"
         );
         string memory description = "Release dev team's locked LP tokens";
         uint256 proposalId = governor.createProposal(
@@ -628,7 +630,7 @@ contract ProratedGovernorTest is Test {
 
     function test_CancelProposalNotProposer() public {
         bytes memory proposalData = abi.encodeWithSignature(
-            "releaseDevTeamTokens()"
+            "releaseDevTeamLPTokens()"
         );
         string memory description = "Release dev team's locked LP tokens";
         uint256 proposalId = governor.createProposal(
@@ -645,7 +647,7 @@ contract ProratedGovernorTest is Test {
 
     function test_CancelProposalAfterVotingStarts() public {
         bytes memory proposalData = abi.encodeWithSignature(
-            "releaseDevTeamTokens()"
+            "releaseDevTeamLPTokens()"
         );
         string memory description = "Release dev team's locked LP tokens";
         uint256 proposalId = governor.createProposal(
@@ -665,11 +667,11 @@ contract ProratedGovernorTest is Test {
     // ============ EXECUTION TESTS ============
 
     function test_ExecuteProposal() public {
-        // First finalize the pool to allocate dev team tokens
-        _finalizePool();
+        // First setup the pool and governance
+        _setupPoolAndGovernance();
 
         bytes memory proposalData = abi.encodeWithSignature(
-            "releaseDevTeamTokens()"
+            "releaseDevTeamLPTokens()"
         );
         string memory description = "Release dev team's locked LP tokens";
         uint256 proposalId = governor.createProposal(
@@ -706,7 +708,7 @@ contract ProratedGovernorTest is Test {
 
     function test_ExecuteProposalNotSucceeded() public {
         bytes memory proposalData = abi.encodeWithSignature(
-            "releaseDevTeamTokens()"
+            "releaseDevTeamLPTokens()"
         );
         string memory description = "Release dev team's locked LP tokens";
         uint256 proposalId = governor.createProposal(
@@ -724,11 +726,11 @@ contract ProratedGovernorTest is Test {
     }
 
     function test_ExecuteProposalAlreadyExecuted() public {
-        // First finalize the pool to allocate dev team tokens
-        _finalizePool();
+        // First setup the pool and governance
+        _setupPoolAndGovernance();
 
         bytes memory proposalData = abi.encodeWithSignature(
-            "releaseDevTeamTokens()"
+            "releaseDevTeamLPTokens()"
         );
         string memory description = "Release dev team's locked LP tokens";
         uint256 proposalId = governor.createProposal(
@@ -785,12 +787,12 @@ contract ProratedGovernorTest is Test {
     // ============ INTEGRATION TESTS ============
 
     function test_CompleteGovernanceWorkflow() public {
-        // First finalize the pool to allocate dev team tokens
-        _finalizePool();
+        // First setup the pool and governance
+        _setupPoolAndGovernance();
 
         // 1. Create proposal to release dev team tokens
         bytes memory proposalData = abi.encodeWithSignature(
-            "releaseDevTeamTokens()"
+            "releaseDevTeamLPTokens()"
         );
         string memory description = "Release dev team's locked LP tokens";
         uint256 proposalId = governor.createProposal(

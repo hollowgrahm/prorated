@@ -46,25 +46,26 @@ contract ProratedPoolTest is Test {
         router = new ProswapRouter(address(factory));
 
         // Deploy ProratedPool
-        pool = new ProratedPool(
-            address(this), // Use test contract as owner
-            "Test Token",
-            "TEST",
-            tokenTotalSupply,
-            desiredContributions,
-            startTime,
-            endTime,
-            address(fundingToken),
-            address(factory),
-            address(router),
-            20, // 20% dev team allocation
-            15 // 15% treasury allocation
-        );
+        ProratedPool.PoolConfig memory config = ProratedPool.PoolConfig({
+            owner: address(this), // Use test contract as owner
+            tokenName: "Test Token",
+            tokenSymbol: "TEST",
+            tokenTotalSupply: tokenTotalSupply,
+            desiredContributions: desiredContributions,
+            startTime: startTime,
+            endTime: endTime,
+            fundingToken: address(fundingToken),
+            proswapFactory: address(factory),
+            proswapRouter: address(router),
+            devTeamAllocationPercentage: 20, // 20% dev team allocation
+            treasuryAllocationPercentage: 15 // 15% treasury allocation
+        });
+        pool = new ProratedPool(config);
 
         // Mint tokens to users
-        fundingToken.mint(500000e18, user1);
-        fundingToken.mint(500000e18, user2);
-        fundingToken.mint(500000e18, user3);
+        fundingToken.mint(2000000e18, user1);
+        fundingToken.mint(2000000e18, user2);
+        fundingToken.mint(2000000e18, user3);
 
         vm.stopPrank();
     }
@@ -81,13 +82,7 @@ contract ProratedPoolTest is Test {
         assertEq(address(pool.fundingToken()), address(fundingToken));
         assertEq(address(pool.proswapFactory()), address(factory));
         assertEq(address(pool.proswapRouter()), address(router));
-        (
-            bool tokenDeployed,
-            bool pairDeployed,
-            bool venftDeployed,
-            bool governorDeployed
-        ) = pool.getDeploymentStatus();
-        assertEq(tokenDeployed, false);
+        assertEq(pool.tokenDeployed(), false);
     }
 
     function test_Contribute() public {
@@ -308,7 +303,7 @@ contract ProratedPoolTest is Test {
         pool.claimRefund();
     }
 
-    function test_FinalizePool() public {
+    function test_DeployToken() public {
         // Add contributions below minimum
         vm.startPrank(user1);
         fundingToken.approve(address(pool), 100000e18);
@@ -332,29 +327,104 @@ contract ProratedPoolTest is Test {
         pool.contribute(100000e18, 52);
         vm.stopPrank();
 
-        // Deploy token, pair, liquidity, and calculate allocations
+        // Deploy token
         vm.warp(endTime + 1);
         pool.deployToken();
-        pool.deployPair();
-        pool.deployLiquidity();
-        pool.calculateAllocations();
 
-        (
-            bool tokenDeployed,
-            bool pairDeployed,
-            bool venftDeployed,
-            bool governorDeployed
-        ) = pool.getDeploymentStatus();
-        assertEq(tokenDeployed, true);
+        assertEq(pool.tokenDeployed(), true);
         assertTrue(address(pool.proratedToken()) != address(0));
-        // Note: Pair, VENFT, and Governor are now deployed separately
-        assertEq(pairDeployed, false);
-        assertEq(venftDeployed, false);
-        assertEq(governorDeployed, false);
+        assertEq(pool.pairDeployed(), false);
+        assertEq(pool.liquidityDeployed(), false);
+        assertEq(pool.venftDeployed(), false);
+        assertEq(pool.governorDeployed(), false);
+        assertEq(pool.treasuryDeployed(), false);
 
         // Try to deploy token again
-        vm.expectRevert(ProratedPool.PoolAlreadyFinalized.selector);
+        vm.expectRevert(ProratedPool.TokenAlreadyDeployed.selector);
         pool.deployToken();
+    }
+
+    function test_DeployPair() public {
+        // Setup: Add contributions and deploy token
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 200000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(200000e18, 52);
+        vm.stopPrank();
+
+        vm.warp(endTime + 1);
+        // Try to deploy pair before token is deployed
+        vm.expectRevert(ProratedPool.TokenNotDeployed.selector);
+        pool.deployPair();
+
+        // Now deploy token
+        pool.deployToken();
+
+        // Deploy pair (should succeed now that token is deployed)
+        pool.deployPair();
+
+        assertEq(pool.tokenDeployed(), true);
+        assertEq(pool.pairDeployed(), true);
+        assertTrue(address(pool.proswapPair()) != address(0));
+        assertEq(pool.liquidityDeployed(), false);
+        assertEq(pool.venftDeployed(), false);
+        assertEq(pool.governorDeployed(), false);
+        assertEq(pool.treasuryDeployed(), false);
+
+        // Try to deploy pair again
+        vm.expectRevert(ProratedPool.PairAlreadyDeployed.selector);
+        pool.deployPair();
+    }
+
+    function test_DeployLiquidity() public {
+        // Setup: Add contributions and deploy token and pair
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 1200000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(1200000e18, 52);
+        vm.stopPrank();
+
+        vm.warp(endTime + 1);
+        pool.deployToken();
+
+        // Try to deploy liquidity before pair is deployed
+        vm.expectRevert(ProratedPool.PairNotDeployed.selector);
+        pool.deployLiquidity();
+
+        // Deploy pair
+        pool.deployPair();
+
+        // Deploy liquidity
+        pool.deployLiquidity();
+
+        assertEq(pool.tokenDeployed(), true);
+        assertEq(pool.pairDeployed(), true);
+        assertEq(pool.liquidityDeployed(), true);
+        assertEq(pool.venftDeployed(), false);
+        assertEq(pool.governorDeployed(), false);
+        assertEq(pool.treasuryDeployed(), false);
+
+        // Verify that allocations are calculated as part of deployLiquidity
+        assertGt(
+            pool.devTeamLPTokenAllocation(),
+            0,
+            "Dev team allocation should be calculated"
+        );
+        assertGt(
+            pool.treasuryLPTokenAllocation(),
+            0,
+            "Treasury allocation should be calculated"
+        );
+        assertEq(
+            pool.devTeamAllocationPercentage(),
+            20,
+            "Dev team allocation should be 20%"
+        );
+        assertEq(
+            pool.treasuryAllocationPercentage(),
+            15,
+            "Treasury allocation should be 15%"
+        );
     }
 
     function test_CreateVENFTPosition() public {
@@ -375,9 +445,9 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        pool.calculateAllocations();
+        pool.deployVENFT();
 
-        // Create VENFT position (should succeed now that token is deployed)
+        // Create VENFT position (should succeed now that VENFT is deployed)
         vm.prank(user1);
         pool.createVENFTPosition();
 
@@ -396,7 +466,7 @@ contract ProratedPoolTest is Test {
         pool.createVENFTPosition();
     }
 
-    function test_OwnerWithdraw() public {
+    function test_DevTeamFundsWithdraw() public {
         // Setup: Add contributions and finalize pool
         vm.startPrank(user1);
         fundingToken.approve(address(pool), 200000e18);
@@ -413,21 +483,19 @@ contract ProratedPoolTest is Test {
         vm.warp(endTime + 1);
         pool.deployToken();
         pool.deployPair();
-        pool.deployLiquidity();
-        pool.calculateAllocations();
 
         uint256 initialBalance = fundingToken.balanceOf(address(this));
 
-        // Owner withdraw
-        pool.ownerWithdraw();
+        // Dev team withdraw (should succeed since liquidity not deployed yet)
+        pool.devTeamFundsWithdraw();
 
         uint256 finalBalance = fundingToken.balanceOf(address(this));
         assertTrue(finalBalance > initialBalance);
     }
 
-    function test_OwnerWithdrawNotFinalized() public {
-        vm.expectRevert(ProratedPool.PoolNotFinalized.selector);
-        pool.ownerWithdraw();
+    function test_DevTeamFundsWithdrawNotFinalized() public {
+        vm.expectRevert(ProratedPool.TokenNotDeployed.selector);
+        pool.devTeamFundsWithdraw();
     }
 
     function test_ProtocolFeeIntegration() public {
@@ -448,7 +516,6 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        pool.calculateAllocations();
 
         // Protocol fees are only collected during swaps, not during liquidity addition
         uint256 factoryFees = factory.protocolFees(address(fundingToken));
@@ -459,7 +526,7 @@ contract ProratedPoolTest is Test {
         );
 
         // Perform a swap to trigger protocol fee collection
-        address pair = pool.lpToken();
+        address pair = pool.proswapPair();
         vm.startPrank(user1);
         fundingToken.approve(pair, 1000e18);
         fundingToken.transfer(pair, 1000e18);
@@ -504,7 +571,7 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        pool.calculateAllocations();
+        pool.deployVENFT();
 
         // Check that dev team allocation is reserved
         assertGt(
@@ -518,13 +585,13 @@ contract ProratedPoolTest is Test {
             "Dev team allocation should be 20%"
         );
 
-        // Try to release dev team tokens (should fail - only governor can call)
-        vm.expectRevert("Only governor can call");
-        pool.releaseDevTeamTokens();
+        // Try to release dev team LP tokens (should fail - only governor can call)
+        vm.expectRevert(ProratedPool.Unauthorized.selector);
+        pool.releaseDevTeamLPTokens();
 
         // Simulate governor call (for testing)
         vm.prank(address(pool.proratedGovernor()));
-        pool.releaseDevTeamTokens();
+        pool.releaseDevTeamLPTokens();
 
         // Check that dev team received tokens and veNFT position
         assertEq(

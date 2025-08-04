@@ -30,7 +30,7 @@ contract ProratedTreasury is Owned, ReentrancyGuard {
 
     IProratedVENFT public venft;
     IProratedGovernor public governor;
-    ERC20 public lpToken;
+    ERC20 public proswapPair;
 
     // Treasury's veNFT position
     uint256 public treasuryVeNFTTokenId;
@@ -39,14 +39,14 @@ contract ProratedTreasury is Owned, ReentrancyGuard {
     struct TreasuryParams {
         address venft;
         address governor;
-        address lpToken;
+        address proswapPair;
         address owner;
     }
 
     constructor(TreasuryParams memory params) Owned(params.owner) {
         venft = IProratedVENFT(params.venft);
         governor = IProratedGovernor(params.governor);
-        lpToken = ERC20(params.lpToken);
+        proswapPair = ERC20(params.proswapPair);
     }
 
     /// @notice Creates veNFT position for treasury LP tokens
@@ -62,7 +62,7 @@ contract ProratedTreasury is Owned, ReentrancyGuard {
         if (treasuryVeNFTCreated) revert Unauthorized();
 
         // Approve VENFT to spend LP tokens
-        lpToken.approve(address(venft), amount);
+        proswapPair.approve(address(venft), amount);
 
         // Create veNFT position
         treasuryVeNFTTokenId = venft.createLock(amount, lockDuration);
@@ -77,9 +77,9 @@ contract ProratedTreasury is Owned, ReentrancyGuard {
         if (msg.sender != address(governor)) revert Unauthorized();
         if (!treasuryVeNFTCreated) revert NoVeNFTPosition();
 
-        uint256 balanceBefore = lpToken.balanceOf(address(this));
+        uint256 balanceBefore = proswapPair.balanceOf(address(this));
         venft.withdrawDecayed(treasuryVeNFTTokenId);
-        uint256 withdrawnAmount = lpToken.balanceOf(address(this)) -
+        uint256 withdrawnAmount = proswapPair.balanceOf(address(this)) -
             balanceBefore;
 
         emit TreasuryVeNFTWithdrawn(treasuryVeNFTTokenId, withdrawnAmount);
@@ -97,10 +97,10 @@ contract ProratedTreasury is Owned, ReentrancyGuard {
     ) external {
         if (msg.sender != address(governor)) revert Unauthorized();
         if (amount == 0) revert InvalidAmount();
-        if (lpToken.balanceOf(address(this)) < amount)
+        if (proswapPair.balanceOf(address(this)) < amount)
             revert InsufficientBalance();
 
-        lpToken.safeTransfer(recipient, amount);
+        proswapPair.safeTransfer(recipient, amount);
 
         emit TreasuryFundsDistributed(recipient, amount, reason);
     }
@@ -115,6 +115,6 @@ contract ProratedTreasury is Owned, ReentrancyGuard {
     /// @notice Gets treasury's LP token balance (including veNFT position)
     /// @return totalBalance Total LP tokens controlled by treasury
     function getTreasuryBalance() external view returns (uint256) {
-        return lpToken.balanceOf(address(this));
+        return proswapPair.balanceOf(address(this));
     }
 }
