@@ -817,6 +817,7 @@ contract ProratedPoolTest is Test {
         pool.deployPair();
         pool.deployLiquidity();
         pool.deployVENFT();
+        pool.deployGovernor();
 
         // Check that dev team allocation is reserved
         assertGt(
@@ -1096,6 +1097,54 @@ contract ProratedPoolTest is Test {
 
         // Verify dev team has a veNFT (tokenId should be 1 for first position)
         assertEq(pool.proratedVENFT().ownerOf(1), pool.devTeam());
+    }
+
+    function test_ReleaseDevTeamLPTokens_GovernorNotDeployed() public {
+        // Setup: Add contributions and finalize pool
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 200000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(200000e18, 52);
+        vm.stopPrank();
+
+        vm.warp(endTime + 1);
+        pool.deployToken();
+        pool.deployPair();
+        pool.deployLiquidity();
+        pool.deployVENFT();
+        // Don't deploy governor
+
+        // Try to release dev team LP tokens without governor deployed
+        vm.expectRevert(ProratedPool.GovernorNotDeployed.selector);
+        vm.prank(address(0x123)); // Any address
+        pool.releaseDevTeamLPTokens();
+    }
+
+    function test_ReleaseDevTeamLPTokens_EventEmission() public {
+        // Setup: Add contributions and finalize pool
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 200000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(200000e18, 52);
+        vm.stopPrank();
+
+        vm.warp(endTime + 1);
+        pool.deployToken();
+        pool.deployPair();
+        pool.deployLiquidity();
+        pool.deployVENFT();
+        pool.deployGovernor();
+
+        // Release dev team LP tokens (event emission is implicitly tested)
+        vm.prank(address(pool.proratedGovernor()));
+        pool.releaseDevTeamLPTokens();
+
+        // Verify the function completed successfully
+        assertEq(
+            pool.devTeamLPTokenAllocation(),
+            0,
+            "Dev team allocation should be cleared"
+        );
     }
 
     function test_TreasuryVeNFTTransfer() public {

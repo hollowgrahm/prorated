@@ -523,33 +523,36 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     /// @notice Release dev team's LP tokens (governance function)
     /// @dev Can only be called by approved governor after successful proposal
     function releaseDevTeamLPTokens() external {
+        // Step 1: Check that governor has been deployed
+        if (address(proratedGovernor) == address(0))
+            revert GovernorNotDeployed();
+        // Step 2: Check that caller is the approved governor
         if (msg.sender != address(proratedGovernor)) revert Unauthorized();
-        if (address(proratedVENFT) == address(0)) revert VENFTNotDeployed();
+        // Step 3: Check that dev team has LP tokens allocated
+        if (devTeamLPTokenAllocation == 0) revert NoTokensReserved();
 
-        // Transfer LP tokens to dev team
-        ERC20(proswapPair).safeTransfer(devTeam, devTeamLPTokenAllocation);
-
-        // Create max-locked veNFT position for dev team (4 years)
+        // Step 4: Create max-locked veNFT position for dev team (MAX_LOCK weeks)
         ERC20(proswapPair).approve(
             address(proratedVENFT),
             devTeamLPTokenAllocation
         );
         uint256 devTeamTokenId = proratedVENFT.createLock(
             devTeamLPTokenAllocation,
-            4 * 365 * 86400
+            MAX_LOCK * WEEK
         );
 
-        // Transfer the veNFT to dev team
+        // Step 5: Transfer the veNFT to dev team
         proratedVENFT.transferFrom(address(this), devTeam, devTeamTokenId);
 
-        // Clear reserved amount
-        devTeamLPTokenAllocation = 0;
-
+        // Step 6: Emit event for off-chain tracking
         emit DevTeamTokensReleased(
             devTeam,
             devTeamLPTokenAllocation,
             devTeamTokenId
         );
+
+        // Step 7: Clear reserved amount
+        devTeamLPTokenAllocation = 0;
     }
 
     /// @notice Release treasury's LP tokens (governance function)
