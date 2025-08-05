@@ -99,6 +99,11 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     event TreasuryTokensReleased(address indexed treasury, uint256 lpTokens);
     event VENFTDeployed(address indexed venft);
     event PairDeployed(address indexed pair);
+    event LiquidityDeployed(
+        uint256 lpTokensReceived,
+        uint256 devTeamAllocation,
+        uint256 treasuryAllocation
+    );
     event TreasuryDeployed(address indexed treasury);
     event GovernorDeployed(address indexed governor);
 
@@ -339,17 +344,20 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     /// @notice Seeds liquidity and calculates allocations (third deployment function)
     /// @dev Can only be called after pair is deployed
     function deployLiquidity() external nonReentrant {
+        // Step 1: Check if pair has been deployed (prerequisite)
         if (!pairDeployed) revert PairNotDeployed();
+        // Step 2: Check if liquidity has already been deployed (prevent double deployment)
         if (liquidityDeployed) revert LiquidityAlreadyDeployed();
 
-        // Seed liquidity
+        // Step 3: Approve router to spend tokens for liquidity provision
         proratedToken.approve(address(proswapRouter), type(uint256).max);
         fundingToken.safeApprove(address(proswapRouter), type(uint256).max);
 
-        // For initial liquidity, use all available tokens
+        // Step 4: Get available token balances for liquidity provision
         uint256 fundingAmount = fundingToken.balanceOf(address(this));
         uint256 proratedAmount = proratedToken.balanceOf(address(this));
 
+        // Step 5: Add liquidity to the pair using all available tokens
         proswapRouter.addLiquidity(
             address(proratedToken),
             address(fundingToken),
@@ -360,16 +368,25 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
             address(this)
         );
 
+        // Step 6: Record total LP tokens received from liquidity provision
         totalLPTokensReceived = ERC20(proswapPair).balanceOf(address(this));
+        // Step 7: Mark liquidity as deployed to prevent future deployments
         liquidityDeployed = true;
 
-        // Calculate allocations based on total LP tokens received
+        // Step 8: Calculate LP token allocations for dev team and treasury
         devTeamLPTokenAllocation =
             (totalLPTokensReceived * devTeamAllocationPercentage) /
             100;
         treasuryLPTokenAllocation =
             (totalLPTokensReceived * treasuryAllocationPercentage) /
             100;
+
+        // Step 9: Emit LiquidityDeployed event
+        emit LiquidityDeployed(
+            totalLPTokensReceived,
+            devTeamLPTokenAllocation,
+            treasuryLPTokenAllocation
+        );
     }
 
     /// @notice Deploy VENFT contract (anyone can call, first deployment wins)

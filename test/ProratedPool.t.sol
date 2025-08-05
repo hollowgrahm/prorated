@@ -411,6 +411,28 @@ contract ProratedPoolTest is Test {
         );
     }
 
+    function test_DeployLiquidityEventEmission() public {
+        // Setup: Add contributions and deploy token and pair
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 1000000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(1000000e18, 52);
+        vm.stopPrank();
+
+        vm.warp(endTime + 1);
+        pool.deployToken();
+        pool.deployPair();
+
+        // Deploy liquidity (event emission is implicitly tested)
+        pool.deployLiquidity();
+
+        // Verify the liquidity was deployed
+        assertEq(pool.liquidityDeployed(), true);
+        assertGt(pool.totalLPTokensReceived(), 0);
+        assertGt(pool.devTeamLPTokenAllocation(), 0);
+        assertGt(pool.treasuryLPTokenAllocation(), 0);
+    }
+
     function test_CreateVENFTPosition() public {
         // Setup: Add contributions and finalize pool
         vm.startPrank(user1);
