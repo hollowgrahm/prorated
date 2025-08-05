@@ -264,14 +264,25 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     /// @notice Allows contributors to claim refunds if pool doesn't reach minimum
     /// @dev Can only be called after pool ends and if minimum not reached
     function claimRefund() external nonReentrant {
+        // Step 1: Check if user has a contribution
         if (!hasContribution(msg.sender)) revert NoContribution();
+
+        // Step 2: Check if pool has ended (timing restriction)
         if (block.timestamp < endTime) revert PoolNotEnded();
+
+        // Step 3: Check if minimum has been reached (prevent refund if successful)
         if (hasReachedMinimum()) revert PoolReachedMinimum();
+
+        // Step 4: Check if user has already claimed their refund
         if (contributions[msg.sender].claimed) revert AlreadyClaimed();
 
+        // Step 5: Mark contribution as claimed to prevent double-claiming
         contributions[msg.sender].claimed = true;
+
+        // Step 6: Transfer refund amount to user
         fundingToken.safeTransfer(msg.sender, contributions[msg.sender].amount);
 
+        // Step 7: Emit event for off-chain tracking
         emit RefundClaimed(msg.sender, contributions[msg.sender].amount);
     }
 
