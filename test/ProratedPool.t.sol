@@ -519,7 +519,7 @@ contract ProratedPoolTest is Test {
         pool.createVENFTPosition();
     }
 
-    function test_CreateVENFTPosition_LiquidityNotDeployed() public {
+    function test_CreateVENFTPosition_VENFTNotDeployed() public {
         // Setup: Add contributions and finalize pool
         vm.startPrank(user1);
         fundingToken.approve(address(pool), 200000e18);
@@ -530,10 +530,11 @@ contract ProratedPoolTest is Test {
         vm.warp(endTime + 1);
         pool.deployToken();
         pool.deployPair();
-        // Don't deploy liquidity
+        pool.deployLiquidity();
+        // Don't deploy VENFT
 
-        // Try to create VENFT position without liquidity deployed
-        vm.expectRevert(ProratedPool.LiquidityNotDeployed.selector);
+        // Try to create VENFT position without VENFT deployed
+        vm.expectRevert(ProratedPool.VENFTNotDeployed.selector);
         vm.prank(user1);
         pool.createVENFTPosition();
     }
@@ -675,6 +676,7 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
+        pool.deployVENFT();
 
         // Check if there are any remaining funding tokens after liquidity deployment
         uint256 remainingBalance = fundingToken.balanceOf(address(this));
@@ -697,7 +699,7 @@ contract ProratedPoolTest is Test {
     }
 
     function test_DevTeamFundsWithdrawNotFinalized() public {
-        vm.expectRevert(ProratedPool.LiquidityNotDeployed.selector);
+        vm.expectRevert(ProratedPool.VENFTNotDeployed.selector);
         pool.devTeamFundsWithdraw();
     }
 
@@ -732,6 +734,7 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
+        pool.deployVENFT();
 
         // Dev team withdraw (event emission is implicitly tested)
         pool.devTeamFundsWithdraw();

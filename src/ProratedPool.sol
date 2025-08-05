@@ -466,8 +466,8 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     /// @notice Creates a veNFT position for a user based on their contribution
     /// @dev Can only be called after pool is finalized and if user has unclaimed contribution
     function createVENFTPosition() external nonReentrant {
-        // Step 1: Check that liquidity has been deployed (LP tokens are available)
-        if (contributorLPTokenAllocation == 0) revert LiquidityNotDeployed();
+        // Step 1: Check that VENFT has been deployed (required for position creation)
+        if (address(proratedVENFT) == address(0)) revert VENFTNotDeployed();
         // Step 1: Get user's contribution data from storage
         Contribution memory userContribution = contributions[msg.sender];
 
@@ -510,8 +510,8 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     /// @notice Allows dev team to withdraw remaining funding tokens after pool is finalized
     /// @dev Can only be called by dev team after pool has reached minimum and ended, after liquidity is deployed
     function devTeamFundsWithdraw() external onlyOwner {
-        // Step 1: Check that liquidity has been deployed (required for withdrawal)
-        if (totalLPTokensReceived == 0) revert LiquidityNotDeployed();
+        // Step 1: Check that VENFT has been deployed (required for withdrawal)
+        if (address(proratedVENFT) == address(0)) revert VENFTNotDeployed();
 
         // Step 2: Transfer desiredContributions to dev team
         fundingToken.safeTransfer(msg.sender, desiredContributions);
@@ -524,7 +524,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     /// @dev Can only be called by approved governor after successful proposal
     function releaseDevTeamLPTokens() external {
         if (msg.sender != address(proratedGovernor)) revert Unauthorized();
-        if (devTeamLPTokenAllocation == 0) revert LiquidityNotDeployed();
+        if (address(proratedVENFT) == address(0)) revert VENFTNotDeployed();
 
         // Transfer LP tokens to dev team
         ERC20(proswapPair).safeTransfer(devTeam, devTeamLPTokenAllocation);
@@ -555,7 +555,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     /// @notice Release treasury's LP tokens (governance function)
     /// @dev Can be called by anyone after successful governance proposal
     function releaseTreasuryLPTokens() external {
-        if (treasuryLPTokenAllocation == 0) revert LiquidityNotDeployed();
+        if (address(proratedVENFT) == address(0)) revert VENFTNotDeployed();
 
         // Create veNFT position for treasury (4 years max lock)
         ERC20(proswapPair).approve(
