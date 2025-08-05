@@ -317,7 +317,7 @@ contract ProratedPoolTest is Test {
         vm.stopPrank();
 
         vm.warp(endTime + 1);
-        
+
         // Deploy token (event emission is implicitly tested)
         pool.deployToken();
 
