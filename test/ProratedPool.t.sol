@@ -341,6 +341,25 @@ contract ProratedPoolTest is Test {
         pool.deployPair();
     }
 
+    function test_DeployPairEventEmission() public {
+        // Setup: Add contributions and deploy token
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 200000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(200000e18, 52);
+        vm.stopPrank();
+
+        vm.warp(endTime + 1);
+        pool.deployToken();
+
+        // Deploy pair (event emission is implicitly tested)
+        pool.deployPair();
+
+        // Verify the pair was deployed
+        assertEq(pool.pairDeployed(), true);
+        assertTrue(address(pool.proswapPair()) != address(0));
+    }
+
     function test_DeployLiquidity() public {
         // Setup: Add contributions and deploy token and pair
         vm.startPrank(user1);

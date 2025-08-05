@@ -98,6 +98,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
 
     event TreasuryTokensReleased(address indexed treasury, uint256 lpTokens);
     event VENFTDeployed(address indexed venft);
+    event PairDeployed(address indexed pair);
     event TreasuryDeployed(address indexed treasury);
     event GovernorDeployed(address indexed governor);
 
@@ -316,15 +317,23 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     /// @notice Deploys the pair (second deployment function)
     /// @dev Can only be called after token is deployed
     function deployPair() external tokenNotDeployed nonReentrant {
+        // Step 1: Check if pair has already been deployed (prevent double deployment)
         if (pairDeployed) revert PairAlreadyDeployed();
 
-        // Create pair
+        // Step 2: Create the trading pair using Proswap factory
         address pair = proswapFactory.createPair(
             address(proratedToken),
             address(fundingToken)
         );
+
+        // Step 3: Store the pair address for future use
         proswapPair = pair;
+
+        // Step 4: Mark pair as deployed to prevent future deployments
         pairDeployed = true;
+
+        // Step 5: Emit event for off-chain tracking
+        emit PairDeployed(proswapPair);
     }
 
     /// @notice Seeds liquidity and calculates allocations (third deployment function)
