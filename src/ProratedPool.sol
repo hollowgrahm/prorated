@@ -118,11 +118,6 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         _;
     }
 
-    // Helper functions for contribution state checks
-    function hasContribution(address user) public view returns (bool) {
-        return contributions[user].amount > 0;
-    }
-
     // 1. CONSTRUCTOR & SETUP
     constructor(PoolConfig memory config) Owned(config.owner) {
         // Step 1: Set dev team address (same as owner for clarity)
@@ -253,11 +248,16 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     }
 
     // 3. POOL STATE FUNCTIONS
+    /// @notice Checks if the user has a contribution
+    /// @param user The address of the user to check
+    /// @return True if the user has a contribution, false otherwise
+    function hasContribution(address user) public view returns (bool) {
+        return contributions[user].amount > 0;
+    }
+
     /// @notice Checks if the pool has reached the minimum funding requirement
     /// @return True if the pool has reached minimum contributions, false otherwise
-    /// @dev Can only be called after the pool has ended
     function hasReachedMinimum() public view returns (bool) {
-        if (block.timestamp < endTime) revert PoolNotEnded();
         return totalContributions >= minTotalContributions;
     }
 
@@ -265,6 +265,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     /// @dev Can only be called after pool ends and if minimum not reached
     function claimRefund() external nonReentrant {
         if (!hasContribution(msg.sender)) revert NoContribution();
+        if (block.timestamp < endTime) revert PoolNotEnded();
         if (hasReachedMinimum()) revert PoolReachedMinimum();
         if (contributions[msg.sender].claimed) revert AlreadyClaimed();
 
@@ -278,9 +279,9 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     /// @notice Deploys the token (first deployment function)
     /// @dev Can only be called after minimum contributions are reached and pool has ended
     function deployToken() external nonReentrant {
+        if (block.timestamp < endTime) revert PoolNotEnded();
         if (!hasReachedMinimum()) revert PoolReachedMinimum();
         if (tokenDeployed) revert TokenAlreadyDeployed();
-        if (block.timestamp < endTime) revert PoolNotEnded();
 
         proratedToken = IProratedToken(
             address(new ProratedToken(tokenName, tokenSymbol))

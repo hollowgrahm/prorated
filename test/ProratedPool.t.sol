@@ -166,9 +166,8 @@ contract ProratedPoolTest is Test {
     }
 
     function test_HasReachedMinimum() public {
-        // Before pool ends
-        vm.expectRevert(ProratedPool.PoolNotEnded.selector);
-        pool.hasReachedMinimum();
+        // Before pool ends - should work now (no timing restriction)
+        assertEq(pool.hasReachedMinimum(), false);
 
         // After pool ends but below minimum
         vm.warp(endTime + 1);
@@ -878,7 +877,7 @@ contract ModifierTests is Test {
 
         // Test without contribution
         assertEq(pool.hasContribution(user1), false);
-        
+
         // First contribution
         pool.contribute(1000e18, 52);
         assertEq(pool.hasContribution(user1), true);
