@@ -38,14 +38,13 @@ contract ProratedPoolStorage {
     uint256 public treasuryAllocationPercentage;
     uint256 public treasuryLPTokenAllocation;
 
-    // Deployment tracking
-    bool public tokenDeployed;
-    bool public pairDeployed;
-    bool public liquidityDeployed;
-
-    bool public venftDeployed;
-    bool public governorDeployed;
-    bool public treasuryDeployed;
+    // Deployment tracking - removed boolean flags, will use address checks instead
+    // bool public tokenDeployed;
+    // bool public pairDeployed;
+    // bool public liquidityDeployed;
+    // bool public venftDeployed;
+    // bool public governorDeployed;
+    // bool public treasuryDeployed;
 
     uint256 public constant MIN_LOCK = 1;
     uint256 public constant MAX_LOCK = 208;

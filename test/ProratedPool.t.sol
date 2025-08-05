@@ -82,7 +82,7 @@ contract ProratedPoolTest is Test {
         assertEq(address(pool.fundingToken()), address(fundingToken));
         assertEq(address(pool.proswapFactory()), address(factory));
         assertEq(address(pool.proswapRouter()), address(router));
-        assertEq(pool.tokenDeployed(), false);
+        assertEq(address(pool.proratedToken()), address(0));
     }
 
     function test_Contribute() public {
@@ -296,13 +296,12 @@ contract ProratedPoolTest is Test {
         vm.warp(endTime + 1);
         pool.deployToken();
 
-        assertEq(pool.tokenDeployed(), true);
         assertTrue(address(pool.proratedToken()) != address(0));
-        assertEq(pool.pairDeployed(), false);
-        assertEq(pool.liquidityDeployed(), false);
-        assertEq(pool.venftDeployed(), false);
-        assertEq(pool.governorDeployed(), false);
-        assertEq(pool.treasuryDeployed(), false);
+        assertEq(pool.proswapPair(), address(0));
+        assertEq(pool.totalLPTokensReceived(), 0);
+        assertEq(address(pool.proratedVENFT()), address(0));
+        assertEq(address(pool.proratedGovernor()), address(0));
+        assertEq(address(pool.proratedTreasury()), address(0));
 
         // Try to deploy token again
         vm.expectRevert(ProratedPool.TokenAlreadyDeployed.selector);
@@ -328,13 +327,12 @@ contract ProratedPoolTest is Test {
         // Deploy pair (should succeed now that token is deployed)
         pool.deployPair();
 
-        assertEq(pool.tokenDeployed(), true);
-        assertEq(pool.pairDeployed(), true);
+        assertTrue(address(pool.proratedToken()) != address(0));
         assertTrue(address(pool.proswapPair()) != address(0));
-        assertEq(pool.liquidityDeployed(), false);
-        assertEq(pool.venftDeployed(), false);
-        assertEq(pool.governorDeployed(), false);
-        assertEq(pool.treasuryDeployed(), false);
+        assertEq(pool.totalLPTokensReceived(), 0);
+        assertEq(address(pool.proratedVENFT()), address(0));
+        assertEq(address(pool.proratedGovernor()), address(0));
+        assertEq(address(pool.proratedTreasury()), address(0));
 
         // Try to deploy pair again
         vm.expectRevert(ProratedPool.PairAlreadyDeployed.selector);
@@ -356,7 +354,6 @@ contract ProratedPoolTest is Test {
         pool.deployPair();
 
         // Verify the pair was deployed
-        assertEq(pool.pairDeployed(), true);
         assertTrue(address(pool.proswapPair()) != address(0));
     }
 
@@ -381,12 +378,12 @@ contract ProratedPoolTest is Test {
         // Deploy liquidity
         pool.deployLiquidity();
 
-        assertEq(pool.tokenDeployed(), true);
-        assertEq(pool.pairDeployed(), true);
-        assertEq(pool.liquidityDeployed(), true);
-        assertEq(pool.venftDeployed(), false);
-        assertEq(pool.governorDeployed(), false);
-        assertEq(pool.treasuryDeployed(), false);
+        assertTrue(address(pool.proratedToken()) != address(0));
+        assertTrue(address(pool.proswapPair()) != address(0));
+        assertGt(pool.totalLPTokensReceived(), 0);
+        assertEq(address(pool.proratedVENFT()), address(0));
+        assertEq(address(pool.proratedGovernor()), address(0));
+        assertEq(address(pool.proratedTreasury()), address(0));
 
         // Verify that allocations are calculated as part of deployLiquidity
         assertGt(
@@ -427,7 +424,6 @@ contract ProratedPoolTest is Test {
         pool.deployLiquidity();
 
         // Verify the liquidity was deployed
-        assertEq(pool.liquidityDeployed(), true);
         assertGt(pool.totalLPTokensReceived(), 0);
         assertGt(pool.devTeamLPTokenAllocation(), 0);
         assertGt(pool.treasuryLPTokenAllocation(), 0);
@@ -455,12 +451,12 @@ contract ProratedPoolTest is Test {
         // Deploy VENFT (should succeed now that liquidity is deployed)
         pool.deployVENFT();
 
-        assertEq(pool.tokenDeployed(), true);
-        assertEq(pool.pairDeployed(), true);
-        assertEq(pool.liquidityDeployed(), true);
-        assertEq(pool.venftDeployed(), true);
-        assertEq(pool.governorDeployed(), false);
-        assertEq(pool.treasuryDeployed(), false);
+        assertTrue(address(pool.proratedToken()) != address(0));
+        assertTrue(address(pool.proswapPair()) != address(0));
+        assertGt(pool.totalLPTokensReceived(), 0);
+        assertTrue(address(pool.proratedVENFT()) != address(0));
+        assertEq(address(pool.proratedGovernor()), address(0));
+        assertEq(address(pool.proratedTreasury()), address(0));
 
         // Try to deploy VENFT again
         vm.expectRevert(ProratedPool.VENFTAlreadyDeployed.selector);
@@ -717,12 +713,11 @@ contract ProratedPoolTest is Test {
         // Now deploy treasury (should succeed)
         pool.deployTreasury();
 
-        assertEq(pool.tokenDeployed(), true);
-        assertEq(pool.pairDeployed(), true);
-        assertEq(pool.liquidityDeployed(), true);
-        assertEq(pool.venftDeployed(), true);
-        assertEq(pool.governorDeployed(), true);
-        assertEq(pool.treasuryDeployed(), true);
+        assertTrue(address(pool.proratedToken()) != address(0));
+        assertTrue(address(pool.proswapPair()) != address(0));
+        assertGt(pool.totalLPTokensReceived(), 0);
+        assertTrue(address(pool.proratedVENFT()) != address(0));
+        assertTrue(address(pool.proratedGovernor()) != address(0));
         assertTrue(address(pool.proratedTreasury()) != address(0));
 
         // Try to deploy treasury again
@@ -747,13 +742,12 @@ contract ProratedPoolTest is Test {
         // Deploy governor
         pool.deployGovernor();
 
-        assertEq(pool.tokenDeployed(), true);
-        assertEq(pool.pairDeployed(), true);
-        assertEq(pool.liquidityDeployed(), true);
-        assertEq(pool.venftDeployed(), true);
-        assertEq(pool.governorDeployed(), true);
-        assertEq(pool.treasuryDeployed(), false);
+        assertTrue(address(pool.proratedToken()) != address(0));
+        assertTrue(address(pool.proswapPair()) != address(0));
+        assertGt(pool.totalLPTokensReceived(), 0);
+        assertTrue(address(pool.proratedVENFT()) != address(0));
         assertTrue(address(pool.proratedGovernor()) != address(0));
+        assertEq(address(pool.proratedTreasury()), address(0));
 
         // Try to deploy governor again
         vm.expectRevert(ProratedPool.GovernorAlreadyDeployed.selector);
@@ -783,12 +777,12 @@ contract ProratedPoolTest is Test {
         // Deploy governor (should succeed now that VENFT is deployed)
         pool.deployGovernor();
 
-        assertEq(pool.tokenDeployed(), true);
-        assertEq(pool.pairDeployed(), true);
-        assertEq(pool.liquidityDeployed(), true);
-        assertEq(pool.venftDeployed(), true);
-        assertEq(pool.governorDeployed(), true);
-        assertEq(pool.treasuryDeployed(), false);
+        assertTrue(address(pool.proratedToken()) != address(0));
+        assertTrue(address(pool.proswapPair()) != address(0));
+        assertGt(pool.totalLPTokensReceived(), 0);
+        assertTrue(address(pool.proratedVENFT()) != address(0));
+        assertTrue(address(pool.proratedGovernor()) != address(0));
+        assertEq(address(pool.proratedTreasury()), address(0));
     }
 
     function test_TreasuryTokenAllocation() public {
