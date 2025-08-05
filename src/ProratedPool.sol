@@ -400,7 +400,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         proratedVENFT = IProratedVENFT(
             address(new ProratedVENFT(address(proswapPair)))
         );
-        
+
         // Step 4: Mark VENFT as deployed to prevent future deployments
         venftDeployed = true;
 
@@ -432,21 +432,27 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
 
     /// @notice Deploy Governor contract (anyone can call, first deployment wins)
     function deployGovernor() external {
+        // Step 1: Check if governor has already been deployed (prevent double deployment)
         if (governorDeployed) revert GovernorAlreadyDeployed();
+        // Step 2: Check if VENFT has been deployed (prerequisite)
         if (!venftDeployed) revert VENFTNotDeployed();
 
-        // Validate VENFT interface
+        // Step 3: Validate VENFT interface to ensure it's a valid VENFT contract
         if (!IProratedVENFT(address(proratedVENFT)).validateInterface())
             revert InvalidVENFT();
 
+        // Step 4: Deploy the ProratedGovernor contract with VENFT and pool addresses
         proratedGovernor = IProratedGovernor(
             address(new ProratedGovernor(address(proratedVENFT), address(this)))
         );
+        
+        // Step 5: Mark governor as deployed to prevent future deployments
         governorDeployed = true;
 
-        // Add pool as approved target
+        // Step 6: Add pool as approved target for governance proposals
         proratedGovernor.addApprovedTarget(address(this));
 
+        // Step 7: Emit event for off-chain tracking
         emit GovernorDeployed(address(proratedGovernor));
     }
 
