@@ -97,6 +97,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     );
 
     event TreasuryTokensReleased(address indexed treasury, uint256 lpTokens);
+    event TokenDeployed(address indexed token);
     event VENFTDeployed(address indexed venft);
     event PairDeployed(address indexed pair);
     event LiquidityDeployed(
@@ -315,7 +316,9 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
 
         // Step 5: Mint the total supply to the pool contract
         proratedToken.mint(address(this), tokenTotalSupply);
-        // Step 6: Token is now deployed (address is set, no boolean flag needed)
+
+        // Step 6: Emit event for off-chain tracking
+        emit TokenDeployed(address(proratedToken));
     }
 
     /// @notice Deploys the pair (second deployment function)
@@ -333,9 +336,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         // Step 3: Store the pair address for future use
         proswapPair = pair;
 
-        // Step 4: Pair is now deployed (address is set, no boolean flag needed)
-
-        // Step 5: Emit event for off-chain tracking
+        // Step 4: Emit event for off-chain tracking
         emit PairDeployed(proswapPair);
     }
 
@@ -368,9 +369,8 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
 
         // Step 6: Record total LP tokens received from liquidity provision
         totalLPTokensReceived = ERC20(proswapPair).balanceOf(address(this));
-        // Step 7: Liquidity is now deployed (LP tokens received, no boolean flag needed)
 
-        // Step 8: Calculate LP token allocations for dev team and treasury
+        // Step 7: Calculate LP token allocations for dev team and treasury
         devTeamLPTokenAllocation =
             (totalLPTokensReceived * devTeamAllocationPercentage) /
             100;
@@ -378,7 +378,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
             (totalLPTokensReceived * treasuryAllocationPercentage) /
             100;
 
-        // Step 9: Emit LiquidityDeployed event
+        // Step 8: Emit LiquidityDeployed event
         emit LiquidityDeployed(
             totalLPTokensReceived,
             devTeamLPTokenAllocation,
@@ -398,18 +398,18 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
             address(new ProratedVENFT(address(proswapPair)))
         );
 
-        // Step 4: VENFT is now deployed (address is set, no boolean flag needed)
-
-        // Step 5: Emit event for off-chain tracking
+        // Step 4: Emit event for off-chain tracking
         emit VENFTDeployed(address(proratedVENFT));
     }
 
     /// @notice Deploy Treasury contract (anyone can call, first deployment wins)
     function deployTreasury() external {
         // Step 1: Check if treasury has already been deployed (prevent double deployment)
-        if (address(proratedTreasury) != address(0)) revert TreasuryAlreadyDeployed();
+        if (address(proratedTreasury) != address(0))
+            revert TreasuryAlreadyDeployed();
         // Step 2: Check if governor has been deployed (prerequisite)
-        if (address(proratedGovernor) == address(0)) revert GovernorNotDeployed();
+        if (address(proratedGovernor) == address(0))
+            revert GovernorNotDeployed();
 
         // Step 3: Deploy the ProratedTreasury contract with all required parameters
         proratedTreasury = IProratedTreasury(
@@ -424,17 +424,16 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
                 )
             )
         );
-        
-        // Step 4: Treasury is now deployed (address is set, no boolean flag needed)
 
-        // Step 5: Emit event for off-chain tracking
+        // Step 4: Emit event for off-chain tracking
         emit TreasuryDeployed(address(proratedTreasury));
     }
 
     /// @notice Deploy Governor contract (anyone can call, first deployment wins)
     function deployGovernor() external {
         // Step 1: Check if governor has already been deployed (prevent double deployment)
-        if (address(proratedGovernor) != address(0)) revert GovernorAlreadyDeployed();
+        if (address(proratedGovernor) != address(0))
+            revert GovernorAlreadyDeployed();
         // Step 2: Check if VENFT has been deployed (prerequisite)
         if (address(proratedVENFT) == address(0)) revert VENFTNotDeployed();
 
@@ -447,9 +446,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
             address(new ProratedGovernor(address(proratedVENFT), address(this)))
         );
 
-        // Step 5: Governor is now deployed (address is set, no boolean flag needed)
-
-        // Step 6: Add pool as approved target for governance proposals
+        // Step 5: Add pool as approved target for governance proposals
         proratedGovernor.addApprovedTarget(address(this));
 
         // Step 7: Emit event for off-chain tracking
