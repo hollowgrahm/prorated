@@ -1178,6 +1178,82 @@ contract ProratedPoolTest is Test {
             address(pool.proratedTreasury())
         );
     }
+
+    function test_ReleaseTreasuryLPTokens_TreasuryNotDeployed() public {
+        // Setup: Add contributions and finalize pool
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 200000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(200000e18, 52);
+        vm.stopPrank();
+
+        vm.warp(endTime + 1);
+        pool.deployToken();
+        pool.deployPair();
+        pool.deployLiquidity();
+        pool.deployVENFT();
+        pool.deployGovernor();
+        // Note: Treasury not deployed
+
+        // Try to release treasury LP tokens (should fail - treasury not deployed)
+        vm.expectRevert(ProratedPool.TreasuryNotDeployed.selector);
+        pool.releaseTreasuryLPTokens();
+    }
+
+    function test_ReleaseTreasuryLPTokens_NoTokensReserved() public {
+        // Setup: Add contributions and finalize pool
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 200000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(200000e18, 52);
+        vm.stopPrank();
+
+        vm.warp(endTime + 1);
+        pool.deployToken();
+        pool.deployPair();
+        pool.deployLiquidity();
+        pool.deployVENFT();
+        pool.deployGovernor();
+        pool.deployTreasury();
+
+        // Release treasury LP tokens first time (should succeed)
+        pool.releaseTreasuryLPTokens();
+
+        // Try to release treasury LP tokens again (should fail - no tokens reserved)
+        vm.expectRevert(ProratedPool.NoTokensReserved.selector);
+        pool.releaseTreasuryLPTokens();
+    }
+
+    function test_ReleaseTreasuryLPTokens_EventEmission() public {
+        // Setup: Add contributions and finalize pool
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 200000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(200000e18, 52);
+        vm.stopPrank();
+
+        vm.warp(endTime + 1);
+        pool.deployToken();
+        pool.deployPair();
+        pool.deployLiquidity();
+        pool.deployVENFT();
+        pool.deployGovernor();
+        pool.deployTreasury();
+
+        // Check initial allocation
+        uint256 initialAllocation = pool.treasuryLPTokenAllocation();
+        assertGt(initialAllocation, 0, "Should have initial allocation");
+
+        // Release treasury LP tokens
+        pool.releaseTreasuryLPTokens();
+
+        // Verify the function completed successfully
+        assertEq(
+            pool.treasuryLPTokenAllocation(),
+            0,
+            "Treasury allocation should be cleared"
+        );
+    }
 }
 
 // Modifier Tests - Test each modifier once to avoid duplication

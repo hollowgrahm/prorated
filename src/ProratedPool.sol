@@ -53,6 +53,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     error VENFTAlreadyDeployed();
     error GovernorNotDeployed();
     error GovernorAlreadyDeployed();
+    error TreasuryNotDeployed();
     error TreasuryAlreadyDeployed();
     error ContributionAlreadyClaimed();
     error Unauthorized();
@@ -98,7 +99,11 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         uint256 tokenId
     );
 
-    event TreasuryTokensReleased(address indexed treasury, uint256 lpTokens);
+    event TreasuryTokensReleased(
+        address indexed treasury,
+        uint256 lpTokens,
+        uint256 tokenId
+    );
     event TokenDeployed(address indexed token);
     event VENFTDeployed(address indexed venft);
     event PairDeployed(address indexed pair);
@@ -558,31 +563,40 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     /// @notice Release treasury's LP tokens (governance function)
     /// @dev Can be called by anyone after successful governance proposal
     function releaseTreasuryLPTokens() external {
-        if (address(proratedVENFT) == address(0)) revert VENFTNotDeployed();
+        // Step 1: Check that treasury has been deployed (required for treasury operations)
+        if (address(proratedTreasury) == address(0))
+            revert TreasuryNotDeployed();
 
-        // Create veNFT position for treasury (4 years max lock)
+        // Step 2: Check that treasury has LP tokens allocated
+        if (treasuryLPTokenAllocation == 0) revert NoTokensReserved();
+
+        // Step 3: Approve VENFT contract to spend treasury's LP tokens
         ERC20(proswapPair).approve(
             address(proratedVENFT),
             treasuryLPTokenAllocation
         );
+
+        // Step 4: Create veNFT position for treasury (MAX_LOCK weeks)
         uint256 treasuryTokenId = proratedVENFT.createLock(
             treasuryLPTokenAllocation,
-            4 * 365 * 86400 // 4 years
+            MAX_LOCK * WEEK
         );
 
-        // Transfer the veNFT to treasury
+        // Step 5: Transfer the veNFT to treasury
         proratedVENFT.transferFrom(
             address(this),
             address(proratedTreasury),
             treasuryTokenId
         );
 
-        // Clear reserved amount
-        treasuryLPTokenAllocation = 0;
-
+        // Step 6: Emit event for off-chain tracking
         emit TreasuryTokensReleased(
             address(proratedTreasury),
-            treasuryLPTokenAllocation
+            treasuryLPTokenAllocation,
+            treasuryTokenId
         );
+
+        // Step 7: Clear reserved amount
+        treasuryLPTokenAllocation = 0;
     }
 }
