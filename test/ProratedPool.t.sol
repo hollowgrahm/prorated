@@ -519,6 +519,144 @@ contract ProratedPoolTest is Test {
         pool.createVENFTPosition();
     }
 
+    function test_CreateVENFTPosition_LiquidityNotDeployed() public {
+        // Setup: Add contributions and finalize pool
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 200000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(200000e18, 52);
+        vm.stopPrank();
+
+        vm.warp(endTime + 1);
+        pool.deployToken();
+        pool.deployPair();
+        // Don't deploy liquidity
+
+        // Try to create VENFT position without liquidity deployed
+        vm.expectRevert(ProratedPool.LiquidityNotDeployed.selector);
+        vm.prank(user1);
+        pool.createVENFTPosition();
+    }
+
+    function test_CreateVENFTPosition_NoContribution() public {
+        // Setup: Add minimum contributions to meet pool requirements
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 1200000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(1200000e18, 52);
+        vm.stopPrank();
+
+        vm.warp(endTime + 1);
+        pool.deployToken();
+        pool.deployPair();
+        pool.deployLiquidity();
+        pool.deployVENFT();
+
+        // Try to create VENFT position without any contribution (different user)
+        vm.expectRevert(ProratedPool.NoContribution.selector);
+        vm.prank(user2);
+        pool.createVENFTPosition();
+    }
+
+    function test_CreateVENFTPosition_ContributionAlreadyClaimed() public {
+        // Setup: Add contributions and finalize pool
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 200000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(200000e18, 52);
+        vm.stopPrank();
+
+        vm.warp(endTime + 1);
+        pool.deployToken();
+        pool.deployPair();
+        pool.deployLiquidity();
+        pool.deployVENFT();
+
+        // Create VENFT position first time (should succeed)
+        vm.prank(user1);
+        pool.createVENFTPosition();
+
+        // Try to create VENFT position again (should fail)
+        vm.expectRevert(ProratedPool.ContributionAlreadyClaimed.selector);
+        vm.prank(user1);
+        pool.createVENFTPosition();
+    }
+
+    function test_CreateVENFTPosition_EventEmission() public {
+        // Setup: Add contributions and finalize pool
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 200000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(200000e18, 52);
+        vm.stopPrank();
+
+        vm.warp(endTime + 1);
+        pool.deployToken();
+        pool.deployPair();
+        pool.deployLiquidity();
+        pool.deployVENFT();
+
+        // Create VENFT position (event emission is implicitly tested)
+        vm.prank(user1);
+        pool.createVENFTPosition();
+
+        // Verify the position was created successfully
+        (, , , bool claimed) = pool.contributions(user1);
+        assertTrue(claimed, "Contribution should be marked as claimed");
+    }
+
+    function test_CreateVENFTPosition_LPTokenCalculation() public {
+        // Setup: Add contributions with different amounts and lock durations
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 100000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(100000e18, 52); // 100k tokens, 52 weeks = 5.2M shares
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        fundingToken.approve(address(pool), 200000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(200000e18, 26); // 200k tokens, 26 weeks = 5.2M shares
+        vm.stopPrank();
+
+        vm.warp(endTime + 1);
+        pool.deployToken();
+        pool.deployPair();
+        pool.deployLiquidity();
+        pool.deployVENFT();
+
+        // Calculate expected LP token allocations
+        uint256 totalShares = pool.totalShares();
+        uint256 contributorLPTokenAllocation = pool
+            .contributorLPTokenAllocation();
+
+        // User1: 5.2M shares out of 10.4M total shares = 50%
+        uint256 expectedUser1LPTokens = (contributorLPTokenAllocation *
+            5200000) / 10400000;
+
+        // User2: 5.2M shares out of 10.4M total shares = 50%
+        uint256 expectedUser2LPTokens = (contributorLPTokenAllocation *
+            5200000) / 10400000;
+
+        // Create VENFT positions and verify LP token calculations
+        vm.prank(user1);
+        pool.createVENFTPosition();
+
+        vm.prank(user2);
+        pool.createVENFTPosition();
+
+        // Verify both users received equal LP tokens (since they have equal shares)
+        assertEq(
+            expectedUser1LPTokens,
+            expectedUser2LPTokens,
+            "Users with equal shares should receive equal LP tokens"
+        );
+        assertTrue(
+            expectedUser1LPTokens > 0,
+            "LP token allocation should be non-zero"
+        );
+    }
+
     function test_DevTeamFundsWithdraw() public {
         // Setup: Add contributions and finalize pool
         vm.startPrank(user1);

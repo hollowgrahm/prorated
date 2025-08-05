@@ -462,12 +462,14 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     // 5. USER FUNCTIONS
     /// @notice Creates a veNFT position for a user based on their contribution
     /// @dev Can only be called after pool is finalized and if user has unclaimed contribution
-    function createVENFTPosition() external tokenNotDeployed nonReentrant {
+    function createVENFTPosition() external nonReentrant {
+        // Step 1: Check that liquidity has been deployed (LP tokens are available)
+        if (contributorLPTokenAllocation == 0) revert LiquidityNotDeployed();
         // Step 1: Get user's contribution data from storage
         Contribution memory userContribution = contributions[msg.sender];
 
         // Step 2: Check if user has a contribution
-        if (userContribution.amount == 0) revert NoContribution();
+        if (!hasContribution(msg.sender)) revert NoContribution();
 
         // Step 3: Check if user has already claimed their contribution
         if (userContribution.claimed) revert ContributionAlreadyClaimed();
@@ -486,7 +488,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         ERC20(proswapPair).approve(address(proratedVENFT), userLPTokens);
 
         // Step 8: Create veNFT position with user's lock duration (convert weeks to seconds)
-        uint256 lockDuration = userContribution.lockDuration * 1 weeks;
+        uint256 lockDuration = userContribution.lockDuration * WEEK;
         uint256 tokenId = proratedVENFT.createLock(userLPTokens, lockDuration);
 
         // Step 9: Transfer the veNFT from pool to user

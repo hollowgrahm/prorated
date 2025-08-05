@@ -40,6 +40,7 @@ contract ProratedPoolStorage {
 
     uint256 public constant MIN_LOCK = 1;
     uint256 public constant MAX_LOCK = 208;
+    uint256 public constant WEEK = 7 days;
 
     mapping(address => Contribution) public contributions;
 
