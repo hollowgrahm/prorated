@@ -378,7 +378,13 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
             (totalLPTokensReceived * treasuryAllocationPercentage) /
             100;
 
-        // Step 8: Emit LiquidityDeployed event
+        // Step 8: Calculate LP tokens available for contributors (remaining after dev team and treasury)
+        contributorLPTokenAllocation =
+            totalLPTokensReceived -
+            devTeamLPTokenAllocation -
+            treasuryLPTokenAllocation;
+
+        // Step 9: Emit LiquidityDeployed event
         emit LiquidityDeployed(
             totalLPTokensReceived,
             devTeamLPTokenAllocation,
@@ -457,29 +463,36 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     /// @notice Creates a veNFT position for a user based on their contribution
     /// @dev Can only be called after pool is finalized and if user has unclaimed contribution
     function createVENFTPosition() external tokenNotDeployed nonReentrant {
+        // Step 1: Get user's contribution data from storage
         Contribution memory userContribution = contributions[msg.sender];
+
+        // Step 2: Check if user has a contribution
         if (userContribution.amount == 0) revert NoContribution();
+
+        // Step 3: Check if user has already claimed their contribution
         if (userContribution.claimed) revert ContributionAlreadyClaimed();
 
-        // Calculate user's LP token share based on their contribution shares
+        // Step 4: Calculate user's LP token share based on their contribution shares
         uint256 userLPTokens = (userContribution.shares *
-            totalLPTokensReceived) / totalShares;
+            contributorLPTokenAllocation) / totalShares;
 
+        // Step 5: Validate that user has a non-zero LP token allocation
         if (userLPTokens == 0) revert InvalidAmount();
 
-        // Mark contribution as claimed
+        // Step 6: Mark contribution as claimed to prevent double-claiming
         contributions[msg.sender].claimed = true;
 
-        // Approve VENFT to spend LP tokens
+        // Step 7: Approve VENFT contract to spend user's LP tokens
         ERC20(proswapPair).approve(address(proratedVENFT), userLPTokens);
 
-        // Create veNFT position with user's lock duration
+        // Step 8: Create veNFT position with user's lock duration (convert weeks to seconds)
         uint256 lockDuration = userContribution.lockDuration * 1 weeks;
         uint256 tokenId = proratedVENFT.createLock(userLPTokens, lockDuration);
 
-        // Transfer the veNFT to user
+        // Step 9: Transfer the veNFT from pool to user
         proratedVENFT.transferFrom(address(this), msg.sender, tokenId);
 
+        // Step 10: Emit event for off-chain tracking
         emit VENFTPositionCreated(
             msg.sender,
             tokenId,

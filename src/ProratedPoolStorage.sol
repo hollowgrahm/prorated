@@ -10,7 +10,6 @@ import {IProratedGovernor} from "./interfaces/IProratedGovernor.sol";
 import {IProratedTreasury} from "./interfaces/IProratedTreasury.sol";
 
 contract ProratedPoolStorage {
-    // All state variables moved here
     string public tokenName;
     string public tokenSymbol;
     uint256 public tokenTotalSupply;
@@ -29,7 +28,7 @@ contract ProratedPoolStorage {
     IProratedGovernor public proratedGovernor;
     IProratedTreasury public proratedTreasury;
 
-    address public devTeam; // Explicit dev team reference for clarity
+    address public devTeam;
     uint256 public totalContributions;
     uint256 public totalShares;
     uint256 public totalLPTokensReceived;
@@ -37,14 +36,7 @@ contract ProratedPoolStorage {
     uint256 public devTeamLPTokenAllocation;
     uint256 public treasuryAllocationPercentage;
     uint256 public treasuryLPTokenAllocation;
-
-    // Deployment tracking - removed boolean flags, will use address checks instead
-    // bool public tokenDeployed;
-    // bool public pairDeployed;
-    // bool public liquidityDeployed;
-    // bool public venftDeployed;
-    // bool public governorDeployed;
-    // bool public treasuryDeployed;
+    uint256 public contributorLPTokenAllocation;
 
     uint256 public constant MIN_LOCK = 1;
     uint256 public constant MAX_LOCK = 208;
