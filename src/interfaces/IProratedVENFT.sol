@@ -20,6 +20,11 @@ interface IProratedVENFT {
     /// @return The total voting power across all tokens
     function totalSupply() external view returns (uint256);
 
+    /// @notice Gets the total voting power across all veNFT positions at a specific timestamp
+    /// @param _timestamp The timestamp to query total voting power at
+    /// @return The total voting power at the specified timestamp
+    function totalSupplyAt(uint256 _timestamp) external view returns (uint256);
+
     /// @notice Gets the owner of a specific token ID
     /// @param _tokenId The token ID to check
     /// @return The owner address of the token
@@ -28,6 +33,12 @@ interface IProratedVENFT {
     /// @notice Withdraws the decayed amount from a veNFT position
     /// @param _tokenId The token ID to withdraw from
     function withdrawDecayed(uint256 _tokenId) external;
+
+    /// @notice Transfers a veNFT from one address to another
+    /// @param from The address to transfer from
+    /// @param to The address to transfer to
+    /// @param tokenId The token ID to transfer
+    function transferFrom(address from, address to, uint256 tokenId) external;
 
     /// @notice Validates that this is a legitimate ProratedVENFT contract
     /// @return True if this is a valid ProratedVENFT contract

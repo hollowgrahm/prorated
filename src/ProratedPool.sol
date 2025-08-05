@@ -53,6 +53,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     error VENFTAlreadyDeployed();
     error GovernorNotDeployed();
     error GovernorAlreadyDeployed();
+    error TreasuryAlreadyDeployed();
     error ContributionAlreadyClaimed();
     error Unauthorized();
     error NoTokensReserved();
@@ -82,6 +83,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
 
     event TreasuryTokensReleased(address indexed treasury, uint256 lpTokens);
     event VENFTDeployed(address indexed venft);
+    event TreasuryDeployed(address indexed treasury);
     event GovernorDeployed(address indexed governor);
 
     modifier poolActive() {
@@ -233,7 +235,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         if (block.timestamp < endTime) revert PoolNotEnded();
 
         proratedToken = IProratedToken(
-            address(new ProratedToken("Prorated", "PRORATED"))
+            address(new ProratedToken(tokenName, tokenSymbol))
         );
 
         proratedToken.mint(address(this), tokenTotalSupply);
@@ -262,42 +264,32 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         if (liquidityDeployed) revert LiquidityAlreadyDeployed();
 
         // Seed liquidity
-        uint256 fundingLiquidity = totalContributions - desiredContributions;
         proratedToken.approve(address(proswapRouter), type(uint256).max);
         fundingToken.safeApprove(address(proswapRouter), type(uint256).max);
 
-        // Use the available funding tokens for liquidity
-        uint256 availableFundingTokens = fundingToken.balanceOf(address(this));
-        uint256 availableProratedTokens = proratedToken.balanceOf(
-            address(this)
-        );
-
-        // Use the minimum of available tokens
-        uint256 liquidityAmount = availableFundingTokens <
-            availableProratedTokens
-            ? availableFundingTokens
-            : availableProratedTokens;
+        // For initial liquidity, use all available tokens
+        uint256 fundingAmount = fundingToken.balanceOf(address(this));
+        uint256 proratedAmount = proratedToken.balanceOf(address(this));
 
         proswapRouter.addLiquidity(
             address(proratedToken),
             address(fundingToken),
-            liquidityAmount,
-            liquidityAmount,
-            liquidityAmount,
-            liquidityAmount,
+            proratedAmount,
+            fundingAmount,
+            proratedAmount,
+            fundingAmount,
             address(this)
         );
 
         totalLPTokensReceived = ERC20(proswapPair).balanceOf(address(this));
         liquidityDeployed = true;
 
-        // Calculate allocations immediately after liquidity deployment
-        uint256 totalLPTokens = ERC20(proswapPair).balanceOf(address(this));
+        // Calculate allocations based on total LP tokens received
         devTeamLPTokenAllocation =
-            (totalLPTokens * devTeamAllocationPercentage) /
+            (totalLPTokensReceived * devTeamAllocationPercentage) /
             100;
         treasuryLPTokenAllocation =
-            (totalLPTokens * treasuryAllocationPercentage) /
+            (totalLPTokensReceived * treasuryAllocationPercentage) /
             100;
     }
 
@@ -312,6 +304,30 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         venftDeployed = true;
 
         emit VENFTDeployed(address(proratedVENFT));
+    }
+
+    /// @notice Deploy Treasury contract (anyone can call, first deployment wins)
+    function deployTreasury() external {
+        if (treasuryDeployed) revert TreasuryAlreadyDeployed();
+        if (!tokenDeployed) revert TokenNotDeployed();
+        if (!pairDeployed) revert PairNotDeployed();
+        if (!governorDeployed) revert GovernorNotDeployed();
+
+        proratedTreasury = IProratedTreasury(
+            address(
+                new ProratedTreasury(
+                    ProratedTreasury.TreasuryParams({
+                        venft: address(proratedVENFT),
+                        governor: address(proratedGovernor),
+                        proswapPair: proswapPair,
+                        owner: devTeam
+                    })
+                )
+            )
+        );
+        treasuryDeployed = true;
+
+        emit TreasuryDeployed(address(proratedTreasury));
     }
 
     /// @notice Deploy Governor contract (anyone can call, first deployment wins)
@@ -361,6 +377,9 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         uint256 lockDuration = userContribution.lockDuration * 1 weeks;
         uint256 tokenId = proratedVENFT.createLock(userLPTokens, lockDuration);
 
+        // Transfer the veNFT to user
+        proratedVENFT.transferFrom(address(this), msg.sender, tokenId);
+
         emit VENFTPositionCreated(
             msg.sender,
             tokenId,
@@ -400,6 +419,9 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
             4 * 365 * 86400
         );
 
+        // Transfer the veNFT to dev team
+        proratedVENFT.transferFrom(address(this), devTeam, devTeamTokenId);
+
         // Clear reserved amount
         devTeamLPTokenAllocation = 0;
 
@@ -407,24 +429,25 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     }
 
     /// @notice Release treasury's LP tokens (governance function)
-    /// @dev Can only be called by approved governor after successful proposal
+    /// @dev Can be called by anyone after successful governance proposal
     function releaseTreasuryLPTokens() external {
-        if (msg.sender != address(proratedGovernor)) revert Unauthorized();
         if (!tokenDeployed) revert TokenNotDeployed();
         if (treasuryLPTokenAllocation == 0) revert NoTokensReserved();
 
         uint256 tokensToRelease = treasuryLPTokenAllocation;
 
-        // Transfer LP tokens to treasury
-        ERC20(proswapPair).safeTransfer(
-            address(proratedTreasury),
-            tokensToRelease
-        );
-
         // Create veNFT position for treasury (4 years max lock)
-        proratedTreasury.createTreasuryVeNFTPosition(
+        ERC20(proswapPair).approve(address(proratedVENFT), tokensToRelease);
+        uint256 treasuryTokenId = proratedVENFT.createLock(
             tokensToRelease,
             4 * 365 * 86400 // 4 years
+        );
+
+        // Transfer the veNFT to treasury
+        proratedVENFT.transferFrom(
+            address(this),
+            address(proratedTreasury),
+            treasuryTokenId
         );
 
         // Clear reserved amount

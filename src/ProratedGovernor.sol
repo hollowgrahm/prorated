@@ -225,8 +225,9 @@ contract ProratedGovernor is Owned, ReentrancyGuard {
     function quorumReached(uint256 proposalId) public view returns (bool) {
         Proposal storage proposal = proposals[proposalId];
         uint256 totalVotes = proposal.forVotes + proposal.againstVotes;
-        uint256 quorum = (venft.totalSupply() * QUORUM_NUMERATOR) /
-            QUORUM_DENOMINATOR;
+        // Use historical voting power at proposal creation time
+        uint256 quorum = (venft.totalSupplyAt(proposal.startTime) *
+            QUORUM_NUMERATOR) / QUORUM_DENOMINATOR;
         return totalVotes >= quorum;
     }
 
@@ -236,7 +237,7 @@ contract ProratedGovernor is Owned, ReentrancyGuard {
     function getPastTotalSupply(
         uint256 timepoint
     ) public view returns (uint256) {
-        return venft.totalSupply();
+        return venft.totalSupplyAt(timepoint);
     }
 
     // ============ ADMIN FUNCTIONS ============

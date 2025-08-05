@@ -379,9 +379,9 @@ contract ProratedPoolTest is Test {
     function test_DeployLiquidity() public {
         // Setup: Add contributions and deploy token and pair
         vm.startPrank(user1);
-        fundingToken.approve(address(pool), 1200000e18);
+        fundingToken.approve(address(pool), 1000000e18);
         vm.warp(startTime + 1);
-        pool.contribute(1200000e18, 52);
+        pool.contribute(1000000e18, 52);
         vm.stopPrank();
 
         vm.warp(endTime + 1);
@@ -654,5 +654,208 @@ contract ProratedPoolTest is Test {
         vm.stopPrank();
 
         assertEq(pool.totalContributions(), 502000e18);
+    }
+
+    function test_DeployTreasury() public {
+        // Setup: Add contributions and deploy all prerequisites
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 200000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(200000e18, 52);
+        vm.stopPrank();
+
+        vm.warp(endTime + 1);
+        pool.deployToken();
+        pool.deployPair();
+        pool.deployLiquidity();
+        pool.deployVENFT();
+
+        // Try to deploy treasury before governor is deployed
+        vm.expectRevert(ProratedPool.GovernorNotDeployed.selector);
+        pool.deployTreasury();
+
+        // Deploy governor first
+        pool.deployGovernor();
+
+        // Now deploy treasury (should succeed)
+        pool.deployTreasury();
+
+        assertEq(pool.tokenDeployed(), true);
+        assertEq(pool.pairDeployed(), true);
+        assertEq(pool.liquidityDeployed(), true);
+        assertEq(pool.venftDeployed(), true);
+        assertEq(pool.governorDeployed(), true);
+        assertEq(pool.treasuryDeployed(), true);
+        assertTrue(address(pool.proratedTreasury()) != address(0));
+
+        // Try to deploy treasury again
+        vm.expectRevert(ProratedPool.TreasuryAlreadyDeployed.selector);
+        pool.deployTreasury();
+    }
+
+    function test_DeployGovernor() public {
+        // Setup: Add contributions and deploy prerequisites
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 200000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(200000e18, 52);
+        vm.stopPrank();
+
+        vm.warp(endTime + 1);
+        pool.deployToken();
+        pool.deployPair();
+        pool.deployLiquidity();
+        pool.deployVENFT();
+
+        // Deploy governor
+        pool.deployGovernor();
+
+        assertEq(pool.tokenDeployed(), true);
+        assertEq(pool.pairDeployed(), true);
+        assertEq(pool.liquidityDeployed(), true);
+        assertEq(pool.venftDeployed(), true);
+        assertEq(pool.governorDeployed(), true);
+        assertEq(pool.treasuryDeployed(), false);
+        assertTrue(address(pool.proratedGovernor()) != address(0));
+
+        // Try to deploy governor again
+        vm.expectRevert(ProratedPool.GovernorAlreadyDeployed.selector);
+        pool.deployGovernor();
+    }
+
+    function test_TreasuryTokenAllocation() public {
+        // Setup: Add contributions and finalize pool
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 200000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(200000e18, 52);
+        vm.stopPrank();
+
+        vm.startPrank(user2);
+        fundingToken.approve(address(pool), 200000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(200000e18, 52);
+        vm.stopPrank();
+
+        vm.warp(endTime + 1);
+        pool.deployToken();
+        pool.deployPair();
+        pool.deployLiquidity();
+        pool.deployVENFT();
+        pool.deployGovernor();
+        pool.deployTreasury();
+
+        // Check that treasury allocation is reserved
+        assertGt(
+            pool.treasuryLPTokenAllocation(),
+            0,
+            "Treasury should have LP token allocation"
+        );
+        assertEq(
+            pool.treasuryAllocationPercentage(),
+            15,
+            "Treasury allocation should be 15%"
+        );
+
+        // Release treasury LP tokens (should work for anyone)
+        pool.releaseTreasuryLPTokens();
+
+        // Check that treasury allocation is cleared
+        assertEq(
+            pool.treasuryLPTokenAllocation(),
+            0,
+            "Treasury allocation should be cleared"
+        );
+    }
+
+    function test_CreateVENFTPositionTransfersVeNFT() public {
+        // Setup: Add contributions and finalize pool
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 200000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(200000e18, 52);
+        vm.stopPrank();
+
+        vm.warp(endTime + 1);
+        pool.deployToken();
+        pool.deployPair();
+        pool.deployLiquidity();
+        pool.deployVENFT();
+
+        // Check initial state
+        (, , , bool claimedBefore) = pool.contributions(user1);
+        assertEq(claimedBefore, false);
+
+        // Create veNFT position
+        vm.prank(user1);
+        pool.createVENFTPosition();
+
+        // Check that user now owns the veNFT
+        (, , , bool claimedAfter) = pool.contributions(user1);
+        assertEq(claimedAfter, true);
+
+        // Verify user has a veNFT (tokenId should be 1 for first position)
+        assertEq(pool.proratedVENFT().ownerOf(1), user1);
+    }
+
+    function test_DevTeamVeNFTTransfer() public {
+        // Setup: Add contributions and finalize pool
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 200000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(200000e18, 52);
+        vm.stopPrank();
+
+        vm.warp(endTime + 1);
+        pool.deployToken();
+        pool.deployPair();
+        pool.deployLiquidity();
+        pool.deployVENFT();
+        pool.deployGovernor();
+
+        // Check initial state
+        assertGt(pool.devTeamLPTokenAllocation(), 0);
+
+        // Release dev team LP tokens (should create veNFT for dev team)
+        vm.prank(address(pool.proratedGovernor()));
+        pool.releaseDevTeamLPTokens();
+
+        // Check that dev team allocation is cleared
+        assertEq(pool.devTeamLPTokenAllocation(), 0);
+
+        // Verify dev team has a veNFT (tokenId should be 1 for first position)
+        assertEq(pool.proratedVENFT().ownerOf(1), pool.devTeam());
+    }
+
+    function test_TreasuryVeNFTTransfer() public {
+        // Setup: Add contributions and finalize pool
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 200000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(200000e18, 52);
+        vm.stopPrank();
+
+        vm.warp(endTime + 1);
+        pool.deployToken();
+        pool.deployPair();
+        pool.deployLiquidity();
+        pool.deployVENFT();
+        pool.deployGovernor();
+        pool.deployTreasury();
+
+        // Check initial state
+        assertGt(pool.treasuryLPTokenAllocation(), 0);
+
+        // Release treasury LP tokens (should create veNFT for treasury)
+        pool.releaseTreasuryLPTokens();
+
+        // Check that treasury allocation is cleared
+        assertEq(pool.treasuryLPTokenAllocation(), 0);
+
+        // Verify treasury has a veNFT (tokenId should be 1 for first position)
+        assertEq(
+            pool.proratedVENFT().ownerOf(1),
+            address(pool.proratedTreasury())
+        );
     }
 }

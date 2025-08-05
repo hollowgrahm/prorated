@@ -49,27 +49,7 @@ contract ProratedTreasury is Owned, ReentrancyGuard {
         proswapPair = ERC20(params.proswapPair);
     }
 
-    /// @notice Creates veNFT position for treasury LP tokens
-    /// @param amount Amount of LP tokens to lock
-    /// @param lockDuration Lock duration in seconds
-    /// @dev Can only be called by governor
-    function createTreasuryVeNFTPosition(
-        uint256 amount,
-        uint256 lockDuration
-    ) external {
-        if (msg.sender != address(governor)) revert Unauthorized();
-        if (amount == 0) revert InvalidAmount();
-        if (treasuryVeNFTCreated) revert Unauthorized();
 
-        // Approve VENFT to spend LP tokens
-        proswapPair.approve(address(venft), amount);
-
-        // Create veNFT position
-        treasuryVeNFTTokenId = venft.createLock(amount, lockDuration);
-        treasuryVeNFTCreated = true;
-
-        emit TreasuryVeNFTCreated(treasuryVeNFTTokenId, amount, lockDuration);
-    }
 
     /// @notice Withdraws decayed amount from treasury veNFT position
     /// @dev Can only be called by governor
