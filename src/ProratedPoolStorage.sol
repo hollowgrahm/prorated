@@ -50,7 +50,6 @@ contract ProratedPoolStorage {
     uint256 public constant MIN_LOCK = 1;
     uint256 public constant MAX_LOCK = 208;
 
-    address[] public contributors;
     mapping(address => Contribution) public contributions;
 
     struct Contribution {

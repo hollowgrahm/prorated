@@ -157,11 +157,13 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         validLockDuration(lockDuration)
         nonReentrant
     {
+        // Step 1: Transfer funding tokens from user to pool contract
         fundingToken.safeTransferFrom(msg.sender, address(this), amount);
 
+        // Step 2: Calculate user's shares based on amount * lock duration
         uint256 shares = amount * lockDuration;
 
-        contributors.push(msg.sender);
+        // Step 3: Create contribution record with user's data
         contributions[msg.sender] = Contribution({
             amount: amount,
             lockDuration: lockDuration,
@@ -169,9 +171,11 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
             claimed: false
         });
 
+        // Step 5: Update global totals
         totalContributions += amount;
         totalShares += shares;
 
+        // Step 6: Emit event for off-chain tracking
         emit Contributed(msg.sender, amount, lockDuration, shares);
     }
 

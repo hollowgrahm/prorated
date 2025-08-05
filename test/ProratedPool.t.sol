@@ -109,7 +109,6 @@ contract ProratedPoolTest is Test {
 
         assertEq(pool.totalContributions(), amount);
         assertEq(pool.totalShares(), amount * lockDuration);
-        assertEq(pool.contributors(0), user1);
 
         vm.stopPrank();
     }
@@ -626,9 +625,6 @@ contract ProratedPoolTest is Test {
             pool.totalShares(),
             100000e18 * 26 + 150000e18 * 52 + 50000e18 * 104
         );
-        assertEq(pool.contributors(0), user1);
-        assertEq(pool.contributors(1), user2);
-        assertEq(pool.contributors(2), user3);
     }
 
     function test_EdgeCases() public {
