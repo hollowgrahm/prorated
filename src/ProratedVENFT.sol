@@ -2,19 +2,11 @@
 pragma solidity ^0.8.10;
 
 import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
+import {ERC721} from "lib/solmate/src/tokens/ERC721.sol";
 import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
 import {ReentrancyGuard} from "lib/solmate/src/utils/ReentrancyGuard.sol";
 
 import {SafeCastLibrary} from "./libraries/SafeCastLibrary.sol";
-
-interface IERC721Receiver {
-    function onERC721Received(
-        address operator,
-        address from,
-        uint256 tokenId,
-        bytes calldata data
-    ) external returns (bytes4);
-}
 
 /// @title Prorated Voting Escrow NFT
 /// @notice A simplified veNFT implementation for the Prorated protocol
@@ -22,7 +14,7 @@ interface IERC721Receiver {
 ///      Users can withdraw the decayed portion of their locked tokens while maintaining voting power for the remaining portion.
 ///      Rewards are distributed based on voting power and auto-compounded into locked positions.
 /// @author Prorated Protocol
-contract ProratedVENFT is ReentrancyGuard {
+contract ProratedVENFT is ERC721, ReentrancyGuard {
     using SafeTransferLib for ERC20;
     using SafeCastLibrary for int128;
     using SafeCastLibrary for uint256;
@@ -34,7 +26,7 @@ contract ProratedVENFT is ReentrancyGuard {
     error LockExpired();
     error LockNotExpired();
     error NoLockFound();
-    error NotApprovedOrOwner();
+    // Removed NotApprovedOrOwner error - using Solmate's NOT_AUTHORIZED
     error NonExistentToken();
     error SameNFT();
     error AmountTooBig();
@@ -43,25 +35,7 @@ contract ProratedVENFT is ReentrancyGuard {
     error NoVotingPower();
     error NoRewardsToCompound();
 
-    error ERC721ReceiverRejectedTokens();
-    error ERC721TransferToNonERC721ReceiverImplementer();
-
     // ============ EVENTS ============
-    event Transfer(
-        address indexed from,
-        address indexed to,
-        uint256 indexed tokenId
-    );
-    event Approval(
-        address indexed owner,
-        address indexed approved,
-        uint256 indexed tokenId
-    );
-    event ApprovalForAll(
-        address indexed owner,
-        address indexed operator,
-        bool approved
-    );
     event Deposit(
         address indexed provider,
         uint256 indexed tokenId,
@@ -107,11 +81,6 @@ contract ProratedVENFT is ReentrancyGuard {
     uint256 public globalRewardPerVotingPower;
     mapping(uint256 => uint256) public userRewardPerVotingPowerPaid;
 
-    mapping(uint256 => address) internal idToOwner;
-    mapping(address => uint256) internal ownerToNFTokenCount;
-    mapping(uint256 => address) internal idToApprovals;
-    mapping(address => mapping(address => bool)) internal ownerToOperators;
-
     mapping(uint256 => LockedBalance) internal _locked;
     mapping(uint256 => UserPoint[1000000000]) internal _userPointHistory;
     mapping(uint256 => uint256) public userPointEpoch;
@@ -141,9 +110,17 @@ contract ProratedVENFT is ReentrancyGuard {
     // ============ CONSTRUCTOR ============
     /// @notice Initializes the ProratedVENFT contract
     /// @param _token The ERC20 token address to be locked (LP tokens)
-    constructor(address _token) {
+    constructor(address _token) ERC721("Prorated VENFT", "vePRO") {
         TOKEN = ERC20(_token);
         _pointHistory[0].ts = block.timestamp;
+
+        // Get LP token name and symbol for dynamic naming
+        string memory lpTokenName = TOKEN.name();
+        string memory lpTokenSymbol = TOKEN.symbol();
+
+        // Update ERC721 name and symbol based on LP token
+        name = string(abi.encodePacked("Prorated VENFT - ", lpTokenName));
+        symbol = string(abi.encodePacked("ve", lpTokenSymbol));
     }
 
     // ============ BASIC LOCKING FUNCTIONS ============
@@ -230,8 +207,7 @@ contract ProratedVENFT is ReentrancyGuard {
         uint256 _tokenId,
         uint256 _value
     ) external nonReentrant {
-        if (!_isApprovedOrOwner(msg.sender, _tokenId))
-            revert NotApprovedOrOwner();
+        if (!_isApprovedOrOwner(msg.sender, _tokenId)) revert("NOT_AUTHORIZED");
         _increaseAmountFor(_tokenId, _value);
     }
 
@@ -252,8 +228,7 @@ contract ProratedVENFT is ReentrancyGuard {
     /// @param _tokenId The token ID of the veNFT position to withdraw from
     /// @dev This function burns the veNFT and transfers all locked tokens to the owner
     function withdraw(uint256 _tokenId) external nonReentrant {
-        if (!_isApprovedOrOwner(msg.sender, _tokenId))
-            revert NotApprovedOrOwner();
+        if (!_isApprovedOrOwner(msg.sender, _tokenId)) revert("NOT_AUTHORIZED");
 
         LockedBalance memory oldLocked = _locked[_tokenId];
         if (block.timestamp < oldLocked.end) revert LockNotExpired();
@@ -276,8 +251,7 @@ contract ProratedVENFT is ReentrancyGuard {
     /// @param _tokenId The token ID of the veNFT position to withdraw from
     /// @dev This function allows partial withdrawal while maintaining voting power for the remaining portion
     function withdrawDecayed(uint256 _tokenId) external nonReentrant {
-        if (!_isApprovedOrOwner(msg.sender, _tokenId))
-            revert NotApprovedOrOwner();
+        if (!_isApprovedOrOwner(msg.sender, _tokenId)) revert("NOT_AUTHORIZED");
 
         LockedBalance memory oldLocked = _locked[_tokenId];
         uint256 currentVotingPower = balanceOfNFT(_tokenId);
@@ -320,8 +294,7 @@ contract ProratedVENFT is ReentrancyGuard {
         uint256 _tokenId,
         uint256 _newDuration
     ) external nonReentrant {
-        if (!_isApprovedOrOwner(msg.sender, _tokenId))
-            revert NotApprovedOrOwner();
+        if (!_isApprovedOrOwner(msg.sender, _tokenId)) revert("NOT_AUTHORIZED");
 
         LockedBalance memory oldLocked = _locked[_tokenId];
         uint256 currentAmount = oldLocked.amount.toUint256();
@@ -402,8 +375,7 @@ contract ProratedVENFT is ReentrancyGuard {
     /// @param _tokenId The token ID of the veNFT position to compound rewards for
     /// @dev This function adds pending rewards to the locked amount and updates the user's paid index
     function compound(uint256 _tokenId) external nonReentrant {
-        if (!_isApprovedOrOwner(msg.sender, _tokenId))
-            revert NotApprovedOrOwner();
+        if (!_isApprovedOrOwner(msg.sender, _tokenId)) revert("NOT_AUTHORIZED");
         uint256 compoundedAmount = _compound(_tokenId);
         emit Compounded(
             msg.sender,
@@ -450,164 +422,16 @@ contract ProratedVENFT is ReentrancyGuard {
         return owed;
     }
 
-    // ============ ERC-721 FUNCTIONS ============
-    /// @notice Gets the owner of a veNFT position
-    /// @param _tokenId The token ID of the veNFT position
-    /// @return The address of the veNFT owner
-    function ownerOf(uint256 _tokenId) external view returns (address) {
-        return idToOwner[_tokenId];
-    }
-
-    /// @notice Gets the number of veNFT positions owned by an address
-    /// @param _owner The address to query
-    /// @return The number of veNFT positions owned by the address
-    function balanceOf(address _owner) external view returns (uint256) {
-        return ownerToNFTokenCount[_owner];
-    }
-
-    /// @notice Approves an address to transfer a specific veNFT position
-    /// @param _approved The address to approve for transfer
-    /// @param _tokenId The token ID of the veNFT position to approve
-    function approve(address _approved, uint256 _tokenId) external {
-        address tokenOwner = idToOwner[_tokenId];
-        if (tokenOwner == address(0)) revert NonExistentToken();
-        if (tokenOwner == _approved) revert SameNFT();
-
-        bool senderIsOwner = (idToOwner[_tokenId] == msg.sender);
-        bool senderIsApprovedForAll = ownerToOperators[tokenOwner][msg.sender];
-        if (!senderIsOwner && !senderIsApprovedForAll)
-            revert NotApprovedOrOwner();
-
-        idToApprovals[_tokenId] = _approved;
-        emit Approval(tokenOwner, _approved, _tokenId);
-    }
-
-    /// @notice Approves or revokes approval for an operator to manage all veNFT positions
-    /// @param _operator The address to approve or revoke approval for
-    /// @param _approved True to approve, false to revoke approval
-    function setApprovalForAll(address _operator, bool _approved) external {
-        if (_operator == msg.sender) revert SameNFT();
-        ownerToOperators[msg.sender][_operator] = _approved;
-        emit ApprovalForAll(msg.sender, _operator, _approved);
-    }
-
-    /// @notice Gets the approved address for a specific veNFT position
-    /// @param _tokenId The token ID of the veNFT position
-    /// @return The address approved to transfer this veNFT position
-    function getApproved(uint256 _tokenId) external view returns (address) {
-        return idToApprovals[_tokenId];
-    }
-
-    /// @notice Checks if an operator is approved for all veNFT positions of an owner
-    /// @param _owner The address that owns the veNFT positions
-    /// @param _operator The address to check approval for
-    /// @return True if the operator is approved for all positions, false otherwise
-    function isApprovedForAll(
-        address _owner,
-        address _operator
-    ) external view returns (bool) {
-        return ownerToOperators[_owner][_operator];
-    }
-
-    /// @notice Transfers a veNFT position from one address to another
-    /// @param _from The address to transfer from
-    /// @param _to The address to transfer to
-    /// @param _tokenId The token ID of the veNFT position to transfer
-    function transferFrom(
-        address _from,
-        address _to,
-        uint256 _tokenId
-    ) external {
-        _transferFrom(_from, _to, _tokenId, msg.sender);
-    }
-
-    /// @notice Safely transfers a veNFT position from one address to another
-    /// @param _from The address to transfer from
-    /// @param _to The address to transfer to
-    /// @param _tokenId The token ID of the veNFT position to transfer
-    /// @dev This function calls onERC721Received on the recipient if it's a contract
-    function safeTransferFrom(
-        address _from,
-        address _to,
-        uint256 _tokenId
-    ) external {
-        safeTransferFrom(_from, _to, _tokenId, "");
-    }
-
-    /// @notice Safely transfers a veNFT position from one address to another with additional data
-    /// @param _from The address to transfer from
-    /// @param _to The address to transfer to
-    /// @param _tokenId The token ID of the veNFT position to transfer
-    /// @param _data Additional data to pass to the recipient contract
-    /// @dev This function calls onERC721Received on the recipient if it's a contract
-    function safeTransferFrom(
-        address _from,
-        address _to,
-        uint256 _tokenId,
-        bytes memory _data
-    ) public {
-        address sender = msg.sender;
-        _transferFrom(_from, _to, _tokenId, sender);
-
-        if (_isContract(_to)) {
-            try
-                IERC721Receiver(_to).onERC721Received(
-                    sender,
-                    _from,
-                    _tokenId,
-                    _data
-                )
-            returns (bytes4 response) {
-                if (
-                    response != IERC721Receiver(_to).onERC721Received.selector
-                ) {
-                    revert ERC721ReceiverRejectedTokens();
-                }
-            } catch (bytes memory reason) {
-                if (reason.length == 0) {
-                    revert ERC721TransferToNonERC721ReceiverImplementer();
-                } else {
-                    assembly {
-                        revert(add(32, reason), mload(reason))
-                    }
-                }
-            }
-        }
+    /// @notice Returns the token URI for a given token ID
+    /// @param id The token ID
+    /// @return The token URI (empty string for this implementation)
+    function tokenURI(
+        uint256 id
+    ) public view virtual override returns (string memory) {
+        return ""; // No metadata URI for veNFT positions
     }
 
     // ============ INTERNAL FUNCTIONS ============
-    /// @notice Checks if an address is a contract
-    /// @param account The address to check
-    /// @return True if the address is a contract, false otherwise
-    function _isContract(address account) internal view returns (bool) {
-        uint256 size;
-        assembly {
-            size := extcodesize(account)
-        }
-        return size > 0;
-    }
-
-    /// @notice Internal function to transfer a veNFT position
-    /// @param _from The address to transfer from
-    /// @param _to The address to transfer to
-    /// @param _tokenId The token ID of the veNFT position to transfer
-    /// @param _sender The address initiating the transfer
-    function _transferFrom(
-        address _from,
-        address _to,
-        uint256 _tokenId,
-        address _sender
-    ) internal {
-        if (!_isApprovedOrOwner(_sender, _tokenId)) revert NotApprovedOrOwner();
-        if (idToOwner[_tokenId] != _from) revert NotApprovedOrOwner();
-
-        delete idToApprovals[_tokenId];
-        _removeTokenFrom(_from, _tokenId);
-        _addTokenTo(_to, _tokenId);
-
-        emit Transfer(_from, _to, _tokenId);
-    }
-
     /// @notice Checks if an address is approved or is the owner of a veNFT position
     /// @param _spender The address to check approval for
     /// @param _tokenId The token ID of the veNFT position
@@ -616,60 +440,11 @@ contract ProratedVENFT is ReentrancyGuard {
         address _spender,
         uint256 _tokenId
     ) internal view returns (bool) {
-        address tokenOwner = idToOwner[_tokenId];
+        address tokenOwner = _ownerOf[_tokenId];
         bool spenderIsOwner = tokenOwner == _spender;
-        bool spenderIsApproved = _spender == idToApprovals[_tokenId];
-        bool spenderIsApprovedForAll = ownerToOperators[tokenOwner][_spender];
+        bool spenderIsApproved = _spender == getApproved[_tokenId];
+        bool spenderIsApprovedForAll = isApprovedForAll[tokenOwner][_spender];
         return spenderIsOwner || spenderIsApproved || spenderIsApprovedForAll;
-    }
-
-    /// @notice Internal function to mint a new veNFT position
-    /// @param _to The address to receive the veNFT position
-    /// @param _tokenId The token ID of the veNFT position to mint
-    function _mint(address _to, uint256 _tokenId) internal {
-        if (_to == address(0)) revert ZeroAmount();
-        if (idToOwner[_tokenId] != address(0)) revert NonExistentToken();
-
-        _addTokenTo(_to, _tokenId);
-        emit Transfer(address(0), _to, _tokenId);
-    }
-
-    /// @notice Internal function to burn a veNFT position
-    /// @param _tokenId The token ID of the veNFT position to burn
-    function _burn(uint256 _tokenId) internal {
-        address tokenOwner = idToOwner[_tokenId];
-        if (tokenOwner == address(0)) revert NonExistentToken();
-
-        delete idToApprovals[_tokenId];
-        _removeTokenFrom(tokenOwner, _tokenId);
-        emit Transfer(tokenOwner, address(0), _tokenId);
-    }
-
-    /// @notice Internal function to add a veNFT position to an address
-    /// @param _to The address to add the veNFT position to
-    /// @param _tokenId The token ID of the veNFT position to add
-    function _addTokenTo(address _to, uint256 _tokenId) internal {
-        idToOwner[_tokenId] = _to;
-        ownerToNFTokenCount[_to]++;
-    }
-
-    /// @notice Internal function to remove a veNFT position from an address
-    /// @param _from The address to remove the veNFT position from
-    /// @param _tokenId The token ID of the veNFT position to remove
-    function _removeTokenFrom(address _from, uint256 _tokenId) internal {
-        if (idToOwner[_tokenId] != _from) revert NotApprovedOrOwner();
-        delete idToOwner[_tokenId];
-        ownerToNFTokenCount[_from]--;
-    }
-
-    /// @notice Internal function to transfer a veNFT position between addresses
-    /// @param _from The address to transfer from
-    /// @param _to The address to transfer to
-    /// @param _tokenId The token ID of the veNFT position to transfer
-    function _transfer(address _from, address _to, uint256 _tokenId) internal {
-        _removeTokenFrom(_from, _tokenId);
-        _addTokenTo(_to, _tokenId);
-        emit Transfer(_from, _to, _tokenId);
     }
 
     /// @notice Internal function to deposit tokens for a veNFT position
