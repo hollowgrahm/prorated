@@ -66,6 +66,13 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         uint256 shares
     );
 
+    event ContributionIncreased(
+        address indexed contributor,
+        uint256 additionalAmount,
+        uint256 lockWeeks,
+        uint256 additionalShares
+    );
+
     event RefundClaimed(address indexed contributor, uint256 amount);
 
     event VENFTPositionCreated(
@@ -185,17 +192,25 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     function increaseContribution(
         uint256 amount
     ) external poolActive validAmount(amount) hasContribution nonReentrant {
+        // Step 1: Transfer additional funding tokens from user to pool contract
         fundingToken.safeTransferFrom(msg.sender, address(this), amount);
 
+        // Step 2: Get user's existing lock duration for share calculation
         uint256 lockDuration = contributions[msg.sender].lockDuration;
+
+        // Step 3: Calculate additional shares based on new amount * existing lock duration
         uint256 newShares = amount * lockDuration;
 
+        // Step 4: Update user's contribution record with additional amount and shares
         contributions[msg.sender].amount += amount;
         contributions[msg.sender].shares += newShares;
+
+        // Step 5: Update global totals
         totalContributions += amount;
         totalShares += newShares;
 
-        emit Contributed(msg.sender, amount, lockDuration, newShares);
+        // Step 6: Emit event for off-chain tracking
+        emit ContributionIncreased(msg.sender, amount, lockDuration, newShares);
     }
 
     /// @notice Increases the lock duration for an existing contribution

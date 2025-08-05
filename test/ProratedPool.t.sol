@@ -200,6 +200,57 @@ contract ProratedPoolTest is Test {
         vm.stopPrank();
     }
 
+    function test_IncreaseContributionInvalidAmount() public {
+        vm.startPrank(user1);
+
+        fundingToken.approve(address(pool), 2000e18);
+
+        // Initial contribution
+        vm.warp(startTime + 1);
+        pool.contribute(1000e18, 52);
+
+        // Try to increase with zero amount
+        vm.expectRevert(ProratedPool.InvalidAmount.selector);
+        pool.increaseContribution(0);
+
+        vm.stopPrank();
+    }
+
+    function test_IncreaseContributionNoContribution() public {
+        vm.startPrank(user1);
+
+        fundingToken.approve(address(pool), 1000e18);
+
+        // Try to increase without existing contribution
+        vm.warp(startTime + 1);
+        vm.expectRevert(ProratedPool.NoContribution.selector);
+        pool.increaseContribution(500e18);
+
+        vm.stopPrank();
+    }
+
+    function test_IncreaseContributionPoolClosed() public {
+        vm.startPrank(user1);
+
+        fundingToken.approve(address(pool), 2000e18);
+
+        // Initial contribution
+        vm.warp(startTime + 1);
+        pool.contribute(1000e18, 52);
+
+        // Try to increase before pool starts
+        vm.warp(startTime - 1);
+        vm.expectRevert(ProratedPool.PoolClosed.selector);
+        pool.increaseContribution(500e18);
+
+        // Try to increase after pool ends
+        vm.warp(endTime + 1);
+        vm.expectRevert(ProratedPool.PoolClosed.selector);
+        pool.increaseContribution(500e18);
+
+        vm.stopPrank();
+    }
+
     function test_IncreaseLockDuration() public {
         vm.startPrank(user1);
 
