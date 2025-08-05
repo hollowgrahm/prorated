@@ -949,4 +949,38 @@ contract ModifierTests is Test {
 
         vm.stopPrank();
     }
+
+    function test_TokenNotDeployedModifier() public {
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 1000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(1000e18, 52);
+        vm.stopPrank();
+
+        // Try to deploy pair before token is deployed
+        vm.expectRevert(ProratedPool.TokenNotDeployed.selector);
+        pool.deployPair();
+
+        // Try to create VENFT position before token is deployed
+        vm.expectRevert(ProratedPool.TokenNotDeployed.selector);
+        vm.prank(user1);
+        pool.createVENFTPosition();
+    }
+
+    function test_PoolEndedModifier() public {
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 1000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(1000e18, 52);
+        vm.stopPrank();
+
+        // Try to claim refund before pool ends
+        vm.expectRevert(ProratedPool.PoolNotEnded.selector);
+        vm.prank(user1);
+        pool.claimRefund();
+
+        // Try to deploy token before pool ends
+        vm.expectRevert(ProratedPool.PoolNotEnded.selector);
+        pool.deployToken();
+    }
 }

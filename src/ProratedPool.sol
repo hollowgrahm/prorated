@@ -118,6 +118,16 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         _;
     }
 
+    modifier tokenNotDeployed() {
+        if (!tokenDeployed) revert TokenNotDeployed();
+        _;
+    }
+
+    modifier poolEnded() {
+        if (block.timestamp < endTime) revert PoolNotEnded();
+        _;
+    }
+
     // 1. CONSTRUCTOR & SETUP
     constructor(PoolConfig memory config) Owned(config.owner) {
         // Step 1: Set dev team address (same as owner for clarity)
@@ -261,14 +271,11 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         return totalContributions >= minTotalContributions;
     }
 
-    /// @notice Allows contributors to claim refunds if pool doesn't reach minimum
+    /// @notice Allows users to claim refund if pool fails to reach minimum
     /// @dev Can only be called after pool ends and if minimum not reached
-    function claimRefund() external nonReentrant {
+    function claimRefund() external poolEnded nonReentrant {
         // Step 1: Check if user has a contribution
         if (!hasContribution(msg.sender)) revert NoContribution();
-
-        // Step 2: Check if pool has ended (timing restriction)
-        if (block.timestamp < endTime) revert PoolNotEnded();
 
         // Step 3: Check if minimum has been reached (prevent refund if successful)
         if (hasReachedMinimum()) revert PoolReachedMinimum();
@@ -287,25 +294,28 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     }
 
     // 4. DEPLOYMENT FUNCTIONS (Sequential)
-    /// @notice Deploys the token (first deployment function)
+    /// @notice Deploys the prorated token contract (first deployment function)
     /// @dev Can only be called after minimum contributions are reached and pool has ended
-    function deployToken() external nonReentrant {
-        if (block.timestamp < endTime) revert PoolNotEnded();
+    function deployToken() external poolEnded nonReentrant {
+        // Step 2: Check if minimum contributions have been reached (success requirement)
         if (!hasReachedMinimum()) revert PoolReachedMinimum();
+        // Step 3: Check if token has already been deployed (prevent double deployment)
         if (tokenDeployed) revert TokenAlreadyDeployed();
 
+        // Step 4: Deploy the ProratedToken contract with configured name and symbol
         proratedToken = IProratedToken(
             address(new ProratedToken(tokenName, tokenSymbol))
         );
 
+        // Step 5: Mint the total supply to the pool contract
         proratedToken.mint(address(this), tokenTotalSupply);
+        // Step 6: Mark token as deployed to prevent future deployments
         tokenDeployed = true;
     }
 
     /// @notice Deploys the pair (second deployment function)
     /// @dev Can only be called after token is deployed
-    function deployPair() external nonReentrant {
-        if (!tokenDeployed) revert TokenNotDeployed();
+    function deployPair() external tokenNotDeployed nonReentrant {
         if (pairDeployed) revert PairAlreadyDeployed();
 
         // Create pair
@@ -356,7 +366,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     /// @notice Deploy VENFT contract (anyone can call, first deployment wins)
     function deployVENFT() external {
         if (venftDeployed) revert VENFTAlreadyDeployed();
-        if (!tokenDeployed) revert TokenNotDeployed();
+        if (!liquidityDeployed) revert LiquidityNotDeployed();
 
         proratedVENFT = IProratedVENFT(
             address(new ProratedVENFT(address(proswapPair)))
@@ -369,8 +379,6 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     /// @notice Deploy Treasury contract (anyone can call, first deployment wins)
     function deployTreasury() external {
         if (treasuryDeployed) revert TreasuryAlreadyDeployed();
-        if (!tokenDeployed) revert TokenNotDeployed();
-        if (!pairDeployed) revert PairNotDeployed();
         if (!governorDeployed) revert GovernorNotDeployed();
 
         proratedTreasury = IProratedTreasury(
@@ -394,7 +402,6 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     function deployGovernor() external {
         if (governorDeployed) revert GovernorAlreadyDeployed();
         if (!venftDeployed) revert VENFTNotDeployed();
-        if (!tokenDeployed) revert TokenNotDeployed();
 
         // Validate VENFT interface
         if (!IProratedVENFT(address(proratedVENFT)).validateInterface())
@@ -414,9 +421,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     // 5. USER FUNCTIONS
     /// @notice Creates a veNFT position for a user based on their contribution
     /// @dev Can only be called after pool is finalized and if user has unclaimed contribution
-    function createVENFTPosition() external nonReentrant {
-        if (!tokenDeployed) revert TokenNotDeployed();
-
+    function createVENFTPosition() external tokenNotDeployed nonReentrant {
         Contribution memory userContribution = contributions[msg.sender];
         if (userContribution.amount == 0) revert NoContribution();
         if (userContribution.claimed) revert ContributionAlreadyClaimed();
@@ -451,9 +456,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     // 6. OWNER/GOVERNANCE FUNCTIONS
     /// @notice Allows dev team to withdraw remaining funding tokens after pool is finalized
     /// @dev Can only be called by dev team after pool has reached minimum and ended
-    function devTeamFundsWithdraw() external onlyOwner {
-        if (!tokenDeployed) revert TokenNotDeployed();
-
+    function devTeamFundsWithdraw() external onlyOwner tokenNotDeployed {
         fundingToken.safeTransfer(
             msg.sender,
             fundingToken.balanceOf(address(this))
@@ -462,9 +465,8 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
 
     /// @notice Release dev team's LP tokens (governance function)
     /// @dev Can only be called by approved governor after successful proposal
-    function releaseDevTeamLPTokens() external {
+    function releaseDevTeamLPTokens() external tokenNotDeployed {
         if (msg.sender != address(proratedGovernor)) revert Unauthorized();
-        if (!tokenDeployed) revert TokenNotDeployed();
         if (devTeamLPTokenAllocation == 0) revert NoTokensReserved();
 
         uint256 tokensToRelease = devTeamLPTokenAllocation;
@@ -490,8 +492,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
 
     /// @notice Release treasury's LP tokens (governance function)
     /// @dev Can be called by anyone after successful governance proposal
-    function releaseTreasuryLPTokens() external {
-        if (!tokenDeployed) revert TokenNotDeployed();
+    function releaseTreasuryLPTokens() external tokenNotDeployed {
         if (treasuryLPTokenAllocation == 0) revert NoTokensReserved();
 
         uint256 tokensToRelease = treasuryLPTokenAllocation;
