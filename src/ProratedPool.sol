@@ -115,17 +115,28 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
 
     // 1. CONSTRUCTOR & SETUP
     constructor(PoolConfig memory config) Owned(config.owner) {
-        devTeam = config.owner; // Set devTeam to same as owner for clarity
+        // Step 1: Set dev team address (same as owner for clarity)
+        devTeam = config.owner;
+
+        // Step 2: Initialize token configuration
         tokenName = config.tokenName;
         tokenSymbol = config.tokenSymbol;
         tokenTotalSupply = config.tokenTotalSupply;
+
+        // Step 3: Set contribution targets and minimums
         desiredContributions = config.desiredContributions;
-        minTotalContributions = config.desiredContributions * 2;
+        minTotalContributions = config.desiredContributions * 2; // Minimum is 2x desired
+
+        // Step 4: Set pool timing parameters
         startTime = config.startTime;
         endTime = config.endTime;
+
+        // Step 5: Initialize external contract interfaces
         fundingToken = ERC20(config.fundingToken);
         proswapFactory = IProswapFactory(config.proswapFactory);
         proswapRouter = IProswapRouter(config.proswapRouter);
+
+        // Step 6: Set allocation percentages for dev team and treasury
         devTeamAllocationPercentage = config.devTeamAllocationPercentage;
         treasuryAllocationPercentage = config.treasuryAllocationPercentage;
     }
