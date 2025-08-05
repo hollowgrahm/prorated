@@ -112,20 +112,15 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         _;
     }
 
-    modifier hasContribution() {
-        if (contributions[msg.sender].amount == 0) revert NoContribution();
-        _;
-    }
-
-    modifier noContribution() {
-        if (contributions[msg.sender].amount != 0) revert ContributionExists();
-        _;
-    }
-
     modifier validLockDuration(uint256 lockDuration) {
         if (lockDuration < MIN_LOCK || lockDuration > MAX_LOCK)
             revert InvalidLockDuration();
         _;
+    }
+
+    // Helper functions for contribution state checks
+    function hasContribution(address user) public view returns (bool) {
+        return contributions[user].amount > 0;
     }
 
     // 1. CONSTRUCTOR & SETUP
@@ -168,10 +163,11 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         external
         poolActive
         validAmount(amount)
-        noContribution
         validLockDuration(lockDuration)
         nonReentrant
     {
+        if (hasContribution(msg.sender)) revert ContributionExists();
+
         // Step 1: Transfer funding tokens from user to pool contract
         fundingToken.safeTransferFrom(msg.sender, address(this), amount);
 
@@ -199,7 +195,9 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     /// @dev Uses the existing lock duration to calculate additional shares
     function increaseContribution(
         uint256 amount
-    ) external poolActive validAmount(amount) hasContribution nonReentrant {
+    ) external poolActive validAmount(amount) nonReentrant {
+        if (!hasContribution(msg.sender)) revert NoContribution();
+
         // Step 1: Transfer additional funding tokens from user to pool contract
         fundingToken.safeTransferFrom(msg.sender, address(this), amount);
 
@@ -226,21 +224,17 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     /// @dev Recalculates shares based on the new lock duration
     function increaseLockDuration(
         uint256 newLockDuration
-    )
-        external
-        poolActive
-        hasContribution
-        validLockDuration(newLockDuration)
-        nonReentrant
-    {
+    ) external poolActive validLockDuration(newLockDuration) nonReentrant {
+        if (!hasContribution(msg.sender)) revert NoContribution();
+
         // Step 1: Get user's existing contribution data
         uint256 oldShares = contributions[msg.sender].shares;
         uint256 userAmount = contributions[msg.sender].amount;
         uint256 oldLockDuration = contributions[msg.sender].lockDuration;
-        
+
         // Step 2: Calculate new shares based on existing amount * new lock duration
         uint256 newShares = newLockDuration * userAmount;
-        
+
         // Step 3: Update global total shares (remove old shares, add new shares)
         totalShares = totalShares - oldShares + newShares;
 
@@ -249,7 +243,13 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         contributions[msg.sender].shares = newShares;
 
         // Step 5: Emit event for off-chain tracking
-        emit LockDurationIncreased(msg.sender, oldLockDuration, newLockDuration, oldShares, newShares);
+        emit LockDurationIncreased(
+            msg.sender,
+            oldLockDuration,
+            newLockDuration,
+            oldShares,
+            newShares
+        );
     }
 
     // 3. POOL STATE FUNCTIONS
@@ -263,7 +263,8 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
 
     /// @notice Allows contributors to claim refunds if pool doesn't reach minimum
     /// @dev Can only be called after pool ends and if minimum not reached
-    function claimRefund() external nonReentrant hasContribution {
+    function claimRefund() external nonReentrant {
+        if (!hasContribution(msg.sender)) revert NoContribution();
         if (hasReachedMinimum()) revert PoolReachedMinimum();
         if (contributions[msg.sender].claimed) revert AlreadyClaimed();
 

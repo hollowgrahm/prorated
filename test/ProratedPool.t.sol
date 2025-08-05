@@ -113,8 +113,6 @@ contract ProratedPoolTest is Test {
         vm.stopPrank();
     }
 
-
-
     function test_IncreaseContribution() public {
         vm.startPrank(user1);
 
@@ -141,8 +139,6 @@ contract ProratedPoolTest is Test {
         vm.stopPrank();
     }
 
-
-
     function test_IncreaseLockDuration() public {
         vm.startPrank(user1);
 
@@ -168,8 +164,6 @@ contract ProratedPoolTest is Test {
 
         vm.stopPrank();
     }
-
-
 
     function test_HasReachedMinimum() public {
         // Before pool ends
@@ -870,6 +864,7 @@ contract ModifierTests is Test {
         vm.warp(startTime + 1);
 
         // Test without contribution
+        assertEq(pool.hasContribution(user1), false);
         vm.expectRevert(ProratedPool.NoContribution.selector);
         pool.increaseContribution(500e18);
 
@@ -881,8 +876,12 @@ contract ModifierTests is Test {
         fundingToken.approve(address(pool), 2000e18);
         vm.warp(startTime + 1);
 
+        // Test without contribution
+        assertEq(pool.hasContribution(user1), false);
+        
         // First contribution
         pool.contribute(1000e18, 52);
+        assertEq(pool.hasContribution(user1), true);
 
         // Try to contribute again
         vm.expectRevert(ProratedPool.ContributionExists.selector);
