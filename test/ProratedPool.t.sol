@@ -113,66 +113,7 @@ contract ProratedPoolTest is Test {
         vm.stopPrank();
     }
 
-    function test_ContributeInvalidAmount() public {
-        vm.startPrank(user1);
 
-        fundingToken.approve(address(pool), 1000e18);
-
-        vm.warp(startTime + 1); // Ensure pool is active
-        vm.expectRevert(ProratedPool.InvalidAmount.selector);
-        pool.contribute(0, 52);
-
-        vm.stopPrank();
-    }
-
-    function test_ContributeInvalidLockDuration() public {
-        vm.startPrank(user1);
-
-        fundingToken.approve(address(pool), 1000e18);
-
-        vm.warp(startTime + 1); // Ensure pool is active
-        vm.expectRevert(ProratedPool.InvalidLockDuration.selector);
-        pool.contribute(1000e18, 0); // Below MIN_LOCK
-
-        vm.expectRevert(ProratedPool.InvalidLockDuration.selector);
-        pool.contribute(1000e18, 209); // Above MAX_LOCK
-
-        vm.stopPrank();
-    }
-
-    function test_ContributePoolClosed() public {
-        vm.startPrank(user1);
-
-        fundingToken.approve(address(pool), 1000e18);
-
-        // Try to contribute before start time
-        vm.warp(startTime - 1);
-        vm.expectRevert(ProratedPool.PoolClosed.selector);
-        pool.contribute(1000e18, 52);
-
-        // Try to contribute after end time
-        vm.warp(endTime + 1);
-        vm.expectRevert(ProratedPool.PoolClosed.selector);
-        pool.contribute(1000e18, 52);
-
-        vm.stopPrank();
-    }
-
-    function test_ContributeAlreadyExists() public {
-        vm.startPrank(user1);
-
-        fundingToken.approve(address(pool), 2000e18);
-
-        // First contribution
-        vm.warp(startTime + 1);
-        pool.contribute(1000e18, 52);
-
-        // Try to contribute again
-        vm.expectRevert(ProratedPool.ContributionExists.selector);
-        pool.contribute(1000e18, 52);
-
-        vm.stopPrank();
-    }
 
     function test_IncreaseContribution() public {
         vm.startPrank(user1);
@@ -200,56 +141,7 @@ contract ProratedPoolTest is Test {
         vm.stopPrank();
     }
 
-    function test_IncreaseContributionInvalidAmount() public {
-        vm.startPrank(user1);
 
-        fundingToken.approve(address(pool), 2000e18);
-
-        // Initial contribution
-        vm.warp(startTime + 1);
-        pool.contribute(1000e18, 52);
-
-        // Try to increase with zero amount
-        vm.expectRevert(ProratedPool.InvalidAmount.selector);
-        pool.increaseContribution(0);
-
-        vm.stopPrank();
-    }
-
-    function test_IncreaseContributionNoContribution() public {
-        vm.startPrank(user1);
-
-        fundingToken.approve(address(pool), 1000e18);
-
-        // Try to increase without existing contribution
-        vm.warp(startTime + 1);
-        vm.expectRevert(ProratedPool.NoContribution.selector);
-        pool.increaseContribution(500e18);
-
-        vm.stopPrank();
-    }
-
-    function test_IncreaseContributionPoolClosed() public {
-        vm.startPrank(user1);
-
-        fundingToken.approve(address(pool), 2000e18);
-
-        // Initial contribution
-        vm.warp(startTime + 1);
-        pool.contribute(1000e18, 52);
-
-        // Try to increase before pool starts
-        vm.warp(startTime - 1);
-        vm.expectRevert(ProratedPool.PoolClosed.selector);
-        pool.increaseContribution(500e18);
-
-        // Try to increase after pool ends
-        vm.warp(endTime + 1);
-        vm.expectRevert(ProratedPool.PoolClosed.selector);
-        pool.increaseContribution(500e18);
-
-        vm.stopPrank();
-    }
 
     function test_IncreaseLockDuration() public {
         vm.startPrank(user1);
@@ -276,6 +168,8 @@ contract ProratedPoolTest is Test {
 
         vm.stopPrank();
     }
+
+
 
     function test_HasReachedMinimum() public {
         // Before pool ends
@@ -904,5 +798,129 @@ contract ProratedPoolTest is Test {
             pool.proratedVENFT().ownerOf(1),
             address(pool.proratedTreasury())
         );
+    }
+}
+
+// Modifier Tests - Test each modifier once to avoid duplication
+contract ModifierTests is Test {
+    ProratedPool public pool;
+    ERC20Mintable public fundingToken;
+    ProswapFactory public factory;
+    ProswapRouter public router;
+
+    address public owner = address(this);
+    address public user1 = address(0x1);
+    address public user2 = address(0x2);
+
+    uint256 public tokenTotalSupply = 1000000e18;
+    uint256 public desiredContributions = 100000e18;
+    uint256 public startTime = block.timestamp + 1 days;
+    uint256 public endTime = block.timestamp + 30 days;
+
+    function setUp() public {
+        vm.startPrank(owner);
+
+        // Deploy funding token
+        fundingToken = new ERC20Mintable("Funding Token", "FUND");
+        fundingToken.mint(1000000e18, owner);
+
+        // Deploy Proswap contracts
+        factory = new ProswapFactory(owner);
+        router = new ProswapRouter(address(factory));
+
+        // Deploy ProratedPool
+        ProratedPool.PoolConfig memory config = ProratedPool.PoolConfig({
+            owner: address(this),
+            tokenName: "Test Token",
+            tokenSymbol: "TEST",
+            tokenTotalSupply: tokenTotalSupply,
+            desiredContributions: desiredContributions,
+            startTime: startTime,
+            endTime: endTime,
+            fundingToken: address(fundingToken),
+            proswapFactory: address(factory),
+            proswapRouter: address(router),
+            devTeamAllocationPercentage: 20,
+            treasuryAllocationPercentage: 15
+        });
+        pool = new ProratedPool(config);
+
+        // Mint tokens to users
+        fundingToken.mint(2000000e18, user1);
+        fundingToken.mint(2000000e18, user2);
+
+        vm.stopPrank();
+    }
+
+    function test_ValidAmountModifier() public {
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 1000e18);
+        vm.warp(startTime + 1);
+
+        // Test zero amount
+        vm.expectRevert(ProratedPool.InvalidAmount.selector);
+        pool.contribute(0, 52);
+
+        vm.stopPrank();
+    }
+
+    function test_HasContributionModifier() public {
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 1000e18);
+        vm.warp(startTime + 1);
+
+        // Test without contribution
+        vm.expectRevert(ProratedPool.NoContribution.selector);
+        pool.increaseContribution(500e18);
+
+        vm.stopPrank();
+    }
+
+    function test_NoContributionModifier() public {
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 2000e18);
+        vm.warp(startTime + 1);
+
+        // First contribution
+        pool.contribute(1000e18, 52);
+
+        // Try to contribute again
+        vm.expectRevert(ProratedPool.ContributionExists.selector);
+        pool.contribute(1000e18, 52);
+
+        vm.stopPrank();
+    }
+
+    function test_PoolActiveModifier() public {
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 1000e18);
+
+        // Try before pool starts
+        vm.warp(startTime - 1);
+        vm.expectRevert(ProratedPool.PoolClosed.selector);
+        pool.contribute(1000e18, 52);
+
+        // Try after pool ends
+        vm.warp(endTime + 1);
+        vm.expectRevert(ProratedPool.PoolClosed.selector);
+        pool.contribute(1000e18, 52);
+
+        vm.stopPrank();
+    }
+
+    function test_ValidLockDurationModifier() public {
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 1000e18);
+        vm.warp(startTime + 1);
+
+        // Test below MIN_LOCK
+        vm.expectRevert(ProratedPool.InvalidLockDuration.selector);
+        pool.contribute(1000e18, 0);
+
+        // Test above MAX_LOCK
+        vm.expectRevert(ProratedPool.InvalidLockDuration.selector);
+        pool.contribute(1000e18, 209);
+
+        vm.stopPrank();
     }
 }

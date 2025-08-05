@@ -73,6 +73,14 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         uint256 additionalShares
     );
 
+    event LockDurationIncreased(
+        address indexed contributor,
+        uint256 oldLockDuration,
+        uint256 newLockDuration,
+        uint256 oldShares,
+        uint256 newShares
+    );
+
     event RefundClaimed(address indexed contributor, uint256 amount);
 
     event VENFTPositionCreated(
@@ -225,14 +233,23 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         validLockDuration(newLockDuration)
         nonReentrant
     {
+        // Step 1: Get user's existing contribution data
         uint256 oldShares = contributions[msg.sender].shares;
-        uint256 newShares = newLockDuration * contributions[msg.sender].amount;
+        uint256 userAmount = contributions[msg.sender].amount;
+        uint256 oldLockDuration = contributions[msg.sender].lockDuration;
+        
+        // Step 2: Calculate new shares based on existing amount * new lock duration
+        uint256 newShares = newLockDuration * userAmount;
+        
+        // Step 3: Update global total shares (remove old shares, add new shares)
         totalShares = totalShares - oldShares + newShares;
 
+        // Step 4: Update user's contribution record with new lock duration and shares
         contributions[msg.sender].lockDuration = newLockDuration;
         contributions[msg.sender].shares = newShares;
 
-        emit Contributed(msg.sender, 0, newLockDuration, newShares);
+        // Step 5: Emit event for off-chain tracking
+        emit LockDurationIncreased(msg.sender, oldLockDuration, newLockDuration, oldShares, newShares);
     }
 
     // 3. POOL STATE FUNCTIONS
