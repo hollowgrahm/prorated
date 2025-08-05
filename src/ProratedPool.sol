@@ -391,14 +391,20 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
 
     /// @notice Deploy VENFT contract (anyone can call, first deployment wins)
     function deployVENFT() external {
+        // Step 1: Check if VENFT has already been deployed (prevent double deployment)
         if (venftDeployed) revert VENFTAlreadyDeployed();
+        // Step 2: Check if liquidity has been deployed (prerequisite)
         if (!liquidityDeployed) revert LiquidityNotDeployed();
 
+        // Step 3: Deploy the ProratedVENFT contract with the pair address
         proratedVENFT = IProratedVENFT(
             address(new ProratedVENFT(address(proswapPair)))
         );
+        
+        // Step 4: Mark VENFT as deployed to prevent future deployments
         venftDeployed = true;
 
+        // Step 5: Emit event for off-chain tracking
         emit VENFTDeployed(address(proratedVENFT));
     }
 

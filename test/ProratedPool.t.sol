@@ -433,6 +433,40 @@ contract ProratedPoolTest is Test {
         assertGt(pool.treasuryLPTokenAllocation(), 0);
     }
 
+    function test_DeployVENFT() public {
+        // Setup: Add contributions and deploy token and pair
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 1000000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(1000000e18, 52);
+        vm.stopPrank();
+
+        vm.warp(endTime + 1);
+        pool.deployToken();
+        pool.deployPair();
+
+        // Try to deploy VENFT before liquidity is deployed
+        vm.expectRevert(ProratedPool.LiquidityNotDeployed.selector);
+        pool.deployVENFT();
+
+        // Deploy liquidity
+        pool.deployLiquidity();
+
+        // Deploy VENFT (should succeed now that liquidity is deployed)
+        pool.deployVENFT();
+
+        assertEq(pool.tokenDeployed(), true);
+        assertEq(pool.pairDeployed(), true);
+        assertEq(pool.liquidityDeployed(), true);
+        assertEq(pool.venftDeployed(), true);
+        assertEq(pool.governorDeployed(), false);
+        assertEq(pool.treasuryDeployed(), false);
+
+        // Try to deploy VENFT again
+        vm.expectRevert(ProratedPool.VENFTAlreadyDeployed.selector);
+        pool.deployVENFT();
+    }
+
     function test_CreateVENFTPosition() public {
         // Setup: Add contributions and finalize pool
         vm.startPrank(user1);
