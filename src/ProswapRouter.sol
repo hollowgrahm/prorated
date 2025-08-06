@@ -18,9 +18,14 @@ contract ProswapRouter is ReentrancyGuard {
 
     IProswapFactory factory;
 
+    // ============ CONSTRUCTOR ============
+    /// @notice Creates a new Proswap router
+    /// @param factoryAddress Address of the Proswap factory contract
     constructor(address factoryAddress) {
         factory = IProswapFactory(factoryAddress);
     }
+
+    // ============ CORE ROUTER FUNCTIONS ============
 
     /// @notice Adds liquidity to a weighted pool using x^0.8 * y^0.2 = k invariant
     /// @param token80 Address of token with 80% weight
@@ -98,13 +103,7 @@ contract ProswapRouter is ReentrancyGuard {
         if (amount20 < amount20Min) revert Insufficient20Amount();
     }
 
-    //
-    //
-    //
-    //  PRIVATE
-    //
-    //
-    //
+    // ============ PRIVATE HELPER FUNCTIONS ============
 
     /// @notice Calculates optimal liquidity amounts for weighted invariant
     /// @param token80 Address of token with 80% weight
