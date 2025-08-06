@@ -430,7 +430,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         // Step 5: Add pool as approved target for governance proposals
         proratedGovernor.addApprovedTarget(address(this));
 
-        // Step 7: Emit event for off-chain tracking
+        // Step 6: Emit event for off-chain tracking
         emit GovernorDeployed(address(proratedGovernor));
     }
 

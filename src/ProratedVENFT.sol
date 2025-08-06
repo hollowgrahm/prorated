@@ -26,7 +26,6 @@ contract ProratedVENFT is ERC721, ReentrancyGuard {
     error LockExpired();
     error LockNotExpired();
     error NoLockFound();
-    // Removed NotApprovedOrOwner error - using Solmate's NOT_AUTHORIZED
     error NonExistentToken();
     error SameNFT();
     error AmountTooBig();
@@ -123,7 +122,7 @@ contract ProratedVENFT is ERC721, ReentrancyGuard {
         symbol = string(abi.encodePacked("ve", lpTokenSymbol));
     }
 
-    // ============ BASIC LOCKING FUNCTIONS ============
+    // ============ LOCK CREATION & MANAGEMENT ============
     /// @notice Creates a new veNFT lock position
     /// @param _value Amount of tokens to lock
     /// @param _lockDuration Duration of the lock in seconds
@@ -199,89 +198,6 @@ contract ProratedVENFT is ERC721, ReentrancyGuard {
         return _tokenId;
     }
 
-    /// @notice Increases the locked amount for an existing veNFT position
-    /// @param _tokenId The token ID of the veNFT position
-    /// @param _value Additional amount of tokens to lock
-    /// @dev The lock duration remains the same, only the amount increases
-    function increaseAmount(
-        uint256 _tokenId,
-        uint256 _value
-    ) external nonReentrant {
-        if (!_isApprovedOrOwner(msg.sender, _tokenId)) revert("NOT_AUTHORIZED");
-        _increaseAmountFor(_tokenId, _value);
-    }
-
-    /// @notice Internal function to increase the locked amount for a veNFT position
-    /// @param _tokenId The token ID of the veNFT position
-    /// @param _value Additional amount of tokens to lock
-    function _increaseAmountFor(uint256 _tokenId, uint256 _value) internal {
-        LockedBalance memory oldLocked = _locked[_tokenId];
-
-        if (_value == 0) revert ZeroAmount();
-        if (oldLocked.amount <= 0) revert NoLockFound();
-        if (oldLocked.end <= block.timestamp) revert LockExpired();
-
-        _depositFor(_tokenId, _value, 0, oldLocked);
-    }
-
-    /// @notice Withdraws all locked tokens from an expired veNFT position
-    /// @param _tokenId The token ID of the veNFT position to withdraw from
-    /// @dev This function burns the veNFT and transfers all locked tokens to the owner
-    function withdraw(uint256 _tokenId) external nonReentrant {
-        if (!_isApprovedOrOwner(msg.sender, _tokenId)) revert("NOT_AUTHORIZED");
-
-        LockedBalance memory oldLocked = _locked[_tokenId];
-        if (block.timestamp < oldLocked.end) revert LockNotExpired();
-        uint256 value = oldLocked.amount.toUint256();
-
-        // Burn the NFT
-        _burn(_tokenId);
-        _locked[_tokenId] = LockedBalance(0, 0);
-        uint256 supplyBefore = supply;
-        supply = supplyBefore - value;
-
-        _checkpoint(_tokenId, oldLocked, LockedBalance(0, 0));
-
-        TOKEN.safeTransfer(msg.sender, value);
-
-        emit Withdraw(msg.sender, _tokenId, value, block.timestamp);
-    }
-
-    /// @notice Withdraws the decayed portion of locked tokens from a veNFT position
-    /// @param _tokenId The token ID of the veNFT position to withdraw from
-    /// @dev This function allows partial withdrawal while maintaining voting power for the remaining portion
-    function withdrawDecayed(uint256 _tokenId) external nonReentrant {
-        if (!_isApprovedOrOwner(msg.sender, _tokenId)) revert("NOT_AUTHORIZED");
-
-        LockedBalance memory oldLocked = _locked[_tokenId];
-        uint256 currentVotingPower = balanceOfNFT(_tokenId);
-        uint256 decayedAmount = oldLocked.amount.toUint256() -
-            currentVotingPower;
-
-        if (decayedAmount == 0) revert ZeroBalance();
-
-        uint256 remainingAmount = currentVotingPower;
-        LockedBalance memory newLocked = LockedBalance(
-            remainingAmount.toInt128(),
-            oldLocked.end
-        );
-
-        _locked[_tokenId] = newLocked;
-        _checkpoint(_tokenId, oldLocked, newLocked);
-
-        TOKEN.safeTransfer(msg.sender, decayedAmount);
-
-        emit WithdrawDecayed(
-            msg.sender,
-            _tokenId,
-            decayedAmount,
-            block.timestamp
-        );
-    }
-
-
-
-    // ============ POSITION MANAGEMENT ============
     /// @notice Extends the lock duration of a veNFT position
     /// @param _tokenId The token ID of the veNFT position to extend
     /// @param _newDuration New lock duration in seconds
@@ -308,7 +224,32 @@ contract ProratedVENFT is ERC721, ReentrancyGuard {
         emit LockExtended(_tokenId, oldLocked.end, _locked[newTokenId].end);
     }
 
-    // ============ VOTING POWER FUNCTIONS ============
+    /// @notice Increases the locked amount for an existing veNFT position
+    /// @param _tokenId The token ID of the veNFT position
+    /// @param _value Additional amount of tokens to lock
+    /// @dev The lock duration remains the same, only the amount increases
+    function increaseAmount(
+        uint256 _tokenId,
+        uint256 _value
+    ) external nonReentrant {
+        if (!_isApprovedOrOwner(msg.sender, _tokenId)) revert("NOT_AUTHORIZED");
+        _increaseAmountFor(_tokenId, _value);
+    }
+
+    /// @notice Internal function to increase the locked amount for a veNFT position
+    /// @param _tokenId The token ID of the veNFT position
+    /// @param _value Additional amount of tokens to lock
+    function _increaseAmountFor(uint256 _tokenId, uint256 _value) internal {
+        LockedBalance memory oldLocked = _locked[_tokenId];
+
+        if (_value == 0) revert ZeroAmount();
+        if (oldLocked.amount <= 0) revert NoLockFound();
+        if (oldLocked.end <= block.timestamp) revert LockExpired();
+
+        _depositFor(_tokenId, _value, 0, oldLocked);
+    }
+
+    // ============ VOTING POWER QUERIES ============
     /// @notice Gets the current voting power of a veNFT position
     /// @param _tokenId The token ID of the veNFT position
     /// @return The current voting power of the position
@@ -333,12 +274,6 @@ contract ProratedVENFT is ERC721, ReentrancyGuard {
         return _supplyAt(block.timestamp);
     }
 
-    /// @notice Internal function to get the total voting power at current timestamp
-    /// @return The total voting power at the current timestamp
-    function _totalSupply() internal view returns (uint256) {
-        return _supplyAt(block.timestamp);
-    }
-
     /// @notice Gets the total voting power across all veNFT positions at a specific timestamp
     /// @param _timestamp The timestamp to query total voting power at
     /// @return The total voting power at the specified timestamp
@@ -346,7 +281,13 @@ contract ProratedVENFT is ERC721, ReentrancyGuard {
         return _supplyAt(_timestamp);
     }
 
-    // ============ REWARD DISTRIBUTION ============
+    /// @notice Internal function to get the total voting power at current timestamp
+    /// @return The total voting power at the current timestamp
+    function _totalSupply() internal view returns (uint256) {
+        return _supplyAt(block.timestamp);
+    }
+
+    // ============ REWARD SYSTEM ============
     /// @notice Distributes rewards to all veNFT holders based on their voting power
     /// @param _rewardAmount Amount of LP tokens to distribute as rewards
     /// @dev This function updates the global reward index and transfers tokens from the sender
@@ -418,11 +359,68 @@ contract ProratedVENFT is ERC721, ReentrancyGuard {
         return owed;
     }
 
+    // ============ WITHDRAWAL OPERATIONS ============
+    /// @notice Withdraws all locked tokens from an expired veNFT position
+    /// @param _tokenId The token ID of the veNFT position to withdraw from
+    /// @dev This function burns the veNFT and transfers all locked tokens to the owner
+    function withdraw(uint256 _tokenId) external nonReentrant {
+        if (!_isApprovedOrOwner(msg.sender, _tokenId)) revert("NOT_AUTHORIZED");
+
+        LockedBalance memory oldLocked = _locked[_tokenId];
+        if (block.timestamp < oldLocked.end) revert LockNotExpired();
+        uint256 value = oldLocked.amount.toUint256();
+
+        // Burn the NFT
+        _burn(_tokenId);
+        _locked[_tokenId] = LockedBalance(0, 0);
+        uint256 supplyBefore = supply;
+        supply = supplyBefore - value;
+
+        _checkpoint(_tokenId, oldLocked, LockedBalance(0, 0));
+
+        TOKEN.safeTransfer(msg.sender, value);
+
+        emit Withdraw(msg.sender, _tokenId, value, block.timestamp);
+    }
+
+    /// @notice Withdraws the decayed portion of locked tokens from a veNFT position
+    /// @param _tokenId The token ID of the veNFT position to withdraw from
+    /// @dev This function allows partial withdrawal while maintaining voting power for the remaining portion
+    function withdrawDecayed(uint256 _tokenId) external nonReentrant {
+        if (!_isApprovedOrOwner(msg.sender, _tokenId)) revert("NOT_AUTHORIZED");
+
+        LockedBalance memory oldLocked = _locked[_tokenId];
+        uint256 currentVotingPower = balanceOfNFT(_tokenId);
+        uint256 decayedAmount = oldLocked.amount.toUint256() -
+            currentVotingPower;
+
+        if (decayedAmount == 0) revert ZeroBalance();
+
+        uint256 remainingAmount = currentVotingPower;
+        LockedBalance memory newLocked = LockedBalance(
+            remainingAmount.toInt128(),
+            oldLocked.end
+        );
+
+        _locked[_tokenId] = newLocked;
+        _checkpoint(_tokenId, oldLocked, newLocked);
+
+        TOKEN.safeTransfer(msg.sender, decayedAmount);
+
+        emit WithdrawDecayed(
+            msg.sender,
+            _tokenId,
+            decayedAmount,
+            block.timestamp
+        );
+    }
+
+    // ============ UTILITY FUNCTIONS ============
     /// @notice Returns the token URI for a given token ID
     /// @param id The token ID
     /// @return The token URI (empty string for this implementation)
     function tokenURI(
-        uint256 id
+        uint256 id // solhint-disable-line no-unused-vars
     ) public view virtual override returns (string memory) {
         return ""; // No metadata URI for veNFT positions
     }
