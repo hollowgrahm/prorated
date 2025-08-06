@@ -1395,8 +1395,8 @@ contract ModifierTests is Test {
         vm.expectRevert(ProratedPool.TokenNotDeployed.selector);
         pool.deployPair();
 
-        // Try to create VENFT position before token is deployed
-        vm.expectRevert(ProratedPool.TokenNotDeployed.selector);
+        // Try to create VENFT position before VENFT is deployed
+        vm.expectRevert(ProratedPool.VENFTNotDeployed.selector);
         vm.prank(user1);
         pool.createVENFTPosition();
     }

@@ -93,7 +93,7 @@ contract ProratedGovernor is Owned, ReentrancyGuard {
         _;
     }
 
-    // ============ CORE FUNCTIONS ============
+    // ============ PROPOSAL LIFECYCLE FUNCTIONS ============
 
     /// @notice Create a new governance proposal
     /// @param target The contract to call
@@ -195,7 +195,7 @@ contract ProratedGovernor is Owned, ReentrancyGuard {
         emit ProposalCanceled(proposalId);
     }
 
-    // ============ VIEW FUNCTIONS ============
+    // ============ QUERY & STATE FUNCTIONS ============
 
     /// @notice Get the current state of a proposal
     /// @param proposalId The ID of the proposal
@@ -240,7 +240,7 @@ contract ProratedGovernor is Owned, ReentrancyGuard {
         return venft.totalSupplyAt(timepoint);
     }
 
-    // ============ ADMIN FUNCTIONS ============
+    // ============ ADMIN & CONFIGURATION FUNCTIONS ============
 
     /// @notice Add an approved target contract
     /// @param target The contract address to approve
