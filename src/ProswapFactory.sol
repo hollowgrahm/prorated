@@ -27,20 +27,22 @@ contract ProswapFactory is ReentrancyGuard, Owned {
     event ProtocolFeeWithdrawn(address indexed token, uint256 amount);
     event ProtocolFeeUpdated(uint256 newNumerator, uint256 newDenominator);
 
+    mapping(address => uint256) public protocolFees;
     mapping(address => mapping(address => address)) public pairs;
     address[] public allPairs;
 
-    // Global protocol fee settings
     uint256 public protocolFeeNumerator = 25; // 25% of swap fee
     uint256 public protocolFeeDenominator = 100; // 100%
     uint256 public constant SWAP_FEE_NUMERATOR = 3; // 0.3% = 3/1000
     uint256 public constant SWAP_FEE_DENOMINATOR = 1000;
     uint256 public constant MAX_PROTOCOL_FEE_PERCENTAGE = 50; // 50% max
 
-    // Track accumulated fees per token globally
-    mapping(address => uint256) public protocolFees;
-
+    // ============ CONSTRUCTOR ============
+    /// @notice Creates a new Proswap factory
+    /// @param _owner Address of the factory owner
     constructor(address _owner) Owned(_owner) {}
+
+    // ============ CORE FACTORY FUNCTIONS ============
 
     /// @notice Creates a new weighted pair where token80 gets 80% weight and token20 gets 20% weight
     /// @param token80 The favored token (80% weight)
@@ -75,6 +77,8 @@ contract ProswapFactory is ReentrancyGuard, Owned {
 
         emit PairCreated(token80, token20, pair, allPairs.length);
     }
+
+    // ============ PROTOCOL FEE MANAGEMENT ============
 
     /// @notice Update global protocol fee percentage
     /// @param newNumerator New protocol fee numerator
