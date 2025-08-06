@@ -49,7 +49,7 @@ contract ProratedTreasury is Owned, ReentrancyGuard {
         proswapPair = ERC20(params.proswapPair);
     }
 
-
+    // ============ TREASURY OPERATIONS ============
 
     /// @notice Withdraws decayed amount from treasury veNFT position
     /// @dev Can only be called by governor
@@ -84,6 +84,8 @@ contract ProratedTreasury is Owned, ReentrancyGuard {
 
         emit TreasuryFundsDistributed(recipient, amount, reason);
     }
+
+    // ============ QUERY FUNCTIONS ============
 
     /// @notice Gets treasury's voting power from veNFT position
     /// @return votingPower Treasury's current voting power
