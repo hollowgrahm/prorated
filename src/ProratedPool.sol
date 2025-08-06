@@ -168,7 +168,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         treasuryAllocationPercentage = config.treasuryAllocationPercentage;
     }
 
-    // 2. CONTRIBUTION FUNCTIONS
+    // ============ CONTRIBUTION & USER FUNCTIONS ============
     /// @notice Contributes tokens to the pool with a specified lock duration
     /// @param amount Amount of funding tokens to contribute
     /// @param lockDuration Lock duration in weeks (1-208 weeks)
@@ -269,7 +269,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         );
     }
 
-    // 3. POOL STATE FUNCTIONS
+    // ============ QUERY FUNCTIONS ============
     /// @notice Checks if the user has a contribution
     /// @param user The address of the user to check
     /// @return True if the user has a contribution, false otherwise
@@ -305,7 +305,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         emit RefundClaimed(msg.sender, contributions[msg.sender].amount);
     }
 
-    // 4. DEPLOYMENT FUNCTIONS (Sequential)
+    // ============ DEPLOYMENT SEQUENCE ============
     /// @notice Deploys the prorated token contract (first deployment function)
     /// @dev Can only be called after minimum contributions are reached and pool has ended
     function deployToken() external poolEnded nonReentrant {
@@ -461,7 +461,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         emit TreasuryDeployed(address(proratedTreasury));
     }
 
-    // 5. USER FUNCTIONS
+    // ============ USER POSITION MANAGEMENT ============
     /// @notice Creates a veNFT position for a user based on their contribution
     /// @dev Can only be called after pool is finalized and if user has unclaimed contribution
     function createVENFTPosition() external nonReentrant {
@@ -505,7 +505,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         );
     }
 
-    // 6. OWNER/GOVERNANCE FUNCTIONS
+    // ============ GOVERNANCE & WITHDRAWAL FUNCTIONS ============
     /// @notice Allows dev team to withdraw remaining funding tokens after pool is finalized
     /// @dev Can only be called by dev team after pool has reached minimum and ended, after liquidity is deployed
     function devTeamFundsWithdraw() external onlyOwner {
