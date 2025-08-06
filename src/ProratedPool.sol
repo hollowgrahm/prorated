@@ -20,21 +20,6 @@ import {ProratedTreasury} from "./ProratedTreasury.sol";
 contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     using SafeTransferLib for ERC20;
 
-    struct PoolConfig {
-        address owner;
-        string tokenName;
-        string tokenSymbol;
-        uint256 tokenTotalSupply;
-        uint256 desiredContributions;
-        uint256 startTime;
-        uint256 endTime;
-        address fundingToken;
-        address proswapFactory;
-        address proswapRouter;
-        uint256 devTeamAllocationPercentage;
-        uint256 treasuryAllocationPercentage;
-    }
-
     error PoolClosed();
     error InvalidLockDuration();
     error InvalidAmount();
@@ -58,7 +43,21 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     error ContributionAlreadyClaimed();
     error Unauthorized();
     error NoTokensReserved();
-    error InvalidVENFT();
+
+    struct PoolConfig {
+        address owner;
+        string tokenName;
+        string tokenSymbol;
+        uint256 tokenTotalSupply;
+        uint256 desiredContributions;
+        uint256 startTime;
+        uint256 endTime;
+        address fundingToken;
+        address proswapFactory;
+        address proswapRouter;
+        uint256 devTeamAllocationPercentage;
+        uint256 treasuryAllocationPercentage;
+    }
 
     event Contributed(
         address indexed contributor,
@@ -83,8 +82,17 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     );
 
     event RefundClaimed(address indexed contributor, uint256 amount);
-
     event DevTeamFundsWithdrawn(address indexed devTeam, uint256 amount);
+    event TokenDeployed(address indexed token);
+    event VENFTDeployed(address indexed venft);
+    event PairDeployed(address indexed pair);
+    event LiquidityDeployed(
+        uint256 lpTokensReceived,
+        uint256 devTeamAllocation,
+        uint256 treasuryAllocation
+    );
+    event TreasuryDeployed(address indexed treasury);
+    event GovernorDeployed(address indexed governor);
 
     event VENFTPositionCreated(
         address indexed user,
@@ -104,16 +112,6 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         uint256 lpTokens,
         uint256 tokenId
     );
-    event TokenDeployed(address indexed token);
-    event VENFTDeployed(address indexed venft);
-    event PairDeployed(address indexed pair);
-    event LiquidityDeployed(
-        uint256 lpTokensReceived,
-        uint256 devTeamAllocation,
-        uint256 treasuryAllocation
-    );
-    event TreasuryDeployed(address indexed treasury);
-    event GovernorDeployed(address indexed governor);
 
     modifier poolActive() {
         if (block.timestamp < startTime || block.timestamp > endTime)
@@ -154,7 +152,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
 
         // Step 3: Set contribution targets and minimums
         desiredContributions = config.desiredContributions;
-        minTotalContributions = config.desiredContributions * 2; // Minimum is 2x desired
+        minTotalContributions = config.desiredContributions * 2;
 
         // Step 4: Set pool timing parameters
         startTime = config.startTime;
@@ -416,6 +414,26 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         emit VENFTDeployed(address(proratedVENFT));
     }
 
+    /// @notice Deploy Governor contract (anyone can call, first deployment wins)
+    function deployGovernor() external {
+        // Step 1: Check if governor has already been deployed (prevent double deployment)
+        if (address(proratedGovernor) != address(0))
+            revert GovernorAlreadyDeployed();
+        // Step 2: Check if VENFT has been deployed (prerequisite)
+        if (address(proratedVENFT) == address(0)) revert VENFTNotDeployed();
+
+        // Step 4: Deploy the ProratedGovernor contract with VENFT and pool addresses
+        proratedGovernor = IProratedGovernor(
+            address(new ProratedGovernor(address(proratedVENFT), address(this)))
+        );
+
+        // Step 5: Add pool as approved target for governance proposals
+        proratedGovernor.addApprovedTarget(address(this));
+
+        // Step 7: Emit event for off-chain tracking
+        emit GovernorDeployed(address(proratedGovernor));
+    }
+
     /// @notice Deploy Treasury contract (anyone can call, first deployment wins)
     function deployTreasury() external {
         // Step 1: Check if treasury has already been deployed (prevent double deployment)
@@ -441,30 +459,6 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
 
         // Step 4: Emit event for off-chain tracking
         emit TreasuryDeployed(address(proratedTreasury));
-    }
-
-    /// @notice Deploy Governor contract (anyone can call, first deployment wins)
-    function deployGovernor() external {
-        // Step 1: Check if governor has already been deployed (prevent double deployment)
-        if (address(proratedGovernor) != address(0))
-            revert GovernorAlreadyDeployed();
-        // Step 2: Check if VENFT has been deployed (prerequisite)
-        if (address(proratedVENFT) == address(0)) revert VENFTNotDeployed();
-
-        // Step 3: Validate VENFT interface to ensure it's a valid VENFT contract
-        if (!IProratedVENFT(address(proratedVENFT)).validateInterface())
-            revert InvalidVENFT();
-
-        // Step 4: Deploy the ProratedGovernor contract with VENFT and pool addresses
-        proratedGovernor = IProratedGovernor(
-            address(new ProratedGovernor(address(proratedVENFT), address(this)))
-        );
-
-        // Step 5: Add pool as approved target for governance proposals
-        proratedGovernor.addApprovedTarget(address(this));
-
-        // Step 7: Emit event for off-chain tracking
-        emit GovernorDeployed(address(proratedGovernor));
     }
 
     // 5. USER FUNCTIONS

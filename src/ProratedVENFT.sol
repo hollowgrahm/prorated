@@ -279,11 +279,7 @@ contract ProratedVENFT is ERC721, ReentrancyGuard {
         );
     }
 
-    /// @notice Validates that this is a legitimate ProratedVENFT contract
-    /// @return True if this is a valid ProratedVENFT contract
-    function validateInterface() external pure returns (bool) {
-        return true; // Only legitimate ProratedVENFT contracts return true
-    }
+
 
     // ============ POSITION MANAGEMENT ============
     /// @notice Extends the lock duration of a veNFT position

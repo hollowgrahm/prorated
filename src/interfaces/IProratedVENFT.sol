@@ -39,8 +39,4 @@ interface IProratedVENFT {
     /// @param to The address to transfer to
     /// @param tokenId The token ID to transfer
     function transferFrom(address from, address to, uint256 tokenId) external;
-
-    /// @notice Validates that this is a legitimate ProratedVENFT contract
-    /// @return True if this is a valid ProratedVENFT contract
-    function validateInterface() external pure returns (bool);
 }
