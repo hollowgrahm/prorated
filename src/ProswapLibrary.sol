@@ -11,11 +11,14 @@ library ProswapLibrary {
     error InsufficientLiquidity();
     error InvalidPath();
 
+    // ============ CONSTANTS ============
     // INVARIANT MIGRATION: Weights for x^0.8 * y^0.2 = k invariant
     // These weights determine the price curve characteristics
     // WEIGHT_80 = 80% favors token80, WEIGHT_20 = 20% disfavors token20
     uint256 internal constant WEIGHT_80 = 8e17; // 0.8 (80%)
     uint256 internal constant WEIGHT_20 = 2e17; // 0.2 (20%)
+
+    // ============ CORE LIBRARY FUNCTIONS ============
 
     /// @notice Gets the reserves for a pair of tokens
     /// @param factoryAddress Address of the factory contract
@@ -83,6 +86,8 @@ library ProswapLibrary {
     ) internal pure returns (address token80_, address token20_) {
         return (token80, token20); // No sorting - preserve user's intended weight assignment
     }
+
+    // ============ UTILITY FUNCTIONS ============
 
     /// @notice Calculates the deterministic pair address for two tokens in input order
     /// @param factoryAddress Address of the factory contract
