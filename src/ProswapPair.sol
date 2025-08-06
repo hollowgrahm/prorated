@@ -58,9 +58,14 @@ contract ProswapPair is ERC20, ReentrancyGuard {
         address indexed to
     );
 
+    // ============ CONSTRUCTOR ============
+    /// @notice Creates a new Proswap pair
+    /// @param _factory Address of the Proswap factory contract
     constructor(address _factory) ERC20("Proswap Pair", "PROSWAP", 18) {
         proswapFactory = IProswapFactory(_factory);
     }
+
+    // ============ SETUP FUNCTIONS ============
 
     /// @notice Initializes the pair with token addresses
     /// @param token80_ Address of token with 80% weight
@@ -139,6 +144,8 @@ contract ProswapPair is ERC20, ReentrancyGuard {
 
         emit Mint(to, amount80, amount20);
     }
+
+    // ============ CORE AMM FUNCTIONS ============
 
     /// @notice Burns liquidity tokens and returns the underlying token amounts
     /// @param to Address to receive the underlying tokens
@@ -286,6 +293,8 @@ contract ProswapPair is ERC20, ReentrancyGuard {
         emit Swap(msg.sender, amount80Out, amount20Out, to);
     }
 
+    // ============ UTILITY & QUERY FUNCTIONS ============
+
     /// @notice Synchronizes reserves with current token balances
     /// @dev Useful for recovering from balance discrepancies
     function sync() public {
@@ -306,13 +315,7 @@ contract ProswapPair is ERC20, ReentrancyGuard {
         return (reserve80, reserve20, blockTimestampLast);
     }
 
-    //
-    //
-    //
-    //  PRIVATE
-    //
-    //
-    //
+    // ============ PRIVATE HELPER FUNCTIONS ============
 
     /// @notice Updates reserves and cumulative price oracle
     /// @param balance80 Current balance of token with 80% weight
