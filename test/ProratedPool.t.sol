@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Unlicensed
 pragma solidity ^0.8.10;
 
-import "forge-std/Test.sol";
+import {Test} from "lib/forge-std/src/Test.sol";
 import "../src/ProratedPool.sol";
-import "../src/ProswapFactory.sol";
-import "../src/ProswapRouter.sol";
+import "../src/proswap/ProswapFactory.sol";
+import "../src/proswap/ProswapRouter.sol";
 import "../src/ProratedToken.sol";
 import "../src/ProratedVENFT.sol";
 import "./mocks/ERC20Mintable.sol";

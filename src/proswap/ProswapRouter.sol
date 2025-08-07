@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Unlicensed
 pragma solidity ^0.8.10;
 
-import "./interfaces/IProswapFactory.sol";
-import "./interfaces/IProswapPair.sol";
-import "./ProswapLibrary.sol";
+import "../interfaces/IProswapFactory.sol";
+import "../interfaces/IProswapPair.sol";
+import "../proswap/ProswapLibrary.sol";
 import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
 import {ReentrancyGuard} from "lib/solmate/src/utils/ReentrancyGuard.sol";

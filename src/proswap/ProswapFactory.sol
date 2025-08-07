@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: Unlicensed
 pragma solidity ^0.8.10;
 
-import "./ProswapPair.sol";
-import "./interfaces/IProswapPair.sol";
+import "../proswap/ProswapPair.sol";
+import "../interfaces/IProswapPair.sol";
 import {ReentrancyGuard} from "lib/solmate/src/utils/ReentrancyGuard.sol";
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
@@ -21,7 +21,7 @@ contract ProswapFactory is ReentrancyGuard, Owned {
         address indexed token80,
         address indexed token20,
         address pair,
-        uint256
+        uint256 allPairsLength
     );
     event ProtocolFeeCollected(address indexed token, uint256 amount);
     event ProtocolFeeWithdrawn(address indexed token, uint256 amount);

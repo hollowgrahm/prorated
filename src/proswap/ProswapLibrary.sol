@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: Unlicensed
 pragma solidity ^0.8.10;
 
-import "./libraries/Math.sol";
-import "./interfaces/IProswapFactory.sol";
-import "./interfaces/IProswapPair.sol";
-import {ProswapPair} from "./ProswapPair.sol";
+import "../libraries/Math.sol";
+import "../interfaces/IProswapFactory.sol";
+import "../interfaces/IProswapPair.sol";
+import {ProswapPair} from "../proswap/ProswapPair.sol";
 
 library ProswapLibrary {
     error InsufficientAmount();

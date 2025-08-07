@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Unlicensed
 pragma solidity ^0.8.10;
 
-import {Test} from "forge-std/Test.sol";
+import {Test} from "lib/forge-std/src/Test.sol";
 import {ProratedVENFT} from "../src/ProratedVENFT.sol";
 import {ERC20Mintable} from "./mocks/ERC20Mintable.sol";
 
@@ -62,6 +62,22 @@ contract ProratedVENFTTest is Test {
         // Mint tokens to users
         token.mint(TOKEN_10, user1);
         token.mint(TOKEN_10, user2);
+    }
+
+    // ============ CONSTRUCTOR TESTS ============
+
+    function test_Constructor_DynamicNaming() public {
+        // Create a new VENFT with a different token to test dynamic naming
+        ERC20Mintable customToken = new ERC20Mintable("Custom LP Token", "CLP");
+        ProratedVENFT customVenft = new ProratedVENFT(address(customToken));
+
+        // Verify the dynamic naming works correctly
+        assertEq(customVenft.name(), "Prorated VENFT - Custom LP Token");
+        assertEq(customVenft.symbol(), "veCLP");
+
+        // Verify the original VENFT naming is correct
+        assertEq(venft.name(), "Prorated VENFT - Test Token");
+        assertEq(venft.symbol(), "veTEST");
     }
 
     // ============ CATEGORY 1: createLock TESTS ============

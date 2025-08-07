@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Unlicensed
 pragma solidity ^0.8.10;
 
-import "forge-std/Test.sol";
-import "../src/ProswapFactory.sol";
-import "../src/ProswapPair.sol";
+import {Test} from "lib/forge-std/src/Test.sol";
+import "../src/proswap/ProswapFactory.sol";
+import "../src/proswap/ProswapPair.sol";
 import "./mocks/ERC20Mintable.sol";
 
 contract ProswapFactoryTest is Test {

@@ -6,8 +6,8 @@ import {ProratedGovernor} from "../src/ProratedGovernor.sol";
 import {ProratedPool} from "../src/ProratedPool.sol";
 import {ProratedVENFT} from "../src/ProratedVENFT.sol";
 import {ProratedToken} from "../src/ProratedToken.sol";
-import {ProswapFactory} from "../src/ProswapFactory.sol";
-import {ProswapRouter} from "../src/ProswapRouter.sol";
+import {ProswapFactory} from "../src/proswap/ProswapFactory.sol";
+import {ProswapRouter} from "../src/proswap/ProswapRouter.sol";
 import {ERC20Mintable} from "./mocks/ERC20Mintable.sol";
 import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
 

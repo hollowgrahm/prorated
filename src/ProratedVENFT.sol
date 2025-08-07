@@ -110,14 +110,17 @@ contract ProratedVENFT is ERC721, ReentrancyGuard {
     /// @notice Initializes the ProratedVENFT contract
     /// @param _token The ERC20 token address to be locked (LP tokens)
     constructor(address _token) ERC721("Prorated VENFT", "vePRO") {
+        // Step 1: Set the immutable token address for LP token locking
         TOKEN = ERC20(_token);
+
+        // Step 2: Initialize the global point history with current timestamp
         _pointHistory[0].ts = block.timestamp;
 
-        // Get LP token name and symbol for dynamic naming
+        // Step 3: Get LP token name and symbol for dynamic naming
         string memory lpTokenName = TOKEN.name();
         string memory lpTokenSymbol = TOKEN.symbol();
 
-        // Update ERC721 name and symbol based on LP token
+        // Step 4: Update ERC721 name and symbol based on LP token
         name = string(abi.encodePacked("Prorated VENFT - ", lpTokenName));
         symbol = string(abi.encodePacked("ve", lpTokenSymbol));
     }

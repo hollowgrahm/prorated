@@ -2,12 +2,12 @@
 pragma solidity ^0.8.10;
 
 import "forge-std/Test.sol";
-import {ProswapFactory} from "../src/ProswapFactory.sol";
-import {ProswapRouter} from "../src/ProswapRouter.sol";
+import {ProswapFactory} from "../src/proswap/ProswapFactory.sol";
+import {ProswapRouter} from "../src/proswap/ProswapRouter.sol";
 import {ERC20Mintable} from "./mocks/ERC20Mintable.sol";
 import {IProswapFactory} from "../src/interfaces/IProswapFactory.sol";
 import {IProswapPair} from "../src/interfaces/IProswapPair.sol";
-import {ProswapLibrary} from "../src/ProswapLibrary.sol";
+import {ProswapLibrary} from "../src/proswap/ProswapLibrary.sol";
 
 contract ProswapFeeTest is Test {
     ProswapFactory factory;

@@ -2,8 +2,8 @@
 pragma solidity ^0.8.10;
 
 import "forge-std/Test.sol";
-import "../src/ProswapFactory.sol";
-import "../src/ProswapPair.sol";
+import "../src/proswap/ProswapFactory.sol";
+import "../src/proswap/ProswapPair.sol";
 import "../src/libraries/UQ112x112.sol";
 import "../src/libraries/Math.sol";
 import "./mocks/ERC20Mintable.sol";
