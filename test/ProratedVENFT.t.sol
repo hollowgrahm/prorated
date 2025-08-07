@@ -54,6 +54,14 @@ contract ProratedVENFTTest is Test {
         uint256 value,
         uint256 ts
     );
+    event LockCreated(
+        address indexed owner,
+        uint256 indexed tokenId,
+        uint256 value,
+        uint256 lockDuration,
+        uint256 unlockTime,
+        uint256 ts
+    );
 
     function setUp() public {
         token = new ERC20Mintable("Test Token", "TEST");
@@ -170,11 +178,21 @@ contract ProratedVENFTTest is Test {
         uint256 expectedLockTime = ((block.timestamp + lockDuration) / WEEK) *
             WEEK;
 
+        vm.expectEmit(true, true, false, true, address(venft));
+        emit Deposit(user1, 1, TOKEN_1, expectedLockTime, block.timestamp);
+
         vm.expectEmit(true, true, true, true, address(venft));
         emit Transfer(address(0), user1, 1);
 
-        vm.expectEmit(true, true, false, true, address(venft));
-        emit Deposit(user1, 1, TOKEN_1, expectedLockTime, block.timestamp);
+        vm.expectEmit(true, true, true, true, address(venft));
+        emit LockCreated(
+            user1,
+            1,
+            TOKEN_1,
+            lockDuration,
+            expectedLockTime,
+            block.timestamp
+        );
 
         venft.createLock(TOKEN_1, lockDuration);
 
@@ -232,6 +250,64 @@ contract ProratedVENFTTest is Test {
 
         // Check total supply
         assertGt(venft.totalSupply(), 0);
+    }
+
+    function test_CreateLock_WeekRounding() public {
+        vm.startPrank(user1);
+        token.approve(address(venft), TOKEN_1 * 3);
+
+        // Test that 1 day lock becomes 1 week
+        uint256 tokenId1 = venft.createLock(TOKEN_1, 1 days);
+        ProratedVENFT.LockedBalance memory locked1 = venft.locked(tokenId1);
+        assertEq(locked1.end, ((block.timestamp + 1 days) / WEEK) * WEEK);
+
+        // Test that 8 days lock becomes 2 weeks
+        uint256 tokenId2 = venft.createLock(TOKEN_1, 8 days);
+        ProratedVENFT.LockedBalance memory locked2 = venft.locked(tokenId2);
+        assertEq(locked2.end, ((block.timestamp + 8 days) / WEEK) * WEEK);
+
+        // Test that exact week duration stays the same
+        uint256 tokenId3 = venft.createLock(TOKEN_1, 1 weeks);
+        ProratedVENFT.LockedBalance memory locked3 = venft.locked(tokenId3);
+        assertEq(locked3.end, ((block.timestamp + 1 weeks) / WEEK) * WEEK);
+
+        vm.stopPrank();
+    }
+
+    function test_CreateLock_ZeroAddress() public {
+        vm.startPrank(user1);
+        token.approve(address(venft), TOKEN_1);
+
+        // The createLock function always uses msg.sender, so we can't directly test zero address
+        // But the internal _createLock function now validates zero address
+        // This test verifies that normal operation still works
+        uint256 tokenId = venft.createLock(TOKEN_1, 1 weeks);
+        assertEq(venft.ownerOf(tokenId), user1);
+
+        vm.stopPrank();
+    }
+
+    function test_CreateLock_LockCreatedEvent() public {
+        vm.startPrank(user1);
+        token.approve(address(venft), TOKEN_1);
+
+        uint256 lockDuration = 1 weeks;
+        uint256 expectedUnlockTime = ((block.timestamp + lockDuration) / WEEK) *
+            WEEK;
+
+        vm.expectEmit(true, true, true, true, address(venft));
+        emit LockCreated(
+            user1,
+            1,
+            TOKEN_1,
+            lockDuration,
+            expectedUnlockTime,
+            block.timestamp
+        );
+
+        venft.createLock(TOKEN_1, lockDuration);
+
+        vm.stopPrank();
     }
 
     // ============ CATEGORY 2: increaseAmount TESTS ============

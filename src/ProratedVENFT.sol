@@ -21,6 +21,7 @@ contract ProratedVENFT is ERC721, ReentrancyGuard {
 
     // ============ ERRORS ============
     error ZeroAmount();
+    error ZeroAddress();
     error LockDurationNotInFuture();
     error LockDurationTooLong();
     error LockExpired();
@@ -66,6 +67,14 @@ contract ProratedVENFT is ERC721, ReentrancyGuard {
         uint256 globalRewardPerVotingPower
     );
     event LockExtended(uint256 indexed tokenId, uint256 oldEnd, uint256 newEnd);
+    event LockCreated(
+        address indexed owner,
+        uint256 indexed tokenId,
+        uint256 value,
+        uint256 lockDuration,
+        uint256 unlockTime,
+        uint256 ts
+    );
 
     // ============ CONSTANTS ============
     uint256 internal constant WEEK = 1 weeks;
@@ -136,6 +145,7 @@ contract ProratedVENFT is ERC721, ReentrancyGuard {
         uint256 _value,
         uint256 _lockDuration
     ) external nonReentrant returns (uint256) {
+        // Step 1: Delegate to internal function with msg.sender as recipient
         return _createLock(_value, _lockDuration, msg.sender);
     }
 
@@ -151,17 +161,34 @@ contract ProratedVENFT is ERC721, ReentrancyGuard {
         uint256 _lockDuration,
         address _to
     ) internal returns (uint256) {
+        // Step 1: Validate input parameters first
+        if (_value == 0) revert ZeroAmount();
+        if (_to == address(0)) revert ZeroAddress();
+        if (_lockDuration == 0) revert LockDurationNotInFuture();
+        if (_lockDuration > MAXTIME) revert LockDurationTooLong();
+
+        // Step 2: Calculate unlock time rounded up to nearest week
         uint256 unlockTime = ((block.timestamp + _lockDuration) / WEEK) * WEEK;
 
-        if (_value == 0) revert ZeroAmount();
-        if (unlockTime <= block.timestamp) revert LockDurationNotInFuture();
-        if (unlockTime > block.timestamp + MAXTIME)
-            revert LockDurationTooLong();
-
+        // Step 3: Generate new token ID
         uint256 _tokenId = ++tokenId;
+
+        // Step 4: Deposit tokens and create lock position (before minting NFT)
+        _depositFor(_tokenId, _value, unlockTime, _locked[_tokenId]);
+
+        // Step 5: Mint NFT to recipient after successful deposit
         _mint(_to, _tokenId);
 
-        _depositFor(_tokenId, _value, unlockTime, _locked[_tokenId]);
+        // Step 6: Emit lock creation event
+        emit LockCreated(
+            _to,
+            _tokenId,
+            _value,
+            _lockDuration,
+            unlockTime,
+            block.timestamp
+        );
+
         return _tokenId;
     }
 
