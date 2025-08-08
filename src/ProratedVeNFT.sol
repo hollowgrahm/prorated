@@ -152,30 +152,14 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
         uint256 _value,
         uint256 _lockDuration
     ) external nonReentrant returns (uint256) {
-        // Step 1: Delegate to internal function with msg.sender as recipient
-        return _createLock(_value, _lockDuration, msg.sender);
-    }
-
-    /// @notice Internal function to create a new veNFT lock position
-    /// @param _value Amount of tokens to lock
-    /// @param _lockDuration Duration of the lock in seconds
-    /// @param _to Address to receive the veNFT
-    /// @return The token ID of the newly created veNFT
-    /// @dev The lock duration is rounded up to the nearest week for protocol consistency.
-    ///      This ensures all locks align with weekly epochs for reward distribution.
-    function _createLock(
-        uint256 _value,
-        uint256 _lockDuration,
-        address _to
-    ) internal returns (uint256) {
         // Step 1: Validate input parameters first
         if (_value == 0) revert ZeroAmount();
-        if (_to == address(0)) revert ZeroAddress();
         if (_lockDuration == 0) revert LockDurationNotInFuture();
         if (_lockDuration > MAXTIME) revert LockDurationTooLong();
 
-        // Step 2: Calculate unlock time rounded up to nearest week
-        uint256 unlockTime = ((block.timestamp + _lockDuration) / WEEK) * WEEK;
+        // Step 2: Calculate unlock time rounded UP to nearest week
+        uint256 unlockTime = ((block.timestamp + _lockDuration + WEEK - 1) /
+            WEEK) * WEEK;
 
         // Step 3: Generate new token ID
         uint256 _tokenId = ++tokenId;
@@ -184,11 +168,11 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
         _depositFor(_tokenId, _value, unlockTime, _locked[_tokenId]);
 
         // Step 5: Mint NFT to recipient after successful deposit
-        _mint(_to, _tokenId);
+        _mint(msg.sender, _tokenId);
 
         // Step 6: Emit lock creation event
         emit LockCreated(
-            _to,
+            msg.sender,
             _tokenId,
             _value,
             _lockDuration,
@@ -248,8 +232,9 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
         uint256 _lockDuration,
         address _to
     ) internal returns (uint256) {
-        // Step 1: Calculate unlock time rounded up to nearest week for protocol consistency
-        uint256 unlockTime = ((block.timestamp + _lockDuration) / WEEK) * WEEK;
+        // Step 1: Calculate unlock time rounded UP to nearest week for protocol consistency
+        uint256 unlockTime = ((block.timestamp + _lockDuration + WEEK - 1) /
+            WEEK) * WEEK;
 
         // Step 2: Validate input parameters
         if (_value == 0) revert ZeroAmount();
