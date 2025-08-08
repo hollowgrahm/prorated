@@ -5,7 +5,7 @@ import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
 import {IProratedToken} from "./interfaces/IProratedToken.sol";
 import {IProswapFactory} from "./interfaces/IProswapFactory.sol";
 import {IProswapRouter} from "./interfaces/IProswapRouter.sol";
-import {IProratedVENFT} from "./interfaces/IProratedVENFT.sol";
+import {IProratedVeNFT} from "./interfaces/IProratedVeNFT.sol";
 import {IProratedGovernor} from "./interfaces/IProratedGovernor.sol";
 import {IProratedTreasury} from "./interfaces/IProratedTreasury.sol";
 
@@ -25,7 +25,7 @@ contract ProratedPoolStorage {
     address public proswapPair;
 
     IProratedToken public proratedToken;
-    IProratedVENFT public proratedVENFT;
+    IProratedVeNFT public proratedVeNFT;
     IProratedGovernor public proratedGovernor;
     IProratedTreasury public proratedTreasury;
 

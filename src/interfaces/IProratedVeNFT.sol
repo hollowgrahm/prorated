@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Unlicensed
 pragma solidity ^0.8.10;
 
-interface IProratedVENFT {
+interface IProratedVeNFT {
     /// @notice Creates a new veNFT lock position
     /// @param _value Amount of tokens to lock
     /// @param _lockDuration Duration of the lock in seconds

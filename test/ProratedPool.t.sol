@@ -6,7 +6,7 @@ import "../src/ProratedPool.sol";
 import "../src/proswap/ProswapFactory.sol";
 import "../src/proswap/ProswapRouter.sol";
 import "../src/ProratedToken.sol";
-import "../src/ProratedVENFT.sol";
+import "../src/ProratedVeNFT.sol";
 import "./mocks/ERC20Mintable.sol";
 import "../src/interfaces/IProratedToken.sol";
 import "../src/interfaces/IProswapFactory.sol";
@@ -19,7 +19,7 @@ contract ProratedPoolTest is Test {
     ProswapRouter router;
     ERC20Mintable fundingToken;
     ProratedToken proratedToken;
-    ProratedVENFT venftContract;
+    ProratedVeNFT venftContract;
 
     address owner = address(1);
     address user1 = address(2);
@@ -319,7 +319,7 @@ contract ProratedPoolTest is Test {
         assertTrue(address(pool.proratedToken()) != address(0));
         assertEq(pool.proswapPair(), address(0));
         assertEq(pool.totalLPTokensReceived(), 0);
-        assertEq(address(pool.proratedVENFT()), address(0));
+        assertEq(address(pool.proratedVeNFT()), address(0));
         assertEq(address(pool.proratedGovernor()), address(0));
         assertEq(address(pool.proratedTreasury()), address(0));
 
@@ -367,7 +367,7 @@ contract ProratedPoolTest is Test {
         assertTrue(address(pool.proratedToken()) != address(0));
         assertTrue(address(pool.proswapPair()) != address(0));
         assertEq(pool.totalLPTokensReceived(), 0);
-        assertEq(address(pool.proratedVENFT()), address(0));
+        assertEq(address(pool.proratedVeNFT()), address(0));
         assertEq(address(pool.proratedGovernor()), address(0));
         assertEq(address(pool.proratedTreasury()), address(0));
 
@@ -418,7 +418,7 @@ contract ProratedPoolTest is Test {
         assertTrue(address(pool.proratedToken()) != address(0));
         assertTrue(address(pool.proswapPair()) != address(0));
         assertGt(pool.totalLPTokensReceived(), 0);
-        assertEq(address(pool.proratedVENFT()), address(0));
+        assertEq(address(pool.proratedVeNFT()), address(0));
         assertEq(address(pool.proratedGovernor()), address(0));
         assertEq(address(pool.proratedTreasury()), address(0));
 
@@ -466,7 +466,7 @@ contract ProratedPoolTest is Test {
         assertGt(pool.treasuryLPTokens(), 0);
     }
 
-    function test_DeployVENFT() public {
+    function test_DeployveNFT() public {
         // Setup: Add contributions and deploy token and pair
         vm.startPrank(user1);
         fundingToken.approve(address(pool), 1000000e18);
@@ -478,29 +478,29 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
 
-        // Try to deploy VENFT before liquidity is deployed
+        // Try to deploy veNFT before liquidity is deployed
         vm.expectRevert(ProratedPool.LiquidityNotDeployed.selector);
-        pool.deployVENFT();
+        pool.deployVeNFT();
 
         // Deploy liquidity
         pool.deployLiquidity();
 
-        // Deploy VENFT (should succeed now that liquidity is deployed)
-        pool.deployVENFT();
+        // Deploy veNFT (should succeed now that liquidity is deployed)
+        pool.deployVeNFT();
 
         assertTrue(address(pool.proratedToken()) != address(0));
         assertTrue(address(pool.proswapPair()) != address(0));
         assertGt(pool.totalLPTokensReceived(), 0);
-        assertTrue(address(pool.proratedVENFT()) != address(0));
+        assertTrue(address(pool.proratedVeNFT()) != address(0));
         assertEq(address(pool.proratedGovernor()), address(0));
         assertEq(address(pool.proratedTreasury()), address(0));
 
-        // Try to deploy VENFT again
-        vm.expectRevert(ProratedPool.VENFTAlreadyDeployed.selector);
-        pool.deployVENFT();
+        // Try to deploy veNFT again
+        vm.expectRevert(ProratedPool.VeNFTAlreadyDeployed.selector);
+        pool.deployVeNFT();
     }
 
-    function test_CreateVENFTPosition() public {
+    function test_CreateveNFTPosition() public {
         // Setup: Add contributions and finalize pool
         vm.startPrank(user1);
         fundingToken.approve(address(pool), 200000e18);
@@ -518,11 +518,11 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        pool.deployVENFT();
+        pool.deployVeNFT();
 
-        // Create VENFT position (should succeed now that VENFT is deployed)
+        // Create veNFT position (should succeed now that veNFT is deployed)
         vm.prank(user1);
-        pool.createVENFTPosition();
+        pool.createVeNFTPosition();
 
         // Verify contribution is marked as claimed
         (
@@ -533,13 +533,13 @@ contract ProratedPoolTest is Test {
         ) = pool.contributions(user1);
         assertEq(claimed_, true);
 
-        // Try to create VENFT position again
+        // Try to create veNFT position again
         vm.expectRevert(ProratedPool.AlreadyClaimed.selector);
         vm.prank(user1);
-        pool.createVENFTPosition();
+        pool.createVeNFTPosition();
     }
 
-    function test_CreateVENFTPosition_VENFTNotDeployed() public {
+    function test_CreateveNFTPosition_VeNFTNotDeployed() public {
         // Setup: Add contributions and finalize pool
         vm.startPrank(user1);
         fundingToken.approve(address(pool), 200000e18);
@@ -551,15 +551,15 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        // Don't deploy VENFT
+        // Don't deploy veNFT
 
-        // Try to create VENFT position without VENFT deployed
-        vm.expectRevert(ProratedPool.VENFTNotDeployed.selector);
+        // Try to create veNFT position without veNFT deployed
+        vm.expectRevert(ProratedPool.VeNFTNotDeployed.selector);
         vm.prank(user1);
-        pool.createVENFTPosition();
+        pool.createVeNFTPosition();
     }
 
-    function test_CreateVENFTPosition_NoContribution() public {
+    function test_CreateveNFTPosition_NoContribution() public {
         // Setup: Add minimum contributions to meet pool requirements
         vm.startPrank(user1);
         fundingToken.approve(address(pool), 1200000e18);
@@ -571,15 +571,15 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        pool.deployVENFT();
+        pool.deployVeNFT();
 
-        // Try to create VENFT position without any contribution (different user)
+        // Try to create veNFT position without any contribution (different user)
         vm.expectRevert(ProratedPool.NoContribution.selector);
         vm.prank(user2);
-        pool.createVENFTPosition();
+        pool.createVeNFTPosition();
     }
 
-    function test_CreateVENFTPosition_ContributionAlreadyClaimed() public {
+    function test_CreateveNFTPosition_ContributionAlreadyClaimed() public {
         // Setup: Add contributions and finalize pool
         vm.startPrank(user1);
         fundingToken.approve(address(pool), 200000e18);
@@ -591,19 +591,19 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        pool.deployVENFT();
+        pool.deployVeNFT();
 
-        // Create VENFT position first time (should succeed)
+        // Create veNFT position first time (should succeed)
         vm.prank(user1);
-        pool.createVENFTPosition();
+        pool.createVeNFTPosition();
 
-        // Try to create VENFT position again (should fail)
+        // Try to create veNFT position again (should fail)
         vm.expectRevert(ProratedPool.AlreadyClaimed.selector);
         vm.prank(user1);
-        pool.createVENFTPosition();
+        pool.createVeNFTPosition();
     }
 
-    function test_CreateVENFTPosition_EventEmission() public {
+    function test_CreateveNFTPosition_EventEmission() public {
         // Setup: Add contributions and finalize pool
         vm.startPrank(user1);
         fundingToken.approve(address(pool), 200000e18);
@@ -615,18 +615,18 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        pool.deployVENFT();
+        pool.deployVeNFT();
 
-        // Create VENFT position (event emission is implicitly tested)
+        // Create veNFT position (event emission is implicitly tested)
         vm.prank(user1);
-        pool.createVENFTPosition();
+        pool.createVeNFTPosition();
 
         // Verify the position was created successfully
         (, , , bool claimed) = pool.contributions(user1);
         assertTrue(claimed, "Contribution should be marked as claimed");
     }
 
-    function test_CreateVENFTPosition_LPTokenCalculation() public {
+    function test_CreateveNFTPosition_LPTokenCalculation() public {
         // Setup: Add contributions with different amounts and lock durations
         vm.startPrank(user1);
         fundingToken.approve(address(pool), 100000e18);
@@ -644,7 +644,7 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        pool.deployVENFT();
+        pool.deployVeNFT();
 
         // Calculate expected LP token allocations
         uint256 totalShares = pool.totalShares();
@@ -658,12 +658,12 @@ contract ProratedPoolTest is Test {
         uint256 expectedUser2LPTokens = (contributorLPTokenAllocation *
             5200000) / 10400000;
 
-        // Create VENFT positions and verify LP token calculations
+        // Create veNFT positions and verify LP token calculations
         vm.prank(user1);
-        pool.createVENFTPosition();
+        pool.createVeNFTPosition();
 
         vm.prank(user2);
-        pool.createVENFTPosition();
+        pool.createVeNFTPosition();
 
         // Verify both users received equal LP tokens (since they have equal shares)
         assertEq(
@@ -695,7 +695,7 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        pool.deployVENFT();
+        pool.deployVeNFT();
 
         // Check if there are any remaining funding tokens after liquidity deployment
         uint256 remainingBalance = fundingToken.balanceOf(address(this));
@@ -718,7 +718,7 @@ contract ProratedPoolTest is Test {
     }
 
     function test_DevTeamFundsWithdrawNotFinalized() public {
-        vm.expectRevert(ProratedPool.VENFTNotDeployed.selector);
+        vm.expectRevert(ProratedPool.VeNFTNotDeployed.selector);
         pool.devTeamFundsWithdraw();
     }
 
@@ -753,7 +753,7 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        pool.deployVENFT();
+        pool.deployVeNFT();
 
         // Dev team withdraw (event emission is implicitly tested)
         pool.devTeamFundsWithdraw();
@@ -835,7 +835,7 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        pool.deployVENFT();
+        pool.deployVeNFT();
         pool.deployGovernor();
 
         // Check that dev team allocation is reserved
@@ -930,7 +930,7 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        pool.deployVENFT();
+        pool.deployVeNFT();
 
         // Try to deploy treasury before governor is deployed
         vm.expectRevert(ProratedPool.GovernorNotDeployed.selector);
@@ -945,7 +945,7 @@ contract ProratedPoolTest is Test {
         assertTrue(address(pool.proratedToken()) != address(0));
         assertTrue(address(pool.proswapPair()) != address(0));
         assertGt(pool.totalLPTokensReceived(), 0);
-        assertTrue(address(pool.proratedVENFT()) != address(0));
+        assertTrue(address(pool.proratedVeNFT()) != address(0));
         assertTrue(address(pool.proratedGovernor()) != address(0));
         assertTrue(address(pool.proratedTreasury()) != address(0));
 
@@ -966,7 +966,7 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        pool.deployVENFT();
+        pool.deployVeNFT();
 
         // Deploy governor
         pool.deployGovernor();
@@ -974,7 +974,7 @@ contract ProratedPoolTest is Test {
         assertTrue(address(pool.proratedToken()) != address(0));
         assertTrue(address(pool.proswapPair()) != address(0));
         assertGt(pool.totalLPTokensReceived(), 0);
-        assertTrue(address(pool.proratedVENFT()) != address(0));
+        assertTrue(address(pool.proratedVeNFT()) != address(0));
         assertTrue(address(pool.proratedGovernor()) != address(0));
         assertEq(address(pool.proratedTreasury()), address(0));
 
@@ -983,7 +983,7 @@ contract ProratedPoolTest is Test {
         pool.deployGovernor();
     }
 
-    function test_DeployGovernorVENFTDependency() public {
+    function test_DeployGovernorveNFTDependency() public {
         // Setup: Add contributions and deploy token, pair, and liquidity
         vm.startPrank(user1);
         fundingToken.approve(address(pool), 1000000e18);
@@ -996,20 +996,20 @@ contract ProratedPoolTest is Test {
         pool.deployPair();
         pool.deployLiquidity();
 
-        // Try to deploy governor before VENFT is deployed
-        vm.expectRevert(ProratedPool.VENFTNotDeployed.selector);
+        // Try to deploy governor before veNFT is deployed
+        vm.expectRevert(ProratedPool.VeNFTNotDeployed.selector);
         pool.deployGovernor();
 
-        // Deploy VENFT
-        pool.deployVENFT();
+        // Deploy veNFT
+        pool.deployVeNFT();
 
-        // Deploy governor (should succeed now that VENFT is deployed)
+        // Deploy governor (should succeed now that veNFT is deployed)
         pool.deployGovernor();
 
         assertTrue(address(pool.proratedToken()) != address(0));
         assertTrue(address(pool.proswapPair()) != address(0));
         assertGt(pool.totalLPTokensReceived(), 0);
-        assertTrue(address(pool.proratedVENFT()) != address(0));
+        assertTrue(address(pool.proratedVeNFT()) != address(0));
         assertTrue(address(pool.proratedGovernor()) != address(0));
         assertEq(address(pool.proratedTreasury()), address(0));
     }
@@ -1032,7 +1032,7 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        pool.deployVENFT();
+        pool.deployVeNFT();
         pool.deployGovernor();
         pool.deployTreasury();
 
@@ -1059,7 +1059,7 @@ contract ProratedPoolTest is Test {
         );
     }
 
-    function test_CreateVENFTPositionTransfersVeNFT() public {
+    function test_CreateveNFTPositionTransfersVeNFT() public {
         // Setup: Add contributions and finalize pool
         vm.startPrank(user1);
         fundingToken.approve(address(pool), 200000e18);
@@ -1071,7 +1071,7 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        pool.deployVENFT();
+        pool.deployVeNFT();
 
         // Check initial state
         (, , , bool claimedBefore) = pool.contributions(user1);
@@ -1079,14 +1079,14 @@ contract ProratedPoolTest is Test {
 
         // Create veNFT position
         vm.prank(user1);
-        pool.createVENFTPosition();
+        pool.createVeNFTPosition();
 
         // Check that user now owns the veNFT
         (, , , bool claimedAfter) = pool.contributions(user1);
         assertEq(claimedAfter, true);
 
         // Verify user has a veNFT (tokenId should be 1 for first position)
-        assertEq(pool.proratedVENFT().ownerOf(1), user1);
+        assertEq(pool.proratedVeNFT().ownerOf(1), user1);
     }
 
     function test_DevTeamVeNFTTransfer() public {
@@ -1101,7 +1101,7 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        pool.deployVENFT();
+        pool.deployVeNFT();
         pool.deployGovernor();
 
         // Check initial state
@@ -1115,7 +1115,7 @@ contract ProratedPoolTest is Test {
         assertEq(pool.developerLPTokens(), 0);
 
         // Verify dev team has a veNFT (tokenId should be 1 for first position)
-        assertEq(pool.proratedVENFT().ownerOf(1), pool.developer());
+        assertEq(pool.proratedVeNFT().ownerOf(1), pool.developer());
     }
 
     function test_ReleaseDevTeamLPTokens_GovernorNotDeployed() public {
@@ -1130,7 +1130,7 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        pool.deployVENFT();
+        pool.deployVeNFT();
         // Don't deploy governor
 
         // Try to release dev team LP tokens without governor deployed
@@ -1151,7 +1151,7 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        pool.deployVENFT();
+        pool.deployVeNFT();
         pool.deployGovernor();
 
         // Release dev team LP tokens (event emission is implicitly tested)
@@ -1178,7 +1178,7 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        pool.deployVENFT();
+        pool.deployVeNFT();
         pool.deployGovernor();
         pool.deployTreasury();
 
@@ -1193,7 +1193,7 @@ contract ProratedPoolTest is Test {
 
         // Verify treasury has a veNFT (tokenId should be 1 for first position)
         assertEq(
-            pool.proratedVENFT().ownerOf(1),
+            pool.proratedVeNFT().ownerOf(1),
             address(pool.proratedTreasury())
         );
     }
@@ -1210,7 +1210,7 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        pool.deployVENFT();
+        pool.deployVeNFT();
         pool.deployGovernor();
         // Note: Treasury not deployed
 
@@ -1231,7 +1231,7 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        pool.deployVENFT();
+        pool.deployVeNFT();
         pool.deployGovernor();
         pool.deployTreasury();
 
@@ -1255,7 +1255,7 @@ contract ProratedPoolTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        pool.deployVENFT();
+        pool.deployVeNFT();
         pool.deployGovernor();
         pool.deployTreasury();
 
@@ -1416,10 +1416,10 @@ contract ModifierTests is Test {
         vm.expectRevert(ProratedPool.TokenNotDeployed.selector);
         pool.deployPair();
 
-        // Try to create VENFT position before VENFT is deployed
-        vm.expectRevert(ProratedPool.VENFTNotDeployed.selector);
+        // Try to create veNFT position before veNFT is deployed
+        vm.expectRevert(ProratedPool.VeNFTNotDeployed.selector);
         vm.prank(user1);
-        pool.createVENFTPosition();
+        pool.createVeNFTPosition();
     }
 
     function test_PoolEndedModifier() public {

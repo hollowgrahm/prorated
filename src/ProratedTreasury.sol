@@ -5,7 +5,7 @@ import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
 import {ReentrancyGuard} from "lib/solmate/src/utils/ReentrancyGuard.sol";
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
-import {IProratedVENFT} from "./interfaces/IProratedVENFT.sol";
+import {IProratedVeNFT} from "./interfaces/IProratedVeNFT.sol";
 import {IProratedGovernor} from "./interfaces/IProratedGovernor.sol";
 
 contract ProratedTreasury is Owned, ReentrancyGuard {
@@ -28,7 +28,7 @@ contract ProratedTreasury is Owned, ReentrancyGuard {
     );
     event TreasuryVeNFTWithdrawn(uint256 tokenId, uint256 amount);
 
-    IProratedVENFT public venft;
+    IProratedVeNFT public venft;
     IProratedGovernor public governor;
     ERC20 public proswapPair;
 
@@ -44,7 +44,7 @@ contract ProratedTreasury is Owned, ReentrancyGuard {
     }
 
     constructor(TreasuryParams memory params) Owned(params.owner) {
-        venft = IProratedVENFT(params.venft);
+        venft = IProratedVeNFT(params.venft);
         governor = IProratedGovernor(params.governor);
         proswapPair = ERC20(params.proswapPair);
     }

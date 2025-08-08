@@ -10,10 +10,10 @@ import {ProratedToken} from "./ProratedToken.sol";
 import {IProratedToken} from "./interfaces/IProratedToken.sol";
 import {IProswapFactory} from "./interfaces/IProswapFactory.sol";
 import {IProswapRouter} from "./interfaces/IProswapRouter.sol";
-import {IProratedVENFT} from "./interfaces/IProratedVENFT.sol";
+import {IProratedVeNFT} from "./interfaces/IProratedVeNFT.sol";
 import {IProratedGovernor} from "./interfaces/IProratedGovernor.sol";
 import {IProratedTreasury} from "./interfaces/IProratedTreasury.sol";
-import {ProratedVENFT} from "./ProratedVENFT.sol";
+import {ProratedVeNFT} from "./ProratedVeNFT.sol";
 import {ProratedGovernor} from "./ProratedGovernor.sol";
 import {ProratedTreasury} from "./ProratedTreasury.sol";
 
@@ -35,8 +35,8 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     error PairAlreadyDeployed();
     error LiquidityNotDeployed();
     error LiquidityAlreadyDeployed();
-    error VENFTNotDeployed();
-    error VENFTAlreadyDeployed();
+    error VeNFTNotDeployed();
+    error VeNFTAlreadyDeployed();
     error GovernorNotDeployed();
     error GovernorAlreadyDeployed();
     error TreasuryNotDeployed();
@@ -93,7 +93,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     event RefundClaimed(address indexed contributor, uint256 amount);
     event DeveloperFundsWithdrawn(address indexed developer, uint256 amount);
     event TokenDeployed(address indexed token);
-    event VENFTDeployed(address indexed venft);
+    event VeNFTDeployed(address indexed venft);
     event PairDeployed(address indexed pair);
     event LiquidityDeployed(
         uint256 lpTokensReceived,
@@ -103,7 +103,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     event TreasuryDeployed(address indexed treasury);
     event GovernorDeployed(address indexed governor);
 
-    event VENFTPositionCreated(
+    event VeNFTPositionCreated(
         address indexed user,
         uint256 indexed tokenId,
         uint256 lpTokens,
@@ -429,20 +429,20 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         );
     }
 
-    /// @notice Deploy VENFT contract (anyone can call, first deployment wins)
-    function deployVENFT() external {
-        // Step 1: Check if VENFT has already been deployed (prevent double deployment)
-        if (address(proratedVENFT) != address(0)) revert VENFTAlreadyDeployed();
+    /// @notice Deploy veNFT contract (anyone can call, first deployment wins)
+    function deployVeNFT() external {
+        // Step 1: Check if veNFT has already been deployed (prevent double deployment)
+        if (address(proratedVeNFT) != address(0)) revert VeNFTAlreadyDeployed();
         // Step 2: Check if liquidity has been deployed (prerequisite)
         if (totalLPTokensReceived == 0) revert LiquidityNotDeployed();
 
-        // Step 3: Deploy the ProratedVENFT contract with the pair address
-        proratedVENFT = IProratedVENFT(
-            address(new ProratedVENFT(address(proswapPair)))
+        // Step 3: Deploy the Prorated veNFT contract with the pair address
+        proratedVeNFT = IProratedVeNFT(
+            address(new ProratedVeNFT(address(proswapPair)))
         );
 
         // Step 4: Emit event for off-chain tracking
-        emit VENFTDeployed(address(proratedVENFT));
+        emit VeNFTDeployed(address(proratedVeNFT));
     }
 
     /// @notice Deploy Governor contract (anyone can call, first deployment wins)
@@ -450,12 +450,12 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         // Step 1: Check if governor has already been deployed (prevent double deployment)
         if (address(proratedGovernor) != address(0))
             revert GovernorAlreadyDeployed();
-        // Step 2: Check if VENFT has been deployed (prerequisite)
-        if (address(proratedVENFT) == address(0)) revert VENFTNotDeployed();
+        // Step 2: Check if veNFT has been deployed (prerequisite)
+        if (address(proratedVeNFT) == address(0)) revert VeNFTNotDeployed();
 
-        // Step 4: Deploy the ProratedGovernor contract with VENFT and pool addresses
+        // Step 4: Deploy the ProratedGovernor contract with veNFT and pool addresses
         proratedGovernor = IProratedGovernor(
-            address(new ProratedGovernor(address(proratedVENFT), address(this)))
+            address(new ProratedGovernor(address(proratedVeNFT), address(this)))
         );
 
         // Step 5: Add pool as approved target for governance proposals
@@ -479,7 +479,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
             address(
                 new ProratedTreasury(
                     ProratedTreasury.TreasuryParams({
-                        venft: address(proratedVENFT),
+                        venft: address(proratedVeNFT),
                         governor: address(proratedGovernor),
                         proswapPair: proswapPair,
                         owner: developer
@@ -495,9 +495,9 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     // ============ USER POSITION MANAGEMENT ============
     /// @notice Creates a veNFT position for a user based on their contribution
     /// @dev Can only be called after pool is finalized and if user has unclaimed contribution
-    function createVENFTPosition() external nonReentrant {
-        // Step 1: Check that VENFT has been deployed (required for position creation)
-        if (address(proratedVENFT) == address(0)) revert VENFTNotDeployed();
+    function createVeNFTPosition() external nonReentrant {
+        // Step 1: Check that veNFT has been deployed (required for position creation)
+        if (address(proratedVeNFT) == address(0)) revert VeNFTNotDeployed();
         // Step 1: Get user's contribution data from storage
         Contribution memory userContribution = contributions[msg.sender];
 
@@ -517,18 +517,18 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         // Step 6: Mark contribution as claimed to prevent double-claiming
         contributions[msg.sender].claimed = true;
 
-        // Step 7: Approve VENFT contract to spend user's LP tokens
-        ERC20(proswapPair).approve(address(proratedVENFT), userLPTokens);
+        // Step 7: Approve veNFT contract to spend user's LP tokens
+        ERC20(proswapPair).approve(address(proratedVeNFT), userLPTokens);
 
         // Step 8: Create veNFT position with user's lock duration (convert weeks to seconds)
         uint256 lockDuration = userContribution.lockDuration * WEEK;
-        uint256 tokenId = proratedVENFT.createLock(userLPTokens, lockDuration);
+        uint256 tokenId = proratedVeNFT.createLock(userLPTokens, lockDuration);
 
         // Step 9: Transfer the veNFT from pool to user
-        proratedVENFT.transferFrom(address(this), msg.sender, tokenId);
+        proratedVeNFT.transferFrom(address(this), msg.sender, tokenId);
 
         // Step 10: Emit event for off-chain tracking
-        emit VENFTPositionCreated(
+        emit VeNFTPositionCreated(
             msg.sender,
             tokenId,
             userLPTokens,
@@ -540,8 +540,8 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     /// @notice Allows dev team to withdraw remaining funding tokens after pool is finalized
     /// @dev Can only be called by dev team after pool has reached minimum and ended, after liquidity is deployed
     function devTeamFundsWithdraw() external onlyOwner {
-        // Step 1: Check that VENFT has been deployed (required for withdrawal)
-        if (address(proratedVENFT) == address(0)) revert VENFTNotDeployed();
+        // Step 1: Check that veNFT has been deployed (required for withdrawal)
+        if (address(proratedVeNFT) == address(0)) revert VeNFTNotDeployed();
 
         // Step 2: Transfer developmentFund to developer
         fundingToken.safeTransfer(msg.sender, developmentFund);
@@ -566,14 +566,14 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         developerLPTokens = 0;
 
         // Step 5: Create max-locked veNFT position for developer (MAX_LOCK weeks)
-        ERC20(proswapPair).approve(address(proratedVENFT), allocation);
-        uint256 devTeamTokenId = proratedVENFT.createLock(
+        ERC20(proswapPair).approve(address(proratedVeNFT), allocation);
+        uint256 devTeamTokenId = proratedVeNFT.createLock(
             allocation,
             MAX_LOCK * WEEK
         );
 
         // Step 6: Transfer the veNFT to developer
-        proratedVENFT.transferFrom(address(this), developer, devTeamTokenId);
+        proratedVeNFT.transferFrom(address(this), developer, devTeamTokenId);
 
         // Step 7: Emit event for off-chain tracking
         emit DeveloperTokensReleased(developer, allocation, devTeamTokenId);
@@ -594,14 +594,14 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         treasuryLPTokens = 0;
 
         // Step 4: Approve and create veNFT position for treasury (MAX_LOCK weeks)
-        ERC20(proswapPair).approve(address(proratedVENFT), allocationTreasury);
-        uint256 treasuryTokenId = proratedVENFT.createLock(
+        ERC20(proswapPair).approve(address(proratedVeNFT), allocationTreasury);
+        uint256 treasuryTokenId = proratedVeNFT.createLock(
             allocationTreasury,
             MAX_LOCK * WEEK
         );
 
         // Step 5: Transfer the veNFT to treasury
-        proratedVENFT.transferFrom(
+        proratedVeNFT.transferFrom(
             address(this),
             address(proratedTreasury),
             treasuryTokenId

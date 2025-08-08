@@ -14,7 +14,7 @@ import {SafeCastLibrary} from "./libraries/SafeCastLibrary.sol";
 ///      Users can withdraw the decayed portion of their locked tokens while maintaining voting power for the remaining portion.
 ///      Rewards are distributed based on voting power and auto-compounded into locked positions.
 /// @author Prorated Protocol
-contract ProratedVENFT is ERC721, ReentrancyGuard {
+contract ProratedVeNFT is ERC721, ReentrancyGuard {
     using SafeTransferLib for ERC20;
     using SafeCastLibrary for int128;
     using SafeCastLibrary for uint256;
@@ -116,9 +116,9 @@ contract ProratedVENFT is ERC721, ReentrancyGuard {
     }
 
     // ============ CONSTRUCTOR ============
-    /// @notice Initializes the ProratedVENFT contract
+    /// @notice Initializes the Prorated veNFT contract
     /// @param _token The ERC20 token address to be locked (LP tokens)
-    constructor(address _token) ERC721("Prorated VENFT", "vePRO") {
+    constructor(address _token) ERC721("Prorated veNFT", "vePRO") {
         // Step 1: Set the immutable token address for LP token locking
         TOKEN = ERC20(_token);
 
@@ -130,7 +130,7 @@ contract ProratedVENFT is ERC721, ReentrancyGuard {
         string memory lpTokenSymbol = TOKEN.symbol();
 
         // Step 4: Update ERC721 name and symbol based on LP token
-        name = string(abi.encodePacked("Prorated VENFT - ", lpTokenName));
+        name = string(abi.encodePacked("Prorated veNFT - ", lpTokenName));
         symbol = string(abi.encodePacked("ve", lpTokenSymbol));
     }
 
@@ -192,6 +192,44 @@ contract ProratedVENFT is ERC721, ReentrancyGuard {
         return _tokenId;
     }
 
+    /// @notice Extends the lock duration of a veNFT position
+    /// @param _tokenId The token ID of the veNFT position to extend
+    /// @param _newDuration New lock duration in seconds
+    /// @dev This function burns the old veNFT and creates a new one with the extended duration
+    function extendLockDuration(
+        uint256 _tokenId,
+        uint256 _newDuration
+    ) external nonReentrant {
+        // Step 1: Check authorization (owner or approved operator)
+        if (!_isApprovedOrOwner(msg.sender, _tokenId)) revert("NOT_AUTHORIZED");
+
+        // Step 2: Get current locked balance and validate extension
+        LockedBalance memory oldLocked = _locked[_tokenId];
+        uint256 currentAmount = oldLocked.amount.toUint256();
+
+        // Step 3: Validate that new duration is greater than current remaining time (allows extending expired locks)
+        uint256 currentRemainingTime = oldLocked.end > block.timestamp
+            ? oldLocked.end - block.timestamp
+            : 0;
+        if (_newDuration <= currentRemainingTime)
+            revert LockDurationNotInFuture();
+
+        // Step 4: Burn the old NFT and clear its locked balance
+        _burn(_tokenId);
+        _locked[_tokenId] = LockedBalance(0, 0);
+        _checkpoint(_tokenId, oldLocked, LockedBalance(0, 0));
+
+        // Step 5: Create new NFT with extended duration using _resetLock
+        uint256 newTokenId = _resetLock(
+            currentAmount,
+            _newDuration,
+            msg.sender
+        );
+
+        // Step 6: Emit lock extension event
+        emit LockExtended(_tokenId, oldLocked.end, _locked[newTokenId].end);
+    }
+
     /// @notice Internal function to create a new veNFT lock position without transferring tokens
     /// @param _value Amount of tokens to lock (already held by contract)
     /// @param _lockDuration Duration of the lock in seconds
@@ -203,55 +241,36 @@ contract ProratedVENFT is ERC721, ReentrancyGuard {
         uint256 _lockDuration,
         address _to
     ) internal returns (uint256) {
+        // Step 1: Calculate unlock time rounded up to nearest week for protocol consistency
         uint256 unlockTime = ((block.timestamp + _lockDuration) / WEEK) * WEEK;
 
+        // Step 2: Validate input parameters
         if (_value == 0) revert ZeroAmount();
         if (unlockTime <= block.timestamp) revert LockDurationNotInFuture();
         if (unlockTime > block.timestamp + MAXTIME)
             revert LockDurationTooLong();
 
+        // Step 3: Generate new token ID for the reset lock
         uint256 _tokenId = ++tokenId;
+
+        // Step 4: Mint NFT to recipient (tokens already in contract, no transfer needed)
         _mint(_to, _tokenId);
 
-        // Create lock without transferring tokens (they're already in the contract)
+        // Step 5: Update total supply to include the new lock amount
         uint256 supplyBefore = supply;
         supply = supplyBefore + _value;
 
+        // Step 6: Create new locked balance with extended duration
         LockedBalance memory newLocked = LockedBalance(
             _value.toInt128(),
             unlockTime
         );
         _locked[_tokenId] = newLocked;
 
+        // Step 7: Update voting power history for the new lock
         _checkpoint(_tokenId, LockedBalance(0, 0), newLocked);
 
         return _tokenId;
-    }
-
-    /// @notice Extends the lock duration of a veNFT position
-    /// @param _tokenId The token ID of the veNFT position to extend
-    /// @param _newDuration New lock duration in seconds
-    /// @dev This function burns the old veNFT and creates a new one with the extended duration
-    function extendLockDuration(
-        uint256 _tokenId,
-        uint256 _newDuration
-    ) external nonReentrant {
-        if (!_isApprovedOrOwner(msg.sender, _tokenId)) revert("NOT_AUTHORIZED");
-
-        LockedBalance memory oldLocked = _locked[_tokenId];
-        uint256 currentAmount = oldLocked.amount.toUint256();
-
-        _burn(_tokenId);
-        _locked[_tokenId] = LockedBalance(0, 0);
-        _checkpoint(_tokenId, oldLocked, LockedBalance(0, 0));
-
-        uint256 newTokenId = _resetLock(
-            currentAmount,
-            _newDuration,
-            msg.sender
-        );
-
-        emit LockExtended(_tokenId, oldLocked.end, _locked[newTokenId].end);
     }
 
     /// @notice Increases the locked amount for an existing veNFT position

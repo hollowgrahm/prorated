@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import {ReentrancyGuard} from "lib/solmate/src/utils/ReentrancyGuard.sol";
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
-import {IProratedVENFT} from "./interfaces/IProratedVENFT.sol";
+import {IProratedVeNFT} from "./interfaces/IProratedVeNFT.sol";
 
 contract ProratedGovernor is Owned, ReentrancyGuard {
     // ============ ERRORS ============
@@ -53,7 +53,7 @@ contract ProratedGovernor is Owned, ReentrancyGuard {
     uint256 public constant QUORUM_DENOMINATOR = 100;
 
     // ============ STATE VARIABLES ============
-    IProratedVENFT public immutable venft;
+    IProratedVeNFT public immutable venft;
     uint256 public proposalCount;
     mapping(uint256 => Proposal) public proposals;
     mapping(uint256 => mapping(uint256 => bool)) public hasVoted; // proposalId => tokenId => hasVoted
@@ -84,7 +84,7 @@ contract ProratedGovernor is Owned, ReentrancyGuard {
 
     // ============ CONSTRUCTOR ============
     constructor(address _venft, address _owner) Owned(_owner) {
-        venft = IProratedVENFT(_venft);
+        venft = IProratedVeNFT(_venft);
     }
 
     // ============ MODIFIERS ============

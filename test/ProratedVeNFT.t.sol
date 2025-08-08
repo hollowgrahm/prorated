@@ -2,11 +2,11 @@
 pragma solidity ^0.8.10;
 
 import {Test} from "lib/forge-std/src/Test.sol";
-import {ProratedVENFT} from "../src/ProratedVENFT.sol";
+import {ProratedVeNFT} from "../src/ProratedVeNFT.sol";
 import {ERC20Mintable} from "./mocks/ERC20Mintable.sol";
 
-contract ProratedVENFTTest is Test {
-    ProratedVENFT public venft;
+contract ProratedVeNFTTest is Test {
+    ProratedVeNFT public venft;
     ERC20Mintable public token;
 
     address public owner = address(this);
@@ -65,7 +65,7 @@ contract ProratedVENFTTest is Test {
 
     function setUp() public {
         token = new ERC20Mintable("Test Token", "TEST");
-        venft = new ProratedVENFT(address(token));
+        venft = new ProratedVeNFT(address(token));
 
         // Mint tokens to users
         token.mint(TOKEN_10, user1);
@@ -77,7 +77,7 @@ contract ProratedVENFTTest is Test {
     function test_Constructor_DynamicNaming() public {
         // Create a new VENFT with a different token to test dynamic naming
         ERC20Mintable customToken = new ERC20Mintable("Custom LP Token", "CLP");
-        ProratedVENFT customVenft = new ProratedVENFT(address(customToken));
+        ProratedVeNFT customVenft = new ProratedVeNFT(address(customToken));
 
         // Verify the dynamic naming works correctly
         assertEq(customVenft.name(), "Prorated veNFT - Custom LP Token");
@@ -105,7 +105,7 @@ contract ProratedVENFTTest is Test {
         assertEq(venft.balanceOf(user1), 1);
 
         // Check locked balance
-        ProratedVENFT.LockedBalance memory locked = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory locked = venft.locked(tokenId);
         assertEq(locked.amount, int128(uint128(TOKEN_1)));
         assertEq(locked.end, ((block.timestamp + lockDuration) / WEEK) * WEEK);
 
@@ -120,7 +120,7 @@ contract ProratedVENFTTest is Test {
         vm.startPrank(user1);
         token.approve(address(venft), TOKEN_1);
 
-        vm.expectRevert(ProratedVENFT.ZeroAmount.selector);
+        vm.expectRevert(ProratedVeNFT.ZeroAmount.selector);
         venft.createLock(0, 1 weeks);
 
         vm.stopPrank();
@@ -130,7 +130,7 @@ contract ProratedVENFTTest is Test {
         vm.startPrank(user1);
         token.approve(address(venft), TOKEN_1);
 
-        vm.expectRevert(ProratedVENFT.LockDurationNotInFuture.selector);
+        vm.expectRevert(ProratedVeNFT.LockDurationNotInFuture.selector);
         venft.createLock(TOKEN_1, 0);
 
         vm.stopPrank();
@@ -141,7 +141,7 @@ contract ProratedVENFTTest is Test {
         token.approve(address(venft), TOKEN_1);
 
         // Use a duration that will definitely exceed MAXTIME after rounding
-        vm.expectRevert(ProratedVENFT.LockDurationTooLong.selector);
+        vm.expectRevert(ProratedVeNFT.LockDurationTooLong.selector);
         venft.createLock(TOKEN_1, MAXTIME + WEEK);
 
         vm.stopPrank();
@@ -258,17 +258,17 @@ contract ProratedVENFTTest is Test {
 
         // Test that 1 day lock becomes 1 week
         uint256 tokenId1 = venft.createLock(TOKEN_1, 1 days);
-        ProratedVENFT.LockedBalance memory locked1 = venft.locked(tokenId1);
+        ProratedVeNFT.LockedBalance memory locked1 = venft.locked(tokenId1);
         assertEq(locked1.end, ((block.timestamp + 1 days) / WEEK) * WEEK);
 
         // Test that 8 days lock becomes 2 weeks
         uint256 tokenId2 = venft.createLock(TOKEN_1, 8 days);
-        ProratedVENFT.LockedBalance memory locked2 = venft.locked(tokenId2);
+        ProratedVeNFT.LockedBalance memory locked2 = venft.locked(tokenId2);
         assertEq(locked2.end, ((block.timestamp + 8 days) / WEEK) * WEEK);
 
         // Test that exact week duration stays the same
         uint256 tokenId3 = venft.createLock(TOKEN_1, 1 weeks);
-        ProratedVENFT.LockedBalance memory locked3 = venft.locked(tokenId3);
+        ProratedVeNFT.LockedBalance memory locked3 = venft.locked(tokenId3);
         assertEq(locked3.end, ((block.timestamp + 1 weeks) / WEEK) * WEEK);
 
         vm.stopPrank();
@@ -319,7 +319,7 @@ contract ProratedVENFTTest is Test {
         uint256 tokenId = venft.createLock(TOKEN_1, 1 weeks);
 
         // Get initial locked balance
-        ProratedVENFT.LockedBalance memory initialLocked = venft.locked(
+        ProratedVeNFT.LockedBalance memory initialLocked = venft.locked(
             tokenId
         );
         assertEq(initialLocked.amount, int128(uint128(TOKEN_1)));
@@ -328,7 +328,7 @@ contract ProratedVENFTTest is Test {
         venft.increaseAmount(tokenId, TOKEN_1);
 
         // Check updated locked balance
-        ProratedVENFT.LockedBalance memory updatedLocked = venft.locked(
+        ProratedVeNFT.LockedBalance memory updatedLocked = venft.locked(
             tokenId
         );
         assertEq(updatedLocked.amount, int128(uint128(TOKEN_1 * 2)));
@@ -347,7 +347,7 @@ contract ProratedVENFTTest is Test {
         token.approve(address(venft), TOKEN_1);
         uint256 tokenId = venft.createLock(TOKEN_1, 1 weeks);
 
-        vm.expectRevert(ProratedVENFT.ZeroAmount.selector);
+        vm.expectRevert(ProratedVeNFT.ZeroAmount.selector);
         venft.increaseAmount(tokenId, 0);
 
         vm.stopPrank();
@@ -372,7 +372,7 @@ contract ProratedVENFTTest is Test {
         // Fast forward past lock expiry
         skip(2 weeks);
 
-        vm.expectRevert(ProratedVENFT.LockExpired.selector);
+        vm.expectRevert(ProratedVeNFT.LockExpired.selector);
         venft.increaseAmount(tokenId, TOKEN_1);
 
         vm.stopPrank();
@@ -411,7 +411,7 @@ contract ProratedVENFTTest is Test {
         venft.increaseAmount(tokenId, TOKEN_1);
 
         // Check updated locked balance
-        ProratedVENFT.LockedBalance memory updatedLocked = venft.locked(
+        ProratedVeNFT.LockedBalance memory updatedLocked = venft.locked(
             tokenId
         );
         assertEq(updatedLocked.amount, int128(uint128(TOKEN_1 * 2)));
@@ -435,7 +435,7 @@ contract ProratedVENFTTest is Test {
         venft.increaseAmount(tokenId, TOKEN_1);
 
         // Check updated locked balance
-        ProratedVENFT.LockedBalance memory updatedLocked = venft.locked(
+        ProratedVeNFT.LockedBalance memory updatedLocked = venft.locked(
             tokenId
         );
         assertEq(updatedLocked.amount, int128(uint128(TOKEN_1 * 2)));
@@ -450,7 +450,7 @@ contract ProratedVENFTTest is Test {
         uint256 tokenId = venft.createLock(TOKEN_1, 1 weeks);
 
         // Get initial locked balance for event check
-        ProratedVENFT.LockedBalance memory initialLocked = venft.locked(
+        ProratedVeNFT.LockedBalance memory initialLocked = venft.locked(
             tokenId
         );
 
@@ -498,17 +498,17 @@ contract ProratedVENFTTest is Test {
 
         // First increase
         venft.increaseAmount(tokenId, TOKEN_1);
-        ProratedVENFT.LockedBalance memory locked1 = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory locked1 = venft.locked(tokenId);
         assertEq(locked1.amount, int128(uint128(TOKEN_1 * 2)));
 
         // Second increase
         venft.increaseAmount(tokenId, TOKEN_1);
-        ProratedVENFT.LockedBalance memory locked2 = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory locked2 = venft.locked(tokenId);
         assertEq(locked2.amount, int128(uint128(TOKEN_1 * 3)));
 
         // Third increase
         venft.increaseAmount(tokenId, TOKEN_1);
-        ProratedVENFT.LockedBalance memory locked3 = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory locked3 = venft.locked(tokenId);
         assertEq(locked3.amount, int128(uint128(TOKEN_1 * 4)));
 
         vm.stopPrank();
@@ -561,7 +561,7 @@ contract ProratedVENFTTest is Test {
         uint256 tokenId = venft.createLock(TOKEN_1, 4 weeks);
 
         // Try to withdraw before expiry
-        vm.expectRevert(ProratedVENFT.LockNotExpired.selector);
+        vm.expectRevert(ProratedVeNFT.LockNotExpired.selector);
         venft.withdraw(tokenId);
 
         vm.stopPrank();
@@ -656,7 +656,7 @@ contract ProratedVENFTTest is Test {
         uint256 tokenId = venft.createLock(TOKEN_1, 1 weeks);
 
         // Check initial locked balance
-        ProratedVENFT.LockedBalance memory initialLocked = venft.locked(
+        ProratedVeNFT.LockedBalance memory initialLocked = venft.locked(
             tokenId
         );
         assertGt(initialLocked.amount, 0);
@@ -668,7 +668,7 @@ contract ProratedVENFTTest is Test {
         venft.withdraw(tokenId);
 
         // Check locked balance is cleared
-        ProratedVENFT.LockedBalance memory clearedLocked = venft.locked(
+        ProratedVeNFT.LockedBalance memory clearedLocked = venft.locked(
             tokenId
         );
         assertEq(clearedLocked.amount, 0);
@@ -831,7 +831,7 @@ contract ProratedVENFTTest is Test {
         assertEq(venft.balanceOf(user1), 1);
 
         // Check that locked balance is updated
-        ProratedVENFT.LockedBalance memory updatedLocked = venft.locked(
+        ProratedVeNFT.LockedBalance memory updatedLocked = venft.locked(
             tokenId
         );
         assertEq(updatedLocked.amount, int128(uint128(currentVotingPower)));
@@ -852,7 +852,7 @@ contract ProratedVENFTTest is Test {
 
         // If voting power equals locked amount, there's no decay
         if (currentVotingPower == lockedAmount) {
-            vm.expectRevert(ProratedVENFT.ZeroBalance.selector);
+            vm.expectRevert(ProratedVeNFT.ZeroBalance.selector);
             venft.withdrawDecayed(tokenId);
         }
 
@@ -971,7 +971,7 @@ contract ProratedVENFTTest is Test {
         uint256 tokenId = venft.createLock(TOKEN_1, 4 weeks);
 
         // Get initial locked balance
-        ProratedVENFT.LockedBalance memory initialLocked = venft.locked(
+        ProratedVeNFT.LockedBalance memory initialLocked = venft.locked(
             tokenId
         );
         assertEq(initialLocked.amount, int128(uint128(TOKEN_1)));
@@ -986,7 +986,7 @@ contract ProratedVENFTTest is Test {
         venft.withdrawDecayed(tokenId);
 
         // Check locked balance is updated to current voting power
-        ProratedVENFT.LockedBalance memory updatedLocked = venft.locked(
+        ProratedVeNFT.LockedBalance memory updatedLocked = venft.locked(
             tokenId
         );
         assertEq(updatedLocked.amount, int128(uint128(currentVotingPower)));
@@ -1064,7 +1064,7 @@ contract ProratedVENFTTest is Test {
 
         // If voting power equals locked amount (both should be 0 for expired lock), there's no decay
         if (currentVotingPower == lockedAmount) {
-            vm.expectRevert(ProratedVENFT.ZeroBalance.selector);
+            vm.expectRevert(ProratedVeNFT.ZeroBalance.selector);
             venft.withdrawDecayed(tokenId);
         }
 
@@ -1167,7 +1167,7 @@ contract ProratedVENFTTest is Test {
         token.approve(address(venft), TOKEN_1);
         uint256 tokenId = venft.createLock(TOKEN_1, 1 weeks);
 
-        vm.expectRevert(ProratedVENFT.LockDurationNotInFuture.selector);
+        vm.expectRevert(ProratedVeNFT.LockDurationNotInFuture.selector);
         venft.extendLockDuration(tokenId, 0);
 
         vm.stopPrank();
@@ -1179,7 +1179,7 @@ contract ProratedVENFTTest is Test {
         token.approve(address(venft), TOKEN_1);
         uint256 tokenId = venft.createLock(TOKEN_1, 1 weeks);
 
-        vm.expectRevert(ProratedVENFT.LockDurationTooLong.selector);
+        vm.expectRevert(ProratedVeNFT.LockDurationTooLong.selector);
         venft.extendLockDuration(tokenId, 10 * 365 weeks);
 
         vm.stopPrank();
@@ -1222,7 +1222,7 @@ contract ProratedVENFTTest is Test {
         vm.startPrank(user1);
         token.approve(address(venft), TOKEN_1);
         uint256 tokenId = venft.createLock(TOKEN_1, 1 weeks);
-        ProratedVENFT.LockedBalance memory oldLocked = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory oldLocked = venft.locked(tokenId);
 
         uint256 newDuration = 4 weeks;
         uint256 expectedNewEnd = ((block.timestamp + newDuration) / 1 weeks) *
@@ -1250,7 +1250,7 @@ contract ProratedVENFTTest is Test {
         uint256 tokenId = venft.createLock(TOKEN_1, 1 weeks);
 
         // Get initial state
-        ProratedVENFT.LockedBalance memory initialLocked = venft.locked(
+        ProratedVeNFT.LockedBalance memory initialLocked = venft.locked(
             tokenId
         );
         uint256 initialVotingPower = venft.balanceOfNFT(tokenId);
@@ -1268,7 +1268,7 @@ contract ProratedVENFTTest is Test {
         assertEq(venft.ownerOf(newTokenId), user1);
 
         // Check that locked amount is preserved
-        ProratedVENFT.LockedBalance memory newLocked = venft.locked(newTokenId);
+        ProratedVeNFT.LockedBalance memory newLocked = venft.locked(newTokenId);
         assertEq(newLocked.amount, initialLocked.amount);
 
         // Check that duration is extended
@@ -1298,7 +1298,7 @@ contract ProratedVENFTTest is Test {
         assertEq(venft.ownerOf(newTokenId), user1);
 
         // Check that locked amount is preserved
-        ProratedVENFT.LockedBalance memory newLocked = venft.locked(newTokenId);
+        ProratedVeNFT.LockedBalance memory newLocked = venft.locked(newTokenId);
         assertEq(newLocked.amount, int128(uint128(TOKEN_1)));
 
         vm.stopPrank();
@@ -1536,7 +1536,7 @@ contract ProratedVENFTTest is Test {
         vm.startPrank(user1);
         token.approve(address(venft), TOKEN_1);
 
-        vm.expectRevert(ProratedVENFT.ZeroAmount.selector);
+        vm.expectRevert(ProratedVeNFT.ZeroAmount.selector);
         venft.createLock(0, 4 weeks);
 
         vm.stopPrank();
@@ -1865,7 +1865,7 @@ contract ProratedVENFTTest is Test {
         // Try to distribute zero rewards
         vm.startPrank(user2);
         token.approve(address(venft), TOKEN_1);
-        vm.expectRevert(ProratedVENFT.NoRewardsToDistribute.selector);
+        vm.expectRevert(ProratedVeNFT.NoRewardsToDistribute.selector);
         venft.distributeRewards(0);
         vm.stopPrank();
     }
@@ -1874,7 +1874,7 @@ contract ProratedVENFTTest is Test {
         // Try to distribute rewards when no voting power exists
         vm.startPrank(user2);
         token.approve(address(venft), TOKEN_1);
-        vm.expectRevert(ProratedVENFT.NoVotingPower.selector);
+        vm.expectRevert(ProratedVeNFT.NoVotingPower.selector);
         venft.distributeRewards(TOKEN_1);
         vm.stopPrank();
     }
@@ -2043,7 +2043,7 @@ contract ProratedVENFTTest is Test {
         // Try to distribute rewards (should fail due to zero voting power)
         vm.startPrank(user2);
         token.approve(address(venft), TOKEN_1);
-        vm.expectRevert(ProratedVENFT.NoVotingPower.selector);
+        vm.expectRevert(ProratedVeNFT.NoVotingPower.selector);
         venft.distributeRewards(TOKEN_1);
         vm.stopPrank();
     }
@@ -2142,7 +2142,7 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Get initial locked amount
-        ProratedVENFT.LockedBalance memory initialLocked = venft.locked(
+        ProratedVeNFT.LockedBalance memory initialLocked = venft.locked(
             tokenId
         );
         uint256 initialAmount = uint256(int256(initialLocked.amount));
@@ -2153,7 +2153,7 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Locked amount should increase
-        ProratedVENFT.LockedBalance memory newLocked = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory newLocked = venft.locked(tokenId);
         uint256 newAmount = uint256(int256(newLocked.amount));
         assertGt(newAmount, initialAmount);
     }
@@ -2171,7 +2171,7 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Locked amount should remain the same
-        ProratedVENFT.LockedBalance memory locked = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory locked = venft.locked(tokenId);
         uint256 amount = uint256(int256(locked.amount));
         assertEq(amount, TOKEN_1);
     }
@@ -2220,7 +2220,7 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Locked amount should increase
-        ProratedVENFT.LockedBalance memory locked = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory locked = venft.locked(tokenId);
         uint256 amount = uint256(int256(locked.amount));
         assertGt(amount, TOKEN_1);
     }
@@ -2249,7 +2249,7 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Locked amount should increase
-        ProratedVENFT.LockedBalance memory locked = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory locked = venft.locked(tokenId);
         uint256 amount = uint256(int256(locked.amount));
         assertGt(amount, TOKEN_1);
     }
@@ -2322,7 +2322,7 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Get initial locked amount
-        ProratedVENFT.LockedBalance memory initialLocked = venft.locked(
+        ProratedVeNFT.LockedBalance memory initialLocked = venft.locked(
             tokenId
         );
         uint256 initialAmount = uint256(int256(initialLocked.amount));
@@ -2343,7 +2343,7 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Locked amount should have increased twice
-        ProratedVENFT.LockedBalance memory finalLocked = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory finalLocked = venft.locked(tokenId);
         uint256 finalAmount = uint256(int256(finalLocked.amount));
         assertGt(finalAmount, initialAmount);
     }
@@ -2377,8 +2377,8 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Both should have increased locked amounts
-        ProratedVENFT.LockedBalance memory locked1 = venft.locked(tokenId1);
-        ProratedVENFT.LockedBalance memory locked2 = venft.locked(tokenId2);
+        ProratedVeNFT.LockedBalance memory locked1 = venft.locked(tokenId1);
+        ProratedVeNFT.LockedBalance memory locked2 = venft.locked(tokenId2);
 
         assertGt(uint256(int256(locked1.amount)), TOKEN_1);
         assertGt(uint256(int256(locked2.amount)), TOKEN_1);
@@ -2406,7 +2406,7 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Get locked amount before compounding
-        ProratedVENFT.LockedBalance memory lockedBefore = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory lockedBefore = venft.locked(tokenId);
         uint256 amountBefore = uint256(int256(lockedBefore.amount));
 
         // Compound rewards
@@ -2415,7 +2415,7 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Locked amount should increase
-        ProratedVENFT.LockedBalance memory lockedAfter = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory lockedAfter = venft.locked(tokenId);
         uint256 amountAfter = uint256(int256(lockedAfter.amount));
         assertGt(amountAfter, amountBefore);
     }
@@ -2476,7 +2476,7 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Locked amount should remain the same (no rewards to compound)
-        ProratedVENFT.LockedBalance memory locked = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory locked = venft.locked(tokenId);
         uint256 amount = uint256(int256(locked.amount));
         assertEq(amount, TOKEN_1);
     }
@@ -2853,7 +2853,7 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Get the locked balance
-        ProratedVENFT.LockedBalance memory locked = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory locked = venft.locked(tokenId);
 
         // Calculate expected slope: amount / MAXTIME
         uint256 expectedSlope = TOKEN_10 / MAXTIME;
@@ -3150,7 +3150,7 @@ contract ProratedVENFTTest is Test {
     function test_ErrorHandling_CreateLockZeroAmount() public {
         vm.startPrank(user1);
         token.approve(address(venft), TOKEN_1);
-        vm.expectRevert(ProratedVENFT.ZeroAmount.selector);
+        vm.expectRevert(ProratedVeNFT.ZeroAmount.selector);
         venft.createLock(0, 4 weeks);
         vm.stopPrank();
     }
@@ -3158,7 +3158,7 @@ contract ProratedVENFTTest is Test {
     function test_ErrorHandling_CreateLockZeroDuration() public {
         vm.startPrank(user1);
         token.approve(address(venft), TOKEN_1);
-        vm.expectRevert(ProratedVENFT.LockDurationNotInFuture.selector);
+        vm.expectRevert(ProratedVeNFT.LockDurationNotInFuture.selector);
         venft.createLock(TOKEN_1, 0);
         vm.stopPrank();
     }
@@ -3174,7 +3174,7 @@ contract ProratedVENFTTest is Test {
     function test_ErrorHandling_CreateLockExceedsMaxDuration() public {
         vm.startPrank(user1);
         token.approve(address(venft), TOKEN_1);
-        vm.expectRevert(ProratedVENFT.LockDurationTooLong.selector);
+        vm.expectRevert(ProratedVeNFT.LockDurationTooLong.selector);
         venft.createLock(TOKEN_1, MAXTIME + WEEK);
         vm.stopPrank();
     }
@@ -3196,7 +3196,7 @@ contract ProratedVENFTTest is Test {
 
         // Try to increase by zero
         vm.startPrank(user1);
-        vm.expectRevert(ProratedVENFT.ZeroAmount.selector);
+        vm.expectRevert(ProratedVeNFT.ZeroAmount.selector);
         venft.increaseAmount(tokenId, 0);
         vm.stopPrank();
     }
@@ -3223,7 +3223,7 @@ contract ProratedVENFTTest is Test {
         vm.startPrank(user1);
         token.mint(TOKEN_1, user1);
         token.approve(address(venft), TOKEN_1);
-        vm.expectRevert(ProratedVENFT.LockExpired.selector);
+        vm.expectRevert(ProratedVeNFT.LockExpired.selector);
         venft.increaseAmount(tokenId, TOKEN_1);
         vm.stopPrank();
     }
@@ -3258,7 +3258,7 @@ contract ProratedVENFTTest is Test {
 
         // Try to withdraw before expiry
         vm.startPrank(user1);
-        vm.expectRevert(ProratedVENFT.LockNotExpired.selector);
+        vm.expectRevert(ProratedVeNFT.LockNotExpired.selector);
         venft.withdraw(tokenId);
         vm.stopPrank();
     }
@@ -3292,7 +3292,7 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Check that there's no decayed amount immediately after creation
-        ProratedVENFT.LockedBalance memory locked = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory locked = venft.locked(tokenId);
         uint256 currentVotingPower = venft.balanceOfNFT(tokenId);
         uint256 decayedAmount = uint256(int256(locked.amount)) -
             currentVotingPower;
@@ -3300,7 +3300,7 @@ contract ProratedVENFTTest is Test {
         // If there's no decayed amount, the function should revert
         if (decayedAmount == 0) {
             vm.startPrank(user1);
-            vm.expectRevert(ProratedVENFT.ZeroBalance.selector);
+            vm.expectRevert(ProratedVeNFT.ZeroBalance.selector);
             venft.withdrawDecayed(tokenId);
             vm.stopPrank();
         } else {
@@ -3349,7 +3349,7 @@ contract ProratedVENFTTest is Test {
 
         // Verify the lock was extended by checking the new token ID
         uint256 newTokenId = tokenId + 1;
-        ProratedVENFT.LockedBalance memory locked = venft.locked(newTokenId);
+        ProratedVeNFT.LockedBalance memory locked = venft.locked(newTokenId);
         assertGt(locked.end, block.timestamp);
     }
 
@@ -3362,7 +3362,7 @@ contract ProratedVENFTTest is Test {
 
         // Try to extend with invalid duration
         vm.startPrank(user1);
-        vm.expectRevert(ProratedVENFT.LockDurationNotInFuture.selector);
+        vm.expectRevert(ProratedVeNFT.LockDurationNotInFuture.selector);
         venft.extendLockDuration(tokenId, 0);
         vm.stopPrank();
     }
@@ -3376,7 +3376,7 @@ contract ProratedVENFTTest is Test {
 
         // Try to extend with too long duration
         vm.startPrank(user1);
-        vm.expectRevert(ProratedVENFT.LockDurationTooLong.selector);
+        vm.expectRevert(ProratedVeNFT.LockDurationTooLong.selector);
         venft.extendLockDuration(tokenId, MAXTIME + WEEK);
         vm.stopPrank();
     }
@@ -3422,14 +3422,14 @@ contract ProratedVENFTTest is Test {
 
     function test_ErrorHandling_DistributeRewardsZeroAmount() public {
         vm.startPrank(user1);
-        vm.expectRevert(ProratedVENFT.NoRewardsToDistribute.selector);
+        vm.expectRevert(ProratedVeNFT.NoRewardsToDistribute.selector);
         venft.distributeRewards(0);
         vm.stopPrank();
     }
 
     function test_ErrorHandling_DistributeRewardsInsufficientBalance() public {
         vm.startPrank(user1);
-        vm.expectRevert(ProratedVENFT.NoVotingPower.selector);
+        vm.expectRevert(ProratedVeNFT.NoVotingPower.selector);
         venft.distributeRewards(TOKEN_1);
         vm.stopPrank();
     }
@@ -3439,7 +3439,7 @@ contract ProratedVENFTTest is Test {
         vm.startPrank(user1);
         token.mint(TOKEN_1, user1);
         token.approve(address(venft), TOKEN_1);
-        vm.expectRevert(ProratedVENFT.NoVotingPower.selector);
+        vm.expectRevert(ProratedVeNFT.NoVotingPower.selector);
         venft.distributeRewards(TOKEN_1);
         vm.stopPrank();
     }
@@ -3455,7 +3455,7 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Verify the lock was created with maximum duration
-        ProratedVENFT.LockedBalance memory locked = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory locked = venft.locked(tokenId);
         assertEq(locked.end, ((block.timestamp + MAXTIME) / WEEK) * WEEK);
 
         // Voting power should be maximum
@@ -3478,7 +3478,7 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Verify the lock was created with minimum duration
-        ProratedVENFT.LockedBalance memory locked = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory locked = venft.locked(tokenId);
         assertEq(locked.end, ((block.timestamp + 1 weeks) / WEEK) * WEEK);
 
         // Voting power should be low
@@ -3505,7 +3505,7 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Verify the lock was created
-        ProratedVENFT.LockedBalance memory locked = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory locked = venft.locked(tokenId);
         assertEq(uint256(int256(locked.amount)), maxAmount);
 
         // Voting power should be very high
@@ -3521,7 +3521,7 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Verify the lock was created
-        ProratedVENFT.LockedBalance memory locked = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory locked = venft.locked(tokenId);
         assertEq(uint256(int256(locked.amount)), 1);
 
         // Voting power might be 0 for very small amounts due to rounding
@@ -3564,7 +3564,7 @@ contract ProratedVENFTTest is Test {
 
         // Verify the final state
         uint256 newTokenId = tokenId + 1;
-        ProratedVENFT.LockedBalance memory locked = venft.locked(newTokenId);
+        ProratedVeNFT.LockedBalance memory locked = venft.locked(newTokenId);
         assertGt(locked.end, block.timestamp);
         assertGt(uint256(int256(locked.amount)), 0);
     }
@@ -3589,7 +3589,7 @@ contract ProratedVENFTTest is Test {
         }
 
         // Verify the final state
-        ProratedVENFT.LockedBalance memory locked = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory locked = venft.locked(tokenId);
         assertEq(uint256(int256(locked.amount)), TOKEN_10 + 5 * TOKEN_1);
     }
 
@@ -3620,8 +3620,8 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Verify both locks are updated correctly
-        ProratedVENFT.LockedBalance memory locked1 = venft.locked(tokenId1);
-        ProratedVENFT.LockedBalance memory locked2 = venft.locked(tokenId2);
+        ProratedVeNFT.LockedBalance memory locked1 = venft.locked(tokenId1);
+        ProratedVeNFT.LockedBalance memory locked2 = venft.locked(tokenId2);
         assertEq(uint256(int256(locked1.amount)), TOKEN_10 + TOKEN_1);
         assertEq(uint256(int256(locked2.amount)), TOKEN_10 + TOKEN_1);
     }
@@ -3640,7 +3640,7 @@ contract ProratedVENFTTest is Test {
         vm.startPrank(user2);
         token.mint(TOKEN_1, user2);
         token.approve(address(venft), TOKEN_1);
-        vm.expectRevert(ProratedVENFT.NoVotingPower.selector);
+        vm.expectRevert(ProratedVeNFT.NoVotingPower.selector);
         venft.distributeRewards(TOKEN_1);
         vm.stopPrank();
     }
@@ -3658,7 +3658,7 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Verify no change in locked amount
-        ProratedVENFT.LockedBalance memory locked = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory locked = venft.locked(tokenId);
         assertEq(uint256(int256(locked.amount)), TOKEN_10);
     }
 
@@ -3721,7 +3721,7 @@ contract ProratedVENFTTest is Test {
 
         // Verify the final lock has the extended duration
         uint256 finalTokenId = tokenId + 3;
-        ProratedVENFT.LockedBalance memory locked = venft.locked(finalTokenId);
+        ProratedVeNFT.LockedBalance memory locked = venft.locked(finalTokenId);
         assertGt(locked.end, block.timestamp);
     }
 
@@ -3741,7 +3741,7 @@ contract ProratedVENFTTest is Test {
         }
 
         // Verify the final state
-        ProratedVENFT.LockedBalance memory locked = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory locked = venft.locked(tokenId);
         assertGt(uint256(int256(locked.amount)), 0);
     }
 
@@ -3882,8 +3882,8 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Verify both locks have increased amounts
-        ProratedVENFT.LockedBalance memory locked1 = venft.locked(tokenId1);
-        ProratedVENFT.LockedBalance memory locked2 = venft.locked(tokenId2);
+        ProratedVeNFT.LockedBalance memory locked1 = venft.locked(tokenId1);
+        ProratedVeNFT.LockedBalance memory locked2 = venft.locked(tokenId2);
         assertGt(uint256(int256(locked1.amount)), TOKEN_10);
         assertGt(uint256(int256(locked2.amount)), TOKEN_10 * 2);
     }
@@ -4109,7 +4109,7 @@ contract ProratedVENFTTest is Test {
         // Test that zero amounts are rejected
         vm.startPrank(user1);
         token.approve(address(venft), TOKEN_10);
-        vm.expectRevert(ProratedVENFT.ZeroAmount.selector);
+        vm.expectRevert(ProratedVeNFT.ZeroAmount.selector);
         venft.createLock(0, 4 weeks);
         vm.stopPrank();
     }
@@ -4118,7 +4118,7 @@ contract ProratedVENFTTest is Test {
         // Test that invalid durations are rejected
         vm.startPrank(user1);
         token.approve(address(venft), TOKEN_10);
-        vm.expectRevert(ProratedVENFT.LockDurationNotInFuture.selector);
+        vm.expectRevert(ProratedVeNFT.LockDurationNotInFuture.selector);
         venft.createLock(TOKEN_10, 0);
         vm.stopPrank();
     }
@@ -4127,7 +4127,7 @@ contract ProratedVENFTTest is Test {
         // Test that excessive durations are rejected
         vm.startPrank(user1);
         token.approve(address(venft), TOKEN_10);
-        vm.expectRevert(ProratedVENFT.LockDurationTooLong.selector);
+        vm.expectRevert(ProratedVeNFT.LockDurationTooLong.selector);
         venft.createLock(TOKEN_10, MAXTIME + WEEK);
         vm.stopPrank();
     }
@@ -4159,7 +4159,7 @@ contract ProratedVENFTTest is Test {
 
         // Try to withdraw before expiry (should fail)
         vm.startPrank(user1);
-        vm.expectRevert(ProratedVENFT.LockNotExpired.selector);
+        vm.expectRevert(ProratedVeNFT.LockNotExpired.selector);
         venft.withdraw(tokenId);
         vm.stopPrank();
 
@@ -4178,7 +4178,7 @@ contract ProratedVENFTTest is Test {
         uint256 initialVotingPower = venft.balanceOfNFT(tokenId);
 
         // Check if there's any decay immediately after creation
-        ProratedVENFT.LockedBalance memory locked = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory locked = venft.locked(tokenId);
         uint256 currentVotingPower = venft.balanceOfNFT(tokenId);
         uint256 decayedAmount = uint256(int256(locked.amount)) -
             currentVotingPower;
@@ -4186,7 +4186,7 @@ contract ProratedVENFTTest is Test {
         if (decayedAmount == 0) {
             // Try to withdraw decayed immediately (should fail)
             vm.startPrank(user1);
-            vm.expectRevert(ProratedVENFT.ZeroBalance.selector);
+            vm.expectRevert(ProratedVeNFT.ZeroBalance.selector);
             venft.withdrawDecayed(tokenId);
             vm.stopPrank();
 
@@ -4220,7 +4220,7 @@ contract ProratedVENFTTest is Test {
 
         // Try to extend with invalid duration (should fail)
         vm.startPrank(user1);
-        vm.expectRevert(ProratedVENFT.LockDurationNotInFuture.selector);
+        vm.expectRevert(ProratedVeNFT.LockDurationNotInFuture.selector);
         venft.extendLockDuration(tokenId, 0);
         vm.stopPrank();
 
@@ -4256,7 +4256,7 @@ contract ProratedVENFTTest is Test {
         vm.startPrank(user1);
         token.mint(TOKEN_1, user1);
         token.approve(address(venft), TOKEN_1);
-        vm.expectRevert(ProratedVENFT.NoVotingPower.selector);
+        vm.expectRevert(ProratedVeNFT.NoVotingPower.selector);
         venft.distributeRewards(TOKEN_1);
         vm.stopPrank();
 
@@ -4266,7 +4266,7 @@ contract ProratedVENFTTest is Test {
     }
 
     // ============ CATEGORY 16: INTEGRATION WITH PRORATEDPOOL TESTS ============
-    // Test integration between ProratedPool and ProratedVENFT
+    // Test integration between ProratedPool and ProratedVeNFT
 
     function test_Integration_PoolFinalizationDeploysVENFT() public {
         // Create a mock ProratedPool-like setup
@@ -4274,7 +4274,7 @@ contract ProratedVENFTTest is Test {
         ERC20Mintable proratedToken = new ERC20Mintable("Prorated", "PROR");
 
         // Simulate pool finalization that deploys veNFT
-        ProratedVENFT deployedVENFT = new ProratedVENFT(address(token));
+        ProratedVeNFT deployedVENFT = new ProratedVeNFT(address(token));
 
         // Verify veNFT was deployed with correct token
         assertEq(address(deployedVENFT.TOKEN()), address(token));
@@ -4315,7 +4315,7 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Verify position reflects user's contribution
-        ProratedVENFT.LockedBalance memory locked = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory locked = venft.locked(tokenId);
         assertEq(uint256(int256(locked.amount)), userContribution);
         assertEq(locked.end, ((block.timestamp + lockDuration) / WEEK) * WEEK);
         assertEq(venft.ownerOf(tokenId), user1);
@@ -4343,8 +4343,8 @@ contract ProratedVENFTTest is Test {
         assertEq(venft.ownerOf(tokenId2), user2);
 
         // Verify different lock durations
-        ProratedVENFT.LockedBalance memory locked1 = venft.locked(tokenId1);
-        ProratedVENFT.LockedBalance memory locked2 = venft.locked(tokenId2);
+        ProratedVeNFT.LockedBalance memory locked1 = venft.locked(tokenId1);
+        ProratedVeNFT.LockedBalance memory locked2 = venft.locked(tokenId2);
         assertGt(locked2.end, locked1.end);
     }
 
@@ -4480,7 +4480,7 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Get initial locked amount
-        ProratedVENFT.LockedBalance memory initialLocked = venft.locked(
+        ProratedVeNFT.LockedBalance memory initialLocked = venft.locked(
             tokenId
         );
         uint256 initialAmount = uint256(int256(initialLocked.amount));
@@ -4491,7 +4491,7 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Verify locked amount increased
-        ProratedVENFT.LockedBalance memory finalLocked = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory finalLocked = venft.locked(tokenId);
         uint256 finalAmount = uint256(int256(finalLocked.amount));
         assertGt(finalAmount, initialAmount);
     }
@@ -4590,7 +4590,7 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Verify rewards were compounded
-        ProratedVENFT.LockedBalance memory locked = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory locked = venft.locked(tokenId);
         assertGt(uint256(int256(locked.amount)), contribution);
     }
 
@@ -4942,7 +4942,7 @@ contract ProratedVENFTTest is Test {
         vm.stopPrank();
 
         // Verify position has grown significantly
-        ProratedVENFT.LockedBalance memory locked = venft.locked(tokenId);
+        ProratedVeNFT.LockedBalance memory locked = venft.locked(tokenId);
         uint256 finalAmount = uint256(int256(locked.amount));
         assertGt(finalAmount, contribution);
 
@@ -5074,7 +5074,7 @@ contract ProratedVENFTTest is Test {
 // ============ MALICIOUS CONTRACT FOR REENTRANCY TESTS ============
 
 contract ReentrantContract {
-    ProratedVENFT public venft;
+    ProratedVeNFT public venft;
     ERC20Mintable public token;
     bool public reentering = false;
 
@@ -5083,7 +5083,7 @@ contract ReentrantContract {
     uint256 constant TOKEN_10 = 10e18;
 
     constructor(address _venft, address _token) {
-        venft = ProratedVENFT(_venft);
+        venft = ProratedVeNFT(_venft);
         token = ERC20Mintable(_token);
     }
 

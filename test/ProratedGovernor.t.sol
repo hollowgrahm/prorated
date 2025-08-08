@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import {Test} from "lib/forge-std/src/Test.sol";
 import {ProratedGovernor} from "../src/ProratedGovernor.sol";
 import {ProratedPool} from "../src/ProratedPool.sol";
-import {ProratedVENFT} from "../src/ProratedVENFT.sol";
+import {ProratedVeNFT} from "../src/ProratedVeNFT.sol";
 import {ProratedToken} from "../src/ProratedToken.sol";
 import {ProswapFactory} from "../src/proswap/ProswapFactory.sol";
 import {ProswapRouter} from "../src/proswap/ProswapRouter.sol";
@@ -15,7 +15,7 @@ contract ProratedGovernorTest is Test {
     ProratedGovernor public governor;
     ProratedGovernor public testGovernor;
     ProratedPool public pool;
-    ProratedVENFT public venft;
+    ProratedVeNFT public venft;
     ProratedToken public proratedToken;
     ProswapFactory public factory;
     ProswapRouter public router;
@@ -41,8 +41,8 @@ contract ProratedGovernorTest is Test {
         // Deploy ProratedToken
         proratedToken = new ProratedToken("Prorated", "PROR");
 
-        // Deploy ProratedVENFT (we'll use a mock LP token for now)
-        venft = new ProratedVENFT(address(fundingToken)); // Using fundingToken as LP token for testing
+        // Deploy Prorated veNFT (we'll use a mock LP token for now)
+        venft = new ProratedVeNFT(address(fundingToken)); // Using fundingToken as LP token for testing
 
         // Deploy ProratedPool
         ProratedPool.PoolConfig memory config = ProratedPool.PoolConfig({
@@ -117,7 +117,7 @@ contract ProratedGovernorTest is Test {
         pool.deployToken();
         pool.deployPair();
         pool.deployLiquidity();
-        pool.deployVENFT();
+        pool.deployVeNFT();
         pool.deployGovernor();
 
         // Update governor to use the one deployed by the pool
@@ -141,26 +141,26 @@ contract ProratedGovernorTest is Test {
         // Users create veNFT positions in the pool's venft
         vm.startPrank(user1);
         ERC20(proswapPair).approve(
-            address(pool.proratedVENFT()),
+            address(pool.proratedVeNFT()),
             type(uint256).max
         );
-        user1TokenId = pool.proratedVENFT().createLock(1000e18, 4 weeks);
+        user1TokenId = pool.proratedVeNFT().createLock(1000e18, 4 weeks);
         vm.stopPrank();
 
         vm.startPrank(user2);
         ERC20(proswapPair).approve(
-            address(pool.proratedVENFT()),
+            address(pool.proratedVeNFT()),
             type(uint256).max
         );
-        user2TokenId = pool.proratedVENFT().createLock(600e18, 4 weeks);
+        user2TokenId = pool.proratedVeNFT().createLock(600e18, 4 weeks);
         vm.stopPrank();
 
         vm.startPrank(user3);
         ERC20(proswapPair).approve(
-            address(pool.proratedVENFT()),
+            address(pool.proratedVeNFT()),
             type(uint256).max
         );
-        user3TokenId = pool.proratedVENFT().createLock(400e18, 4 weeks);
+        user3TokenId = pool.proratedVeNFT().createLock(400e18, 4 weeks);
         vm.stopPrank();
     }
 
