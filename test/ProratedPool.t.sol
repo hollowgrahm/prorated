@@ -51,14 +51,16 @@ contract ProratedPoolTest is Test {
             tokenName: "Test Token",
             tokenSymbol: "TEST",
             tokenTotalSupply: tokenTotalSupply,
-            desiredContributions: desiredContributions,
+            developmentFund: desiredContributions,
+            liquidityFund: desiredContributions, // keep same total minimum as before
             startTime: startTime,
             endTime: endTime,
             fundingToken: address(fundingToken),
             proswapFactory: address(factory),
             proswapRouter: address(router),
-            devTeamAllocationPercentage: 20, // 20% dev team allocation
-            treasuryAllocationPercentage: 15 // 15% treasury allocation
+            developerPercent: 20, // 20% developer allocation
+            treasuryPercent: 15, // 15% treasury allocation
+            daoPercent: 65
         });
         pool = new ProratedPool(config);
 
@@ -75,7 +77,8 @@ contract ProratedPoolTest is Test {
         assertEq(pool.tokenName(), "Test Token");
         assertEq(pool.tokenSymbol(), "TEST");
         assertEq(pool.tokenTotalSupply(), tokenTotalSupply);
-        assertEq(pool.desiredContributions(), desiredContributions);
+        assertEq(pool.developmentFund(), desiredContributions);
+        assertEq(pool.liquidityFund(), desiredContributions);
         assertEq(pool.minTotalContributions(), desiredContributions * 2);
         assertEq(pool.startTime(), startTime);
         assertEq(pool.endTime(), endTime);
@@ -161,6 +164,23 @@ contract ProratedPoolTest is Test {
         assertEq(lockDuration_, 52);
         assertEq(shares_, 1000e18 * 52);
         assertEq(pool.totalShares(), 1000e18 * 52);
+
+        vm.stopPrank();
+    }
+
+    function test_IncreaseLockDuration_MustIncrease() public {
+        vm.startPrank(user1);
+        fundingToken.approve(address(pool), 1000e18);
+        vm.warp(startTime + 1);
+        pool.contribute(1000e18, 26);
+
+        // Attempt same duration should revert
+        vm.expectRevert(ProratedPool.LockDurationNotIncreased.selector);
+        pool.increaseLockDuration(26);
+
+        // Attempt lower duration should revert
+        vm.expectRevert(ProratedPool.LockDurationNotIncreased.selector);
+        pool.increaseLockDuration(13);
 
         vm.stopPrank();
     }
@@ -282,7 +302,7 @@ contract ProratedPoolTest is Test {
 
         // Try to deploy token when minimum not reached
         vm.warp(endTime + 1);
-        vm.expectRevert(ProratedPool.PoolReachedMinimum.selector);
+        vm.expectRevert(ProratedPool.MinimumNotReached.selector);
         pool.deployToken();
 
         // Add more contributions to reach minimum
@@ -404,22 +424,22 @@ contract ProratedPoolTest is Test {
 
         // Verify that allocations are calculated as part of deployLiquidity
         assertGt(
-            pool.devTeamLPTokenAllocation(),
+            pool.developerLPTokens(),
             0,
             "Dev team allocation should be calculated"
         );
         assertGt(
-            pool.treasuryLPTokenAllocation(),
+            pool.treasuryLPTokens(),
             0,
             "Treasury allocation should be calculated"
         );
         assertEq(
-            pool.devTeamAllocationPercentage(),
+            pool.developerPercent(),
             20,
             "Dev team allocation should be 20%"
         );
         assertEq(
-            pool.treasuryAllocationPercentage(),
+            pool.treasuryPercent(),
             15,
             "Treasury allocation should be 15%"
         );
@@ -442,8 +462,8 @@ contract ProratedPoolTest is Test {
 
         // Verify the liquidity was deployed
         assertGt(pool.totalLPTokensReceived(), 0);
-        assertGt(pool.devTeamLPTokenAllocation(), 0);
-        assertGt(pool.treasuryLPTokenAllocation(), 0);
+        assertGt(pool.developerLPTokens(), 0);
+        assertGt(pool.treasuryLPTokens(), 0);
     }
 
     function test_DeployVENFT() public {
@@ -514,7 +534,7 @@ contract ProratedPoolTest is Test {
         assertEq(claimed_, true);
 
         // Try to create VENFT position again
-        vm.expectRevert(ProratedPool.ContributionAlreadyClaimed.selector);
+        vm.expectRevert(ProratedPool.AlreadyClaimed.selector);
         vm.prank(user1);
         pool.createVENFTPosition();
     }
@@ -578,7 +598,7 @@ contract ProratedPoolTest is Test {
         pool.createVENFTPosition();
 
         // Try to create VENFT position again (should fail)
-        vm.expectRevert(ProratedPool.ContributionAlreadyClaimed.selector);
+        vm.expectRevert(ProratedPool.AlreadyClaimed.selector);
         vm.prank(user1);
         pool.createVENFTPosition();
     }
@@ -628,8 +648,7 @@ contract ProratedPoolTest is Test {
 
         // Calculate expected LP token allocations
         uint256 totalShares = pool.totalShares();
-        uint256 contributorLPTokenAllocation = pool
-            .contributorLPTokenAllocation();
+        uint256 contributorLPTokenAllocation = pool.daoLPTokens();
 
         // User1: 5.2M shares out of 10.4M total shares = 50%
         uint256 expectedUser1LPTokens = (contributorLPTokenAllocation *
@@ -821,12 +840,12 @@ contract ProratedPoolTest is Test {
 
         // Check that dev team allocation is reserved
         assertGt(
-            pool.devTeamLPTokenAllocation(),
+            pool.developerLPTokens(),
             0,
             "Dev team should have LP token allocation"
         );
         assertEq(
-            pool.devTeamAllocationPercentage(),
+            pool.developerPercent(),
             20,
             "Dev team allocation should be 20%"
         );
@@ -841,7 +860,7 @@ contract ProratedPoolTest is Test {
 
         // Check that dev team received tokens and veNFT position
         assertEq(
-            pool.devTeamLPTokenAllocation(),
+            pool.developerLPTokens(),
             0,
             "Dev team allocation should be cleared"
         );
@@ -1019,12 +1038,12 @@ contract ProratedPoolTest is Test {
 
         // Check that treasury allocation is reserved
         assertGt(
-            pool.treasuryLPTokenAllocation(),
+            pool.treasuryLPTokens(),
             0,
             "Treasury should have LP token allocation"
         );
         assertEq(
-            pool.treasuryAllocationPercentage(),
+            pool.treasuryPercent(),
             15,
             "Treasury allocation should be 15%"
         );
@@ -1034,7 +1053,7 @@ contract ProratedPoolTest is Test {
 
         // Check that treasury allocation is cleared
         assertEq(
-            pool.treasuryLPTokenAllocation(),
+            pool.treasuryLPTokens(),
             0,
             "Treasury allocation should be cleared"
         );
@@ -1086,17 +1105,17 @@ contract ProratedPoolTest is Test {
         pool.deployGovernor();
 
         // Check initial state
-        assertGt(pool.devTeamLPTokenAllocation(), 0);
+        assertGt(pool.developerLPTokens(), 0);
 
         // Release dev team LP tokens (should create veNFT for dev team)
         vm.prank(address(pool.proratedGovernor()));
         pool.releaseDevTeamLPTokens();
 
         // Check that dev team allocation is cleared
-        assertEq(pool.devTeamLPTokenAllocation(), 0);
+        assertEq(pool.developerLPTokens(), 0);
 
         // Verify dev team has a veNFT (tokenId should be 1 for first position)
-        assertEq(pool.proratedVENFT().ownerOf(1), pool.devTeam());
+        assertEq(pool.proratedVENFT().ownerOf(1), pool.developer());
     }
 
     function test_ReleaseDevTeamLPTokens_GovernorNotDeployed() public {
@@ -1141,7 +1160,7 @@ contract ProratedPoolTest is Test {
 
         // Verify the function completed successfully
         assertEq(
-            pool.devTeamLPTokenAllocation(),
+            pool.developerLPTokens(),
             0,
             "Dev team allocation should be cleared"
         );
@@ -1164,13 +1183,13 @@ contract ProratedPoolTest is Test {
         pool.deployTreasury();
 
         // Check initial state
-        assertGt(pool.treasuryLPTokenAllocation(), 0);
+        assertGt(pool.treasuryLPTokens(), 0);
 
         // Release treasury LP tokens (should create veNFT for treasury)
         pool.releaseTreasuryLPTokens();
 
         // Check that treasury allocation is cleared
-        assertEq(pool.treasuryLPTokenAllocation(), 0);
+        assertEq(pool.treasuryLPTokens(), 0);
 
         // Verify treasury has a veNFT (tokenId should be 1 for first position)
         assertEq(
@@ -1220,7 +1239,7 @@ contract ProratedPoolTest is Test {
         pool.releaseTreasuryLPTokens();
 
         // Try to release treasury LP tokens again (should fail - no tokens reserved)
-        vm.expectRevert(ProratedPool.NoTokensReserved.selector);
+        vm.expectRevert(ProratedPool.NoLPTokensReserved.selector);
         pool.releaseTreasuryLPTokens();
     }
 
@@ -1241,7 +1260,7 @@ contract ProratedPoolTest is Test {
         pool.deployTreasury();
 
         // Check initial allocation
-        uint256 initialAllocation = pool.treasuryLPTokenAllocation();
+        uint256 initialAllocation = pool.treasuryLPTokens();
         assertGt(initialAllocation, 0, "Should have initial allocation");
 
         // Release treasury LP tokens
@@ -1249,7 +1268,7 @@ contract ProratedPoolTest is Test {
 
         // Verify the function completed successfully
         assertEq(
-            pool.treasuryLPTokenAllocation(),
+            pool.treasuryLPTokens(),
             0,
             "Treasury allocation should be cleared"
         );
@@ -1289,14 +1308,16 @@ contract ModifierTests is Test {
             tokenName: "Test Token",
             tokenSymbol: "TEST",
             tokenTotalSupply: tokenTotalSupply,
-            desiredContributions: desiredContributions,
+            developmentFund: desiredContributions,
+            liquidityFund: desiredContributions,
+            developerPercent: 20,
+            treasuryPercent: 15,
+            daoPercent: 65,
             startTime: startTime,
             endTime: endTime,
             fundingToken: address(fundingToken),
             proswapFactory: address(factory),
-            proswapRouter: address(router),
-            devTeamAllocationPercentage: 20,
-            treasuryAllocationPercentage: 15
+            proswapRouter: address(router)
         });
         pool = new ProratedPool(config);
 

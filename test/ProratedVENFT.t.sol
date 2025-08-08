@@ -80,11 +80,11 @@ contract ProratedVENFTTest is Test {
         ProratedVENFT customVenft = new ProratedVENFT(address(customToken));
 
         // Verify the dynamic naming works correctly
-        assertEq(customVenft.name(), "Prorated VENFT - Custom LP Token");
+        assertEq(customVenft.name(), "Prorated veNFT - Custom LP Token");
         assertEq(customVenft.symbol(), "veCLP");
 
         // Verify the original VENFT naming is correct
-        assertEq(venft.name(), "Prorated VENFT - Test Token");
+        assertEq(venft.name(), "Prorated veNFT - Test Token");
         assertEq(venft.symbol(), "veTEST");
     }
 
@@ -1239,6 +1239,67 @@ contract ProratedVENFTTest is Test {
         emit LockExtended(tokenId, oldLocked.end, expectedNewEnd);
 
         venft.extendLockDuration(tokenId, newDuration);
+
+        vm.stopPrank();
+    }
+
+    function test_ExtendLockDuration_ValidExtension() public {
+        // User1 creates lock
+        vm.startPrank(user1);
+        token.approve(address(venft), TOKEN_1);
+        uint256 tokenId = venft.createLock(TOKEN_1, 1 weeks);
+
+        // Get initial state
+        ProratedVENFT.LockedBalance memory initialLocked = venft.locked(
+            tokenId
+        );
+        uint256 initialVotingPower = venft.balanceOfNFT(tokenId);
+
+        // Extend lock duration
+        uint256 newDuration = 4 weeks;
+        venft.extendLockDuration(tokenId, newDuration);
+
+        // Check that old NFT is burned
+        vm.expectRevert("NOT_MINTED");
+        venft.ownerOf(tokenId);
+
+        // Check that new NFT is created
+        uint256 newTokenId = tokenId + 1;
+        assertEq(venft.ownerOf(newTokenId), user1);
+
+        // Check that locked amount is preserved
+        ProratedVENFT.LockedBalance memory newLocked = venft.locked(newTokenId);
+        assertEq(newLocked.amount, initialLocked.amount);
+
+        // Check that duration is extended
+        assertGt(newLocked.end, initialLocked.end);
+
+        // Check that voting power is preserved (or increased due to longer duration)
+        uint256 newVotingPower = venft.balanceOfNFT(newTokenId);
+        assertGe(newVotingPower, initialVotingPower);
+
+        vm.stopPrank();
+    }
+
+    function test_ExtendLockDuration_ExpiredLock() public {
+        // User1 creates lock with short duration
+        vm.startPrank(user1);
+        token.approve(address(venft), TOKEN_1);
+        uint256 tokenId = venft.createLock(TOKEN_1, 1 weeks);
+
+        // Fast forward past lock expiry
+        skip(2 weeks);
+
+        // Extend expired lock (should work)
+        venft.extendLockDuration(tokenId, 4 weeks);
+
+        // Check that new NFT is created
+        uint256 newTokenId = tokenId + 1;
+        assertEq(venft.ownerOf(newTokenId), user1);
+
+        // Check that locked amount is preserved
+        ProratedVENFT.LockedBalance memory newLocked = venft.locked(newTokenId);
+        assertEq(newLocked.amount, int128(uint128(TOKEN_1)));
 
         vm.stopPrank();
     }
@@ -3105,8 +3166,8 @@ contract ProratedVENFTTest is Test {
     function test_ErrorHandling_CreateLockPastDuration() public {
         vm.startPrank(user1);
         token.approve(address(venft), TOKEN_1);
-        vm.expectRevert(ProratedVENFT.LockDurationNotInFuture.selector);
-        venft.createLock(TOKEN_1, 1); // 1 second duration
+        // Small positive durations are valid (rounded up to nearest week), so this should NOT revert.
+        venft.createLock(TOKEN_1, 1); // 1 second duration rounds to 1 week
         vm.stopPrank();
     }
 

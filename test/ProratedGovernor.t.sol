@@ -50,14 +50,16 @@ contract ProratedGovernorTest is Test {
             tokenName: "Test Token",
             tokenSymbol: "TEST",
             tokenTotalSupply: 1000000e18,
-            desiredContributions: 500000e18,
+            developmentFund: 500000e18,
+            liquidityFund: 500000e18,
             startTime: block.timestamp,
             endTime: block.timestamp + 7 days,
             fundingToken: address(fundingToken),
             proswapFactory: address(factory),
             proswapRouter: address(router),
-            devTeamAllocationPercentage: 20, // 20% dev team allocation
-            treasuryAllocationPercentage: 15 // 15% treasury allocation
+            developerPercent: 20, // 20% developer allocation
+            treasuryPercent: 15, // 15% treasury allocation
+            daoPercent: 65
         });
         pool = new ProratedPool(config);
 
@@ -97,7 +99,7 @@ contract ProratedGovernorTest is Test {
     }
 
     function _setupPoolAndGovernance() internal {
-        // Add contributions to reach minimum (minTotalContributions = desiredContributions * 2 = 1000000e18)
+        // Add contributions to reach minimum (minTotalContributions = developmentFund + liquidityFund = 1000000e18)
         vm.startPrank(user1);
         fundingToken.approve(address(pool), 500000e18);
         vm.warp(block.timestamp + 1);

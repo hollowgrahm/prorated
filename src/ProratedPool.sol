@@ -27,6 +27,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     error NoContribution();
     error PoolNotEnded();
     error AlreadyClaimed();
+    error MinimumNotReached();
     error PoolReachedMinimum();
     error TokenNotDeployed();
     error TokenAlreadyDeployed();
@@ -40,23 +41,31 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     error GovernorAlreadyDeployed();
     error TreasuryNotDeployed();
     error TreasuryAlreadyDeployed();
-    error ContributionAlreadyClaimed();
     error Unauthorized();
-    error NoTokensReserved();
+    error NoLPTokensReserved();
+    error LockDurationNotIncreased();
+    error InvalidPercentages();
+    error ZeroAddress();
+    error EmptyString();
+    error InvalidTimeRange();
+    error StartTimeTooFar();
+    error EndTimeTooLong();
 
     struct PoolConfig {
         address owner;
         string tokenName;
         string tokenSymbol;
         uint256 tokenTotalSupply;
-        uint256 desiredContributions;
+        uint256 developmentFund;
+        uint256 liquidityFund;
         uint256 startTime;
         uint256 endTime;
         address fundingToken;
         address proswapFactory;
         address proswapRouter;
-        uint256 devTeamAllocationPercentage;
-        uint256 treasuryAllocationPercentage;
+        uint256 developerPercent;
+        uint256 treasuryPercent;
+        uint256 daoPercent;
     }
 
     event Contributed(
@@ -82,7 +91,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     );
 
     event RefundClaimed(address indexed contributor, uint256 amount);
-    event DevTeamFundsWithdrawn(address indexed devTeam, uint256 amount);
+    event DeveloperFundsWithdrawn(address indexed developer, uint256 amount);
     event TokenDeployed(address indexed token);
     event VENFTDeployed(address indexed venft);
     event PairDeployed(address indexed pair);
@@ -101,8 +110,8 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         uint256 lockDuration
     );
 
-    event DevTeamTokensReleased(
-        address indexed devTeam,
+    event DeveloperTokensReleased(
+        address indexed developer,
         uint256 lpTokens,
         uint256 tokenId
     );
@@ -130,7 +139,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         _;
     }
 
-    modifier tokenNotDeployed() {
+    modifier tokenDeployed() {
         if (address(proratedToken) == address(0)) revert TokenNotDeployed();
         _;
     }
@@ -142,17 +151,38 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
 
     // 1. CONSTRUCTOR & SETUP
     constructor(PoolConfig memory config) Owned(config.owner) {
-        // Step 1: Set dev team address (same as owner for clarity)
-        devTeam = config.owner;
+        // Step 0: Validate configuration parameters
+        if (bytes(config.tokenName).length == 0) revert EmptyString();
+        if (bytes(config.tokenSymbol).length == 0) revert EmptyString();
+        if (config.fundingToken == address(0)) revert ZeroAddress();
+        if (config.proswapFactory == address(0)) revert ZeroAddress();
+        if (config.proswapRouter == address(0)) revert ZeroAddress();
+        if (config.tokenTotalSupply == 0) revert InvalidAmount();
+        if (config.developmentFund == 0) revert InvalidAmount();
+        if (config.liquidityFund == 0) revert InvalidAmount();
+        if (
+            (config.developerPercent +
+                config.treasuryPercent +
+                config.daoPercent) != 100
+        ) revert InvalidPercentages();
+        if (config.startTime >= config.endTime) revert InvalidTimeRange();
+        if (config.startTime > block.timestamp + 30 days)
+            revert StartTimeTooFar();
+        if (config.endTime > config.startTime + 30 days)
+            revert EndTimeTooLong();
+
+        // Step 1: Set developer address (same as owner for clarity)
+        developer = config.owner;
 
         // Step 2: Initialize token configuration
         tokenName = config.tokenName;
         tokenSymbol = config.tokenSymbol;
         tokenTotalSupply = config.tokenTotalSupply;
 
-        // Step 3: Set contribution targets and minimums
-        desiredContributions = config.desiredContributions;
-        minTotalContributions = config.desiredContributions * 2;
+        // Step 3: Set funding targets and minimums
+        developmentFund = config.developmentFund;
+        liquidityFund = config.liquidityFund;
+        minTotalContributions = developmentFund + liquidityFund;
 
         // Step 4: Set pool timing parameters
         startTime = config.startTime;
@@ -163,9 +193,10 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         proswapFactory = IProswapFactory(config.proswapFactory);
         proswapRouter = IProswapRouter(config.proswapRouter);
 
-        // Step 6: Set allocation percentages for dev team and treasury
-        devTeamAllocationPercentage = config.devTeamAllocationPercentage;
-        treasuryAllocationPercentage = config.treasuryAllocationPercentage;
+        // Step 6: Set allocation percentages for developer, treasury, and dao
+        developerPercent = config.developerPercent;
+        treasuryPercent = config.treasuryPercent;
+        daoPercent = config.daoPercent;
     }
 
     // ============ CONTRIBUTION & USER FUNCTIONS ============
@@ -249,6 +280,10 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         uint256 userAmount = contributions[msg.sender].amount;
         uint256 oldLockDuration = contributions[msg.sender].lockDuration;
 
+        // Step 1.1: Enforce increase-only semantics for lock duration
+        if (newLockDuration <= oldLockDuration)
+            revert LockDurationNotIncreased();
+
         // Step 2: Calculate new shares based on existing amount * new lock duration
         uint256 newShares = newLockDuration * userAmount;
 
@@ -310,7 +345,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     /// @dev Can only be called after minimum contributions are reached and pool has ended
     function deployToken() external poolEnded nonReentrant {
         // Step 2: Check if minimum contributions have been reached (success requirement)
-        if (!hasReachedMinimum()) revert PoolReachedMinimum();
+        if (!hasReachedMinimum()) revert MinimumNotReached();
         // Step 3: Check if token has already been deployed (prevent double deployment)
         if (address(proratedToken) != address(0)) revert TokenAlreadyDeployed();
 
@@ -328,7 +363,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
 
     /// @notice Deploys the pair (second deployment function)
     /// @dev Can only be called after token is deployed
-    function deployPair() external tokenNotDeployed nonReentrant {
+    function deployPair() external tokenDeployed nonReentrant {
         // Step 1: Check if pair has already been deployed (prevent double deployment)
         if (proswapPair != address(0)) revert PairAlreadyDeployed();
 
@@ -357,9 +392,9 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         proratedToken.approve(address(proswapRouter), type(uint256).max);
         fundingToken.safeApprove(address(proswapRouter), type(uint256).max);
 
-        // Step 4: Get available token balances for liquidity provision (reserve desiredContributions for dev team)
+        // Step 4: Get available token balances for liquidity provision (reserve developmentFund for developer)
         uint256 fundingAmount = fundingToken.balanceOf(address(this)) -
-            desiredContributions;
+            developmentFund;
         uint256 proratedAmount = proratedToken.balanceOf(address(this));
 
         // Step 5: Add liquidity to the pair using all available tokens
@@ -376,25 +411,21 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         // Step 6: Record total LP tokens received from liquidity provision
         totalLPTokensReceived = ERC20(proswapPair).balanceOf(address(this));
 
-        // Step 7: Calculate LP token allocations for dev team and treasury
-        devTeamLPTokenAllocation =
-            (totalLPTokensReceived * devTeamAllocationPercentage) /
-            100;
-        treasuryLPTokenAllocation =
-            (totalLPTokensReceived * treasuryAllocationPercentage) /
-            100;
+        // Step 7: Calculate LP token allocations for developer and treasury
+        developerLPTokens = (totalLPTokensReceived * developerPercent) / 100;
+        treasuryLPTokens = (totalLPTokensReceived * treasuryPercent) / 100;
 
-        // Step 8: Calculate LP tokens available for contributors (remaining after dev team and treasury)
-        contributorLPTokenAllocation =
+        // Step 8: Calculate LP tokens available for DAO (contributors)
+        daoLPTokens =
             totalLPTokensReceived -
-            devTeamLPTokenAllocation -
-            treasuryLPTokenAllocation;
+            developerLPTokens -
+            treasuryLPTokens;
 
         // Step 9: Emit LiquidityDeployed event
         emit LiquidityDeployed(
             totalLPTokensReceived,
-            devTeamLPTokenAllocation,
-            treasuryLPTokenAllocation
+            developerLPTokens,
+            treasuryLPTokens
         );
     }
 
@@ -451,7 +482,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
                         venft: address(proratedVENFT),
                         governor: address(proratedGovernor),
                         proswapPair: proswapPair,
-                        owner: devTeam
+                        owner: developer
                     })
                 )
             )
@@ -474,11 +505,11 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         if (!hasContribution(msg.sender)) revert NoContribution();
 
         // Step 3: Check if user has already claimed their contribution
-        if (userContribution.claimed) revert ContributionAlreadyClaimed();
+        if (userContribution.claimed) revert AlreadyClaimed();
 
         // Step 4: Calculate user's LP token share based on their contribution shares
-        uint256 userLPTokens = (userContribution.shares *
-            contributorLPTokenAllocation) / totalShares;
+        uint256 userLPTokens = (userContribution.shares * daoLPTokens) /
+            totalShares;
 
         // Step 5: Validate that user has a non-zero LP token allocation
         if (userLPTokens == 0) revert InvalidAmount();
@@ -512,67 +543,60 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         // Step 1: Check that VENFT has been deployed (required for withdrawal)
         if (address(proratedVENFT) == address(0)) revert VENFTNotDeployed();
 
-        // Step 2: Transfer desiredContributions to dev team
-        fundingToken.safeTransfer(msg.sender, desiredContributions);
+        // Step 2: Transfer developmentFund to developer
+        fundingToken.safeTransfer(msg.sender, developmentFund);
 
         // Step 3: Emit event for off-chain tracking
-        emit DevTeamFundsWithdrawn(msg.sender, desiredContributions);
+        emit DeveloperFundsWithdrawn(msg.sender, developmentFund);
     }
 
     /// @notice Release dev team's LP tokens (governance function)
     /// @dev Can only be called by approved governor after successful proposal
-    function releaseDevTeamLPTokens() external {
+    function releaseDevTeamLPTokens() external nonReentrant {
         // Step 1: Check that governor has been deployed
         if (address(proratedGovernor) == address(0))
             revert GovernorNotDeployed();
         // Step 2: Check that caller is the approved governor
         if (msg.sender != address(proratedGovernor)) revert Unauthorized();
-        // Step 3: Check that dev team has LP tokens allocated
-        if (devTeamLPTokenAllocation == 0) revert NoTokensReserved();
+        // Step 3: Check that developer has LP tokens allocated
+        if (developerLPTokens == 0) revert NoLPTokensReserved();
 
-        // Step 4: Create max-locked veNFT position for dev team (MAX_LOCK weeks)
-        ERC20(proswapPair).approve(
-            address(proratedVENFT),
-            devTeamLPTokenAllocation
-        );
+        // Step 4: Cache and clear allocation before external calls (CEI)
+        uint256 allocation = developerLPTokens;
+        developerLPTokens = 0;
+
+        // Step 5: Create max-locked veNFT position for developer (MAX_LOCK weeks)
+        ERC20(proswapPair).approve(address(proratedVENFT), allocation);
         uint256 devTeamTokenId = proratedVENFT.createLock(
-            devTeamLPTokenAllocation,
+            allocation,
             MAX_LOCK * WEEK
         );
 
-        // Step 5: Transfer the veNFT to dev team
-        proratedVENFT.transferFrom(address(this), devTeam, devTeamTokenId);
+        // Step 6: Transfer the veNFT to developer
+        proratedVENFT.transferFrom(address(this), developer, devTeamTokenId);
 
-        // Step 6: Emit event for off-chain tracking
-        emit DevTeamTokensReleased(
-            devTeam,
-            devTeamLPTokenAllocation,
-            devTeamTokenId
-        );
-
-        // Step 7: Clear reserved amount
-        devTeamLPTokenAllocation = 0;
+        // Step 7: Emit event for off-chain tracking
+        emit DeveloperTokensReleased(developer, allocation, devTeamTokenId);
     }
 
     /// @notice Release treasury's LP tokens (governance function)
     /// @dev Can be called by anyone after successful governance proposal
-    function releaseTreasuryLPTokens() external {
+    function releaseTreasuryLPTokens() external nonReentrant {
         // Step 1: Check that treasury has been deployed (required for treasury operations)
         if (address(proratedTreasury) == address(0))
             revert TreasuryNotDeployed();
 
         // Step 2: Check that treasury has LP tokens allocated
-        if (treasuryLPTokenAllocation == 0) revert NoTokensReserved();
+        if (treasuryLPTokens == 0) revert NoLPTokensReserved();
 
-        // Step 3: Approve VENFT contract to spend treasury's LP tokens
-        ERC20(proswapPair).approve(
-            address(proratedVENFT),
-            treasuryLPTokenAllocation
-        );
+        // Step 3: Cache and clear allocation before external calls (CEI)
+        uint256 allocationTreasury = treasuryLPTokens;
+        treasuryLPTokens = 0;
 
-        // Step 4: Create veNFT position for treasury (MAX_LOCK weeks)
+        // Step 4: Approve and create veNFT position for treasury (MAX_LOCK weeks)
+        ERC20(proswapPair).approve(address(proratedVENFT), allocationTreasury);
         uint256 treasuryTokenId = proratedVENFT.createLock(
-            treasuryLPTokenAllocation,
+            allocationTreasury,
             MAX_LOCK * WEEK
         );
 
@@ -586,11 +610,8 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         // Step 6: Emit event for off-chain tracking
         emit TreasuryTokensReleased(
             address(proratedTreasury),
-            treasuryLPTokenAllocation,
+            allocationTreasury,
             treasuryTokenId
         );
-
-        // Step 7: Clear reserved amount
-        treasuryLPTokenAllocation = 0;
     }
 }
