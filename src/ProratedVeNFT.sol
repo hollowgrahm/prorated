@@ -36,6 +36,12 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
     error NoRewardsToCompound();
 
     // ============ EVENTS ============
+    event VeNFTInitialized(
+        address indexed token,
+        string name,
+        string symbol,
+        uint256 ts
+    );
     event Deposit(
         address indexed provider,
         uint256 indexed tokenId,
@@ -118,20 +124,21 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
     // ============ CONSTRUCTOR ============
     /// @notice Initializes the Prorated veNFT contract
     /// @param _token The ERC20 token address to be locked (LP tokens)
-    constructor(address _token) ERC721("Prorated veNFT", "vePRO") {
+    /// @param _name The ERC721 name to set
+    /// @param _symbol The ERC721 symbol to set
+    constructor(
+        address _token,
+        string memory _name,
+        string memory _symbol
+    ) ERC721(_name, _symbol) {
         // Step 1: Set the immutable token address for LP token locking
         TOKEN = ERC20(_token);
 
         // Step 2: Initialize the global point history with current timestamp
         _pointHistory[0].ts = block.timestamp;
 
-        // Step 3: Get LP token name and symbol for dynamic naming
-        string memory lpTokenName = TOKEN.name();
-        string memory lpTokenSymbol = TOKEN.symbol();
-
-        // Step 4: Update ERC721 name and symbol based on LP token
-        name = string(abi.encodePacked("Prorated veNFT - ", lpTokenName));
-        symbol = string(abi.encodePacked("ve", lpTokenSymbol));
+        // Step 3: Emit initialization event for off-chain indexing
+        emit VeNFTInitialized(_token, _name, _symbol, block.timestamp);
     }
 
     // ============ LOCK CREATION & MANAGEMENT ============

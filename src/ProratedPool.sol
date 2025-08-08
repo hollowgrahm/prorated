@@ -436,12 +436,20 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         // Step 2: Check if liquidity has been deployed (prerequisite)
         if (totalLPTokensReceived == 0) revert LiquidityNotDeployed();
 
-        // Step 3: Deploy the Prorated veNFT contract with the pair address
+        // Step 3: Build dynamic ERC721 name/symbol from LP token metadata
+        string memory lpName = ERC20(proswapPair).name();
+        string memory lpSymbol = ERC20(proswapPair).symbol();
+        string memory veName = string(
+            abi.encodePacked("Prorated veNFT - ", lpName)
+        );
+        string memory veSymbol = string(abi.encodePacked("ve", lpSymbol));
+
+        // Step 4: Deploy the Prorated veNFT contract with the pair address and dynamic metadata
         proratedVeNFT = IProratedVeNFT(
-            address(new ProratedVeNFT(address(proswapPair)))
+            address(new ProratedVeNFT(address(proswapPair), veName, veSymbol))
         );
 
-        // Step 4: Emit event for off-chain tracking
+        // Step 5: Emit event for off-chain tracking
         emit VeNFTDeployed(address(proratedVeNFT));
     }
 

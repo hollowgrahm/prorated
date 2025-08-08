@@ -65,7 +65,11 @@ contract ProratedVeNFTTest is Test {
 
     function setUp() public {
         token = new ERC20Mintable("Test Token", "TEST");
-        venft = new ProratedVeNFT(address(token));
+        venft = new ProratedVeNFT(
+            address(token),
+            "Prorated veNFT - Test Token",
+            "veTEST"
+        );
 
         // Mint tokens to users
         token.mint(TOKEN_10, user1);
@@ -77,7 +81,11 @@ contract ProratedVeNFTTest is Test {
     function test_Constructor_DynamicNaming() public {
         // Create a new VENFT with a different token to test dynamic naming
         ERC20Mintable customToken = new ERC20Mintable("Custom LP Token", "CLP");
-        ProratedVeNFT customVenft = new ProratedVeNFT(address(customToken));
+        ProratedVeNFT customVenft = new ProratedVeNFT(
+            address(customToken),
+            "Prorated veNFT - Custom LP Token",
+            "veCLP"
+        );
 
         // Verify the dynamic naming works correctly
         assertEq(customVenft.name(), "Prorated veNFT - Custom LP Token");
@@ -4274,7 +4282,11 @@ contract ProratedVeNFTTest is Test {
         ERC20Mintable proratedToken = new ERC20Mintable("Prorated", "PROR");
 
         // Simulate pool finalization that deploys veNFT
-        ProratedVeNFT deployedVENFT = new ProratedVeNFT(address(token));
+        ProratedVeNFT deployedVENFT = new ProratedVeNFT(
+            address(token),
+            "Prorated veNFT - Test Token",
+            "veTEST"
+        );
 
         // Verify veNFT was deployed with correct token
         assertEq(address(deployedVENFT.TOKEN()), address(token));
