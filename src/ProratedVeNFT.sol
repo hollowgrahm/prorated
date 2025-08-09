@@ -157,9 +157,13 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
         if (_lockDuration == 0) revert LockDurationNotInFuture();
         if (_lockDuration > MAXTIME) revert LockDurationTooLong();
 
-        // Step 2: Calculate unlock time rounded UP to nearest week
+        // Step 2: Calculate unlock time rounded UP to nearest week and clamp to MAXTIME (floored to week)
         uint256 unlockTime = ((block.timestamp + _lockDuration + WEEK - 1) /
             WEEK) * WEEK;
+        uint256 maxUnlockTime = ((block.timestamp + MAXTIME) / WEEK) * WEEK;
+        if (unlockTime > maxUnlockTime) {
+            unlockTime = maxUnlockTime;
+        }
 
         // Step 3: Generate new token ID
         uint256 _tokenId = ++tokenId;
@@ -186,39 +190,65 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
     /// @notice Extends the lock duration of a veNFT position
     /// @param _tokenId The token ID of the veNFT position to extend
     /// @param _newDuration New lock duration in seconds
-    /// @dev This function burns the old veNFT and creates a new one with the extended duration
+    /// @dev In-place extension: preserves tokenId, ownership, approvals and accounting
     function extendLockDuration(
         uint256 _tokenId,
         uint256 _newDuration
     ) external nonReentrant {
-        // Step 1: Check authorization (owner or approved operator)
-        if (!_isApprovedOrOwner(msg.sender, _tokenId)) revert("NOT_AUTHORIZED");
+        // Step 1: Owner-only authorization and duration bounds validations
+        if (_ownerOf[_tokenId] != msg.sender) revert("NOT_AUTHORIZED");
+        if (_newDuration == 0) revert LockDurationNotInFuture();
+        if (_newDuration > MAXTIME) revert LockDurationTooLong();
 
-        // Step 2: Get current locked balance and validate extension
+        // Step 2: Compute rounded-up new end and clamp to MAXTIME (floored to week)
+        uint256 newEnd = ((block.timestamp + _newDuration + WEEK - 1) / WEEK) *
+            WEEK;
+        uint256 maxUnlockTime = ((block.timestamp + MAXTIME) / WEEK) * WEEK;
+        if (newEnd > maxUnlockTime) newEnd = maxUnlockTime;
+
+        // Step 3: Load current lock and enforce monotonicity (newEnd must increase)
         LockedBalance memory oldLocked = _locked[_tokenId];
-        uint256 currentAmount = oldLocked.amount.toUint256();
+        if (newEnd <= oldLocked.end) revert LockDurationNotInFuture();
 
-        // Step 3: Validate that new duration is greater than current remaining time (allows extending expired locks)
-        uint256 currentRemainingTime = oldLocked.end > block.timestamp
-            ? oldLocked.end - block.timestamp
-            : 0;
-        if (_newDuration <= currentRemainingTime)
-            revert LockDurationNotInFuture();
+        // Step 4: Snapshot reward accounting state BEFORE modifying voting power
+        uint256 globalIndexBefore = globalRewardPerVotingPower;
+        uint256 userPaidIndexBefore = userRewardPerVotingPowerPaid[_tokenId];
+        uint256 votingPowerBefore = _balanceOfNFTAt(_tokenId, block.timestamp);
+        uint256 pendingBefore = 0;
+        if (votingPowerBefore > 0 && globalIndexBefore > userPaidIndexBefore) {
+            pendingBefore =
+                (votingPowerBefore *
+                    (globalIndexBefore - userPaidIndexBefore)) /
+                1e18;
+        }
 
-        // Step 4: Burn the old NFT and clear its locked balance
-        _burn(_tokenId);
-        _locked[_tokenId] = LockedBalance(0, 0);
-        _checkpoint(_tokenId, oldLocked, LockedBalance(0, 0));
-
-        // Step 5: Create new NFT with extended duration using _resetLock
-        uint256 newTokenId = _resetLock(
-            currentAmount,
-            _newDuration,
-            msg.sender
+        // Step 5: Update in-place and checkpoint
+        LockedBalance memory newLocked = LockedBalance(
+            oldLocked.amount,
+            newEnd
         );
+        _locked[_tokenId] = newLocked;
+        _checkpoint(_tokenId, oldLocked, newLocked);
 
-        // Step 6: Emit lock extension event
-        emit LockExtended(_tokenId, oldLocked.end, _locked[newTokenId].end);
+        // Step 6: Preserve pending rewards across extension by adjusting paid index
+        // Solve for paidAfter so that pendingAfter (with higher voting power) equals pendingBefore
+        uint256 votingPowerAfter = _balanceOfNFTAt(_tokenId, block.timestamp);
+        if (votingPowerAfter == 0) {
+            userRewardPerVotingPowerPaid[_tokenId] = globalIndexBefore;
+        } else {
+            // paidAfter = globalIndexBefore - pendingBefore * 1e18 / votingPowerAfter
+            uint256 adjustment = (pendingBefore * 1e18) / votingPowerAfter;
+            uint256 paidAfter = 0;
+            if (globalIndexBefore > adjustment) {
+                paidAfter = globalIndexBefore - adjustment;
+            } else {
+                paidAfter = 0;
+            }
+            userRewardPerVotingPowerPaid[_tokenId] = paidAfter;
+        }
+
+        // Step 7: Emit event
+        emit LockExtended(_tokenId, oldLocked.end, newEnd);
     }
 
     /// @notice Internal function to create a new veNFT lock position without transferring tokens
