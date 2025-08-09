@@ -251,50 +251,6 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
         emit LockExtended(_tokenId, oldLocked.end, newEnd);
     }
 
-    /// @notice Internal function to create a new veNFT lock position without transferring tokens
-    /// @param _value Amount of tokens to lock (already held by contract)
-    /// @param _lockDuration Duration of the lock in seconds
-    /// @param _to Address to receive the veNFT
-    /// @return The token ID of the newly created veNFT
-    /// @dev Used for lock extension (reset) where tokens are already in the contract
-    function _resetLock(
-        uint256 _value,
-        uint256 _lockDuration,
-        address _to
-    ) internal returns (uint256) {
-        // Step 1: Calculate unlock time rounded UP to nearest week for protocol consistency
-        uint256 unlockTime = ((block.timestamp + _lockDuration + WEEK - 1) /
-            WEEK) * WEEK;
-
-        // Step 2: Validate input parameters
-        if (_value == 0) revert ZeroAmount();
-        if (unlockTime <= block.timestamp) revert LockDurationNotInFuture();
-        if (unlockTime > block.timestamp + MAXTIME)
-            revert LockDurationTooLong();
-
-        // Step 3: Generate new token ID for the reset lock
-        uint256 _tokenId = ++tokenId;
-
-        // Step 4: Mint NFT to recipient (tokens already in contract, no transfer needed)
-        _mint(_to, _tokenId);
-
-        // Step 5: Update total supply to include the new lock amount
-        uint256 supplyBefore = supply;
-        supply = supplyBefore + _value;
-
-        // Step 6: Create new locked balance with extended duration
-        LockedBalance memory newLocked = LockedBalance(
-            _value.toInt128(),
-            unlockTime
-        );
-        _locked[_tokenId] = newLocked;
-
-        // Step 7: Update voting power history for the new lock
-        _checkpoint(_tokenId, LockedBalance(0, 0), newLocked);
-
-        return _tokenId;
-    }
-
     /// @notice Increases the locked amount for an existing veNFT position
     /// @param _tokenId The token ID of the veNFT position
     /// @param _value Additional amount of tokens to lock
