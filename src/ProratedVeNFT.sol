@@ -133,10 +133,8 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
     ) ERC721(_name, _symbol) {
         // Step 1: Set the immutable token address for LP token locking
         TOKEN = ERC20(_token);
-
         // Step 2: Initialize the global point history with current timestamp
         _pointHistory[0].ts = block.timestamp;
-
         // Step 3: Emit initialization event for off-chain indexing
         emit VeNFTInitialized(_token, _name, _symbol, block.timestamp);
     }
@@ -156,24 +154,14 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
         if (_value == 0) revert ZeroAmount();
         if (_lockDuration == 0) revert LockDurationNotInFuture();
         if (_lockDuration > MAXTIME) revert LockDurationTooLong();
-
-        // Step 2: Calculate unlock time rounded UP to nearest week and clamp to MAXTIME (floored to week)
-        uint256 unlockTime = ((block.timestamp + _lockDuration + WEEK - 1) /
-            WEEK) * WEEK;
-        uint256 maxUnlockTime = ((block.timestamp + MAXTIME) / WEEK) * WEEK;
-        if (unlockTime > maxUnlockTime) {
-            unlockTime = maxUnlockTime;
-        }
-
+        // Step 2: Calculate unlock time using shared helper
+        uint256 unlockTime = _computeUnlockTime(_lockDuration);
         // Step 3: Generate new token ID
         uint256 _tokenId = ++tokenId;
-
         // Step 4: Deposit tokens and create lock position (before minting NFT)
         _depositFor(_tokenId, _value, unlockTime, _locked[_tokenId]);
-
         // Step 5: Mint NFT to recipient after successful deposit
         _mint(msg.sender, _tokenId);
-
         // Step 6: Emit lock creation event
         emit LockCreated(
             msg.sender,
@@ -183,7 +171,6 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
             unlockTime,
             block.timestamp
         );
-
         return _tokenId;
     }
 
@@ -191,63 +178,33 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
     /// @param _tokenId The token ID of the veNFT position to extend
     /// @param _newDuration New lock duration in seconds
     /// @dev In-place extension: preserves tokenId, ownership, approvals and accounting
-    function extendLockDuration(
+    function increaseLockDuration(
         uint256 _tokenId,
         uint256 _newDuration
     ) external nonReentrant {
-        // Step 1: Owner-only authorization and duration bounds validations
+        // Step 1: Owner-only authorization and compute target end (validates duration bounds)
         if (_ownerOf[_tokenId] != msg.sender) revert("NOT_AUTHORIZED");
-        if (_newDuration == 0) revert LockDurationNotInFuture();
-        if (_newDuration > MAXTIME) revert LockDurationTooLong();
-
-        // Step 2: Compute rounded-up new end and clamp to MAXTIME (floored to week)
-        uint256 newEnd = ((block.timestamp + _newDuration + WEEK - 1) / WEEK) *
-            WEEK;
-        uint256 maxUnlockTime = ((block.timestamp + MAXTIME) / WEEK) * WEEK;
-        if (newEnd > maxUnlockTime) newEnd = maxUnlockTime;
-
-        // Step 3: Load current lock and enforce monotonicity (newEnd must increase)
+        uint256 newEnd = _computeUnlockTime(_newDuration);
+        // Step 2: Load current lock and enforce monotonicity (newEnd must increase)
         LockedBalance memory oldLocked = _locked[_tokenId];
         if (newEnd <= oldLocked.end) revert LockDurationNotInFuture();
-
-        // Step 4: Snapshot reward accounting state BEFORE modifying voting power
-        uint256 globalIndexBefore = globalRewardPerVotingPower;
-        uint256 userPaidIndexBefore = userRewardPerVotingPowerPaid[_tokenId];
-        uint256 votingPowerBefore = _balanceOfNFTAt(_tokenId, block.timestamp);
-        uint256 pendingBefore = 0;
-        if (votingPowerBefore > 0 && globalIndexBefore > userPaidIndexBefore) {
-            pendingBefore =
-                (votingPowerBefore *
-                    (globalIndexBefore - userPaidIndexBefore)) /
-                1e18;
-        }
-
-        // Step 5: Update in-place and checkpoint
+        // Step 3: Snapshot reward accounting state BEFORE modifying voting power
+        (
+            uint256 globalIndexBefore,
+            ,
+            ,
+            uint256 pendingBefore
+        ) = _snapshotPending(_tokenId);
+        // Step 4: Update in-place and checkpoint
         LockedBalance memory newLocked = LockedBalance(
             oldLocked.amount,
             newEnd
         );
         _locked[_tokenId] = newLocked;
         _checkpoint(_tokenId, oldLocked, newLocked);
-
-        // Step 6: Preserve pending rewards across extension by adjusting paid index
-        // Solve for paidAfter so that pendingAfter (with higher voting power) equals pendingBefore
-        uint256 votingPowerAfter = _balanceOfNFTAt(_tokenId, block.timestamp);
-        if (votingPowerAfter == 0) {
-            userRewardPerVotingPowerPaid[_tokenId] = globalIndexBefore;
-        } else {
-            // paidAfter = globalIndexBefore - pendingBefore * 1e18 / votingPowerAfter
-            uint256 adjustment = (pendingBefore * 1e18) / votingPowerAfter;
-            uint256 paidAfter = 0;
-            if (globalIndexBefore > adjustment) {
-                paidAfter = globalIndexBefore - adjustment;
-            } else {
-                paidAfter = 0;
-            }
-            userRewardPerVotingPowerPaid[_tokenId] = paidAfter;
-        }
-
-        // Step 7: Emit event
+        // Step 5: Preserve pending rewards across extension by adjusting paid index
+        _preservePendingAfter(_tokenId, globalIndexBefore, pendingBefore);
+        // Step 6: Emit event
         emit LockExtended(_tokenId, oldLocked.end, newEnd);
     }
 
@@ -255,25 +212,90 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
     /// @param _tokenId The token ID of the veNFT position
     /// @param _value Additional amount of tokens to lock
     /// @dev The lock duration remains the same, only the amount increases
-    function increaseAmount(
+    function increaseLockAmount(
         uint256 _tokenId,
         uint256 _value
     ) external nonReentrant {
-        if (!_isApprovedOrOwner(msg.sender, _tokenId)) revert("NOT_AUTHORIZED");
-        _increaseAmountFor(_tokenId, _value);
-    }
-
-    /// @notice Internal function to increase the locked amount for a veNFT position
-    /// @param _tokenId The token ID of the veNFT position
-    /// @param _value Additional amount of tokens to lock
-    function _increaseAmountFor(uint256 _tokenId, uint256 _value) internal {
-        LockedBalance memory oldLocked = _locked[_tokenId];
-
+        // Step 1: Owner-only authorization and input validation
+        if (_ownerOf[_tokenId] != msg.sender) revert("NOT_AUTHORIZED");
         if (_value == 0) revert ZeroAmount();
+        LockedBalance memory oldLocked = _locked[_tokenId];
         if (oldLocked.amount <= 0) revert NoLockFound();
         if (oldLocked.end <= block.timestamp) revert LockExpired();
-
+        // Step 2: Snapshot pending rewards to preserve at the moment of amount increase
+        (
+            uint256 globalIndexBefore,
+            ,
+            ,
+            uint256 pendingBefore
+        ) = _snapshotPending(_tokenId);
+        // Step 3: Deposit tokens and create lock position (before minting NFT)
         _depositFor(_tokenId, _value, 0, oldLocked);
+        // Step 4: Adjust paid index so pendingAfter equals pendingBefore with higher voting power
+        _preservePendingAfter(_tokenId, globalIndexBefore, pendingBefore);
+        // Step 5: Emit event
+        emit LockExtended(_tokenId, oldLocked.end, oldLocked.end);
+    }
+
+    function _ceilToWeek(uint256 ts) internal pure returns (uint256) {
+        return ((ts + WEEK - 1) / WEEK) * WEEK;
+    }
+
+    function _maxUnlockTimeWeek(uint256 nowTs) internal pure returns (uint256) {
+        return ((nowTs + MAXTIME) / WEEK) * WEEK;
+    }
+
+    function _computeUnlockTime(
+        uint256 lockDuration
+    ) internal view returns (uint256) {
+        if (lockDuration == 0) revert LockDurationNotInFuture();
+        if (lockDuration > MAXTIME) revert LockDurationTooLong();
+        uint256 unlockTime = _ceilToWeek(block.timestamp + lockDuration);
+        uint256 maxUnlockTime = _maxUnlockTimeWeek(block.timestamp);
+        if (unlockTime > maxUnlockTime) unlockTime = maxUnlockTime;
+        return unlockTime;
+    }
+
+    function _snapshotPending(
+        uint256 _tokenId
+    )
+        internal
+        view
+        returns (
+            uint256 globalIndexBefore,
+            uint256 userPaidIndexBefore,
+            uint256 votingPowerBefore,
+            uint256 pendingBefore
+        )
+    {
+        globalIndexBefore = globalRewardPerVotingPower;
+        userPaidIndexBefore = userRewardPerVotingPowerPaid[_tokenId];
+        votingPowerBefore = _balanceOfNFTAt(_tokenId, block.timestamp);
+        pendingBefore = 0;
+        if (votingPowerBefore > 0 && globalIndexBefore > userPaidIndexBefore) {
+            pendingBefore =
+                (votingPowerBefore *
+                    (globalIndexBefore - userPaidIndexBefore)) /
+                1e18;
+        }
+    }
+
+    function _preservePendingAfter(
+        uint256 _tokenId,
+        uint256 globalIndexBefore,
+        uint256 pendingBefore
+    ) internal {
+        uint256 votingPowerAfter = _balanceOfNFTAt(_tokenId, block.timestamp);
+        if (votingPowerAfter == 0) {
+            userRewardPerVotingPowerPaid[_tokenId] = globalIndexBefore;
+        } else {
+            uint256 adjustment = (pendingBefore * 1e18) / votingPowerAfter;
+            uint256 paidAfter = 0;
+            if (globalIndexBefore > adjustment) {
+                paidAfter = globalIndexBefore - adjustment;
+            }
+            userRewardPerVotingPowerPaid[_tokenId] = paidAfter;
+        }
     }
 
     // ============ VOTING POWER QUERIES ============
@@ -376,7 +398,7 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
     /// @notice Gets the pending rewards for a veNFT position
     /// @param _tokenId The token ID of the veNFT position
     /// @return The amount of pending rewards for the position
-    function getPendingRewards(
+    function pendingRewardsOf(
         uint256 _tokenId
     ) external view returns (uint256) {
         uint256 userVotingPower = balanceOfNFT(_tokenId);

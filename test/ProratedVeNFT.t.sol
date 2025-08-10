@@ -356,7 +356,7 @@ contract ProratedVeNFTTest is Test {
         assertEq(initialLocked.amount, int128(uint128(TOKEN_1)));
 
         // Increase amount
-        venft.increaseAmount(tokenId, TOKEN_1);
+        venft.increaseLockAmount(tokenId, TOKEN_1);
 
         // Check updated locked balance
         ProratedVeNFT.LockedBalance memory updatedLocked = venft.locked(
@@ -379,7 +379,7 @@ contract ProratedVeNFTTest is Test {
         uint256 tokenId = venft.createLock(TOKEN_1, 1 weeks);
 
         vm.expectRevert(ProratedVeNFT.ZeroAmount.selector);
-        venft.increaseAmount(tokenId, 0);
+        venft.increaseLockAmount(tokenId, 0);
 
         vm.stopPrank();
     }
@@ -389,7 +389,7 @@ contract ProratedVeNFTTest is Test {
         token.approve(address(venft), TOKEN_1);
 
         vm.expectRevert("NOT_AUTHORIZED");
-        venft.increaseAmount(999, TOKEN_1);
+        venft.increaseLockAmount(999, TOKEN_1);
 
         vm.stopPrank();
     }
@@ -404,7 +404,7 @@ contract ProratedVeNFTTest is Test {
         skip(2 weeks);
 
         vm.expectRevert(ProratedVeNFT.LockExpired.selector);
-        venft.increaseAmount(tokenId, TOKEN_1);
+        venft.increaseLockAmount(tokenId, TOKEN_1);
 
         vm.stopPrank();
     }
@@ -421,7 +421,7 @@ contract ProratedVeNFTTest is Test {
         token.approve(address(venft), TOKEN_1);
 
         vm.expectRevert("NOT_AUTHORIZED");
-        venft.increaseAmount(tokenId, TOKEN_1);
+        venft.increaseLockAmount(tokenId, TOKEN_1);
 
         vm.stopPrank();
     }
@@ -439,7 +439,7 @@ contract ProratedVeNFTTest is Test {
         // User2 increases amount
         vm.startPrank(user2);
         token.approve(address(venft), TOKEN_1);
-        venft.increaseAmount(tokenId, TOKEN_1);
+        venft.increaseLockAmount(tokenId, TOKEN_1);
 
         // Check updated locked balance
         ProratedVeNFT.LockedBalance memory updatedLocked = venft.locked(
@@ -463,7 +463,7 @@ contract ProratedVeNFTTest is Test {
         // User2 increases amount
         vm.startPrank(user2);
         token.approve(address(venft), TOKEN_1);
-        venft.increaseAmount(tokenId, TOKEN_1);
+        venft.increaseLockAmount(tokenId, TOKEN_1);
 
         // Check updated locked balance
         ProratedVeNFT.LockedBalance memory updatedLocked = venft.locked(
@@ -494,7 +494,7 @@ contract ProratedVeNFTTest is Test {
             block.timestamp
         );
 
-        venft.increaseAmount(tokenId, TOKEN_1);
+        venft.increaseLockAmount(tokenId, TOKEN_1);
 
         vm.stopPrank();
     }
@@ -512,7 +512,7 @@ contract ProratedVeNFTTest is Test {
         skip(1);
 
         // Increase amount
-        venft.increaseAmount(tokenId, TOKEN_1);
+        venft.increaseLockAmount(tokenId, TOKEN_1);
 
         // Check that epoch was updated
         uint256 updatedEpoch = venft.userPointEpoch(tokenId);
@@ -528,17 +528,17 @@ contract ProratedVeNFTTest is Test {
         uint256 tokenId = venft.createLock(TOKEN_1, 1 weeks);
 
         // First increase
-        venft.increaseAmount(tokenId, TOKEN_1);
+        venft.increaseLockAmount(tokenId, TOKEN_1);
         ProratedVeNFT.LockedBalance memory locked1 = venft.locked(tokenId);
         assertEq(locked1.amount, int128(uint128(TOKEN_1 * 2)));
 
         // Second increase
-        venft.increaseAmount(tokenId, TOKEN_1);
+        venft.increaseLockAmount(tokenId, TOKEN_1);
         ProratedVeNFT.LockedBalance memory locked2 = venft.locked(tokenId);
         assertEq(locked2.amount, int128(uint128(TOKEN_1 * 3)));
 
         // Third increase
-        venft.increaseAmount(tokenId, TOKEN_1);
+        venft.increaseLockAmount(tokenId, TOKEN_1);
         ProratedVeNFT.LockedBalance memory locked3 = venft.locked(tokenId);
         assertEq(locked3.amount, int128(uint128(TOKEN_1 * 4)));
 
@@ -553,7 +553,7 @@ contract ProratedVeNFTTest is Test {
 
         // Try to increase with insufficient allowance
         vm.expectRevert(); // ERC20 transfer will fail
-        venft.increaseAmount(tokenId, TOKEN_1);
+        venft.increaseLockAmount(tokenId, TOKEN_1);
 
         vm.stopPrank();
     }
@@ -569,7 +569,7 @@ contract ProratedVeNFTTest is Test {
 
         // Try to increase with insufficient balance
         vm.expectRevert(); // ERC20 transfer will fail
-        venft.increaseAmount(tokenId, TOKEN_1);
+        venft.increaseLockAmount(tokenId, TOKEN_1);
 
         vm.stopPrank();
     }
@@ -1173,7 +1173,7 @@ contract ProratedVeNFTTest is Test {
     function test_ExtendLockDuration_NonExistentToken_Reverts() public {
         vm.startPrank(user1);
         vm.expectRevert("NOT_AUTHORIZED");
-        venft.extendLockDuration(999, 4 weeks);
+        venft.increaseLockDuration(999, 4 weeks);
         vm.stopPrank();
     }
 
@@ -1189,7 +1189,7 @@ contract ProratedVeNFTTest is Test {
 
         vm.startPrank(user2);
         vm.expectRevert("NOT_AUTHORIZED");
-        venft.extendLockDuration(tokenId, 4 weeks);
+        venft.increaseLockDuration(tokenId, 4 weeks);
         vm.stopPrank();
     }
 
@@ -1198,7 +1198,7 @@ contract ProratedVeNFTTest is Test {
         token.approve(address(venft), TOKEN_1);
         uint256 tokenId = venft.createLock(TOKEN_1, 1 weeks);
         vm.expectRevert(ProratedVeNFT.LockDurationNotInFuture.selector);
-        venft.extendLockDuration(tokenId, 0);
+        venft.increaseLockDuration(tokenId, 0);
         vm.stopPrank();
     }
 
@@ -1207,7 +1207,7 @@ contract ProratedVeNFTTest is Test {
         token.approve(address(venft), TOKEN_1);
         uint256 tokenId = venft.createLock(TOKEN_1, 1 weeks);
         vm.expectRevert(ProratedVeNFT.LockDurationTooLong.selector);
-        venft.extendLockDuration(tokenId, 10 * 365 weeks);
+        venft.increaseLockDuration(tokenId, 10 * 365 weeks);
         vm.stopPrank();
     }
 
@@ -1220,7 +1220,7 @@ contract ProratedVeNFTTest is Test {
         uint256 supplyBefore = venft.supply();
         ProratedVeNFT.LockedBalance memory beforeLocked = venft.locked(tokenId);
 
-        venft.extendLockDuration(tokenId, 4 weeks);
+        venft.increaseLockDuration(tokenId, 4 weeks);
 
         ProratedVeNFT.LockedBalance memory afterLocked = venft.locked(tokenId);
         uint256 supplyAfter = venft.supply();
@@ -1243,7 +1243,7 @@ contract ProratedVeNFTTest is Test {
         vm.expectEmit(true, false, false, true, address(venft));
         emit LockExtended(tokenId, oldLocked.end, expectedNewEnd);
 
-        venft.extendLockDuration(tokenId, duration);
+        venft.increaseLockDuration(tokenId, duration);
         vm.stopPrank();
     }
 
@@ -1256,7 +1256,7 @@ contract ProratedVeNFTTest is Test {
         skip(3 weeks);
 
         vm.startPrank(user1);
-        venft.extendLockDuration(tokenId, 4 weeks);
+        venft.increaseLockDuration(tokenId, 4 weeks);
         ProratedVeNFT.LockedBalance memory newLocked = venft.locked(tokenId);
         assertGt(newLocked.end, block.timestamp);
         vm.stopPrank();
@@ -1272,7 +1272,7 @@ contract ProratedVeNFTTest is Test {
         // Ensure a new timestamp for a new user point: jump to next week boundary
         uint256 nextWeek = ((block.timestamp + WEEK - 1) / WEEK) * WEEK;
         skip(nextWeek - block.timestamp + 1);
-        venft.extendLockDuration(tokenId, 4 weeks);
+        venft.increaseLockDuration(tokenId, 4 weeks);
         uint256 epochAfter = venft.userPointEpoch(tokenId);
         uint256 biasAfter = venft.balanceOfNFT(tokenId);
         assertGt(epochAfter, epochBefore);
@@ -1289,7 +1289,7 @@ contract ProratedVeNFTTest is Test {
 
         vm.startPrank(user2);
         vm.expectRevert("NOT_AUTHORIZED");
-        venft.extendLockDuration(tokenId, 4 weeks);
+        venft.increaseLockDuration(tokenId, 4 weeks);
         vm.stopPrank();
 
         assertEq(venft.ownerOf(tokenId), user1);
@@ -1304,7 +1304,7 @@ contract ProratedVeNFTTest is Test {
 
         vm.startPrank(user2);
         vm.expectRevert("NOT_AUTHORIZED");
-        venft.extendLockDuration(tokenId, 4 weeks);
+        venft.increaseLockDuration(tokenId, 4 weeks);
         vm.stopPrank();
 
         assertEq(venft.ownerOf(tokenId), user1);
@@ -1412,7 +1412,7 @@ contract ProratedVeNFTTest is Test {
         uint256 tokenId = venft.createLock(TOKEN_1, 1 weeks);
         uint256 initialVotingPower = venft.balanceOfNFT(tokenId);
         assertGt(initialVotingPower, 0);
-        venft.extendLockDuration(tokenId, 4 weeks);
+        venft.increaseLockDuration(tokenId, 4 weeks);
         uint256 newVotingPower = venft.balanceOfNFT(tokenId);
         assertGt(newVotingPower, initialVotingPower);
         vm.stopPrank();
@@ -1500,7 +1500,7 @@ contract ProratedVeNFTTest is Test {
         assertGt(initialVotingPower, 0);
 
         // Increase amount
-        venft.increaseAmount(tokenId, TOKEN_1);
+        venft.increaseLockAmount(tokenId, TOKEN_1);
 
         // Get voting power after increase
         uint256 newVotingPower = venft.balanceOfNFT(tokenId);
@@ -1684,7 +1684,7 @@ contract ProratedVeNFTTest is Test {
         assertGt(supplyBefore, 0);
 
         vm.startPrank(user1);
-        venft.extendLockDuration(tokenId, 4 weeks);
+        venft.increaseLockDuration(tokenId, 4 weeks);
         vm.stopPrank();
 
         uint256 supplyAfter = venft.totalSupply();
@@ -1703,7 +1703,7 @@ contract ProratedVeNFTTest is Test {
 
         // Increase amount
         vm.startPrank(user1);
-        venft.increaseAmount(tokenId, TOKEN_1);
+        venft.increaseLockAmount(tokenId, TOKEN_1);
         vm.stopPrank();
 
         uint256 supplyAfter = venft.totalSupply();
@@ -1882,8 +1882,8 @@ contract ProratedVeNFTTest is Test {
         vm.stopPrank();
 
         // Both users should have pending rewards
-        uint256 pendingRewards1 = venft.getPendingRewards(tokenId1);
-        uint256 pendingRewards2 = venft.getPendingRewards(tokenId2);
+        uint256 pendingRewards1 = venft.pendingRewardsOf(tokenId1);
+        uint256 pendingRewards2 = venft.pendingRewardsOf(tokenId2);
 
         assertGt(pendingRewards1, 0);
         assertGt(pendingRewards2, 0);
@@ -2049,7 +2049,7 @@ contract ProratedVeNFTTest is Test {
         vm.stopPrank();
 
         // Should still have pending rewards
-        uint256 pendingRewards = venft.getPendingRewards(tokenId);
+        uint256 pendingRewards = venft.pendingRewardsOf(tokenId);
         assertGt(pendingRewards, 0);
     }
 
@@ -2413,7 +2413,7 @@ contract ProratedVeNFTTest is Test {
         vm.stopPrank();
 
         // Get pending rewards
-        uint256 pendingRewards = venft.getPendingRewards(tokenId);
+        uint256 pendingRewards = venft.pendingRewardsOf(tokenId);
         assertGt(pendingRewards, 0);
 
         // Expect Compounded event
@@ -2505,7 +2505,7 @@ contract ProratedVeNFTTest is Test {
         vm.stopPrank();
 
         // Get pending rewards
-        uint256 pendingRewards = venft.getPendingRewards(tokenId);
+        uint256 pendingRewards = venft.pendingRewardsOf(tokenId);
         assertGt(pendingRewards, 0);
     }
 
@@ -2517,7 +2517,7 @@ contract ProratedVeNFTTest is Test {
         vm.stopPrank();
 
         // Get pending rewards without any distributions
-        uint256 pendingRewards = venft.getPendingRewards(tokenId);
+        uint256 pendingRewards = venft.pendingRewardsOf(tokenId);
         assertEq(pendingRewards, 0);
     }
 
@@ -2529,7 +2529,7 @@ contract ProratedVeNFTTest is Test {
         vm.stopPrank();
 
         // Get pending rewards before distribution
-        uint256 pendingRewardsBefore = venft.getPendingRewards(tokenId);
+        uint256 pendingRewardsBefore = venft.pendingRewardsOf(tokenId);
         assertEq(pendingRewardsBefore, 0);
 
         // Distribute rewards
@@ -2539,7 +2539,7 @@ contract ProratedVeNFTTest is Test {
         vm.stopPrank();
 
         // Get pending rewards after distribution
-        uint256 pendingRewardsAfter = venft.getPendingRewards(tokenId);
+        uint256 pendingRewardsAfter = venft.pendingRewardsOf(tokenId);
         assertGt(pendingRewardsAfter, 0);
     }
 
@@ -2557,7 +2557,7 @@ contract ProratedVeNFTTest is Test {
         vm.stopPrank();
 
         // Get pending rewards before compounding
-        uint256 pendingRewardsBefore = venft.getPendingRewards(tokenId);
+        uint256 pendingRewardsBefore = venft.pendingRewardsOf(tokenId);
         assertGt(pendingRewardsBefore, 0);
 
         // Compound half of the rewards
@@ -2566,7 +2566,7 @@ contract ProratedVeNFTTest is Test {
         vm.stopPrank();
 
         // Get pending rewards after compounding
-        uint256 pendingRewardsAfter = venft.getPendingRewards(tokenId);
+        uint256 pendingRewardsAfter = venft.pendingRewardsOf(tokenId);
         assertEq(pendingRewardsAfter, 0); // All rewards should be compounded
     }
 
@@ -2584,7 +2584,7 @@ contract ProratedVeNFTTest is Test {
         vm.stopPrank();
 
         // Get pending rewards after first distribution
-        uint256 pendingRewardsAfterFirst = venft.getPendingRewards(tokenId);
+        uint256 pendingRewardsAfterFirst = venft.pendingRewardsOf(tokenId);
         assertGt(pendingRewardsAfterFirst, 0);
 
         // Second distribution
@@ -2593,13 +2593,13 @@ contract ProratedVeNFTTest is Test {
         vm.stopPrank();
 
         // Get pending rewards after second distribution
-        uint256 pendingRewardsAfterSecond = venft.getPendingRewards(tokenId);
+        uint256 pendingRewardsAfterSecond = venft.pendingRewardsOf(tokenId);
         assertGt(pendingRewardsAfterSecond, pendingRewardsAfterFirst);
     }
 
     function test_GetPendingRewards_NonExistentToken() public {
         // Try to get pending rewards for non-existent token
-        uint256 pendingRewards = venft.getPendingRewards(999);
+        uint256 pendingRewards = venft.pendingRewardsOf(999);
         assertEq(pendingRewards, 0);
     }
 
@@ -2620,7 +2620,7 @@ contract ProratedVeNFTTest is Test {
         skip(2 weeks);
 
         // Get pending rewards for expired lock
-        uint256 pendingRewards = venft.getPendingRewards(tokenId);
+        uint256 pendingRewards = venft.pendingRewardsOf(tokenId);
         assertEq(pendingRewards, 0); // No voting power = no rewards
     }
 
@@ -2644,8 +2644,8 @@ contract ProratedVeNFTTest is Test {
         vm.stopPrank();
 
         // Get pending rewards for both users
-        uint256 pendingRewards1 = venft.getPendingRewards(tokenId1);
-        uint256 pendingRewards2 = venft.getPendingRewards(tokenId2);
+        uint256 pendingRewards1 = venft.pendingRewardsOf(tokenId1);
+        uint256 pendingRewards2 = venft.pendingRewardsOf(tokenId2);
 
         // User2 should have more pending rewards due to higher voting power
         assertGt(pendingRewards2, pendingRewards1);
@@ -2665,16 +2665,16 @@ contract ProratedVeNFTTest is Test {
         vm.stopPrank();
 
         // Get pending rewards before extension
-        uint256 pendingRewardsBefore = venft.getPendingRewards(tokenId);
+        uint256 pendingRewardsBefore = venft.pendingRewardsOf(tokenId);
         assertGt(pendingRewardsBefore, 0);
 
         // Extend lock duration (pending rewards should be preserved)
         vm.startPrank(user1);
-        venft.extendLockDuration(tokenId, 4 weeks);
+        venft.increaseLockDuration(tokenId, 4 weeks);
         vm.stopPrank();
 
         // Get pending rewards after extension (same tokenId)
-        uint256 pendingRewardsAfter = venft.getPendingRewards(tokenId);
+        uint256 pendingRewardsAfter = venft.pendingRewardsOf(tokenId);
         assertApproxEqAbs(pendingRewardsAfter, pendingRewardsBefore, 1);
     }
 
@@ -2692,7 +2692,7 @@ contract ProratedVeNFTTest is Test {
         vm.stopPrank();
 
         // Get pending rewards before partial withdrawal
-        uint256 pendingRewardsBefore = venft.getPendingRewards(tokenId);
+        uint256 pendingRewardsBefore = venft.pendingRewardsOf(tokenId);
         assertGt(pendingRewardsBefore, 0);
 
         // Fast forward to create some decay
@@ -2704,7 +2704,7 @@ contract ProratedVeNFTTest is Test {
         vm.stopPrank();
 
         // Get pending rewards after partial withdrawal
-        uint256 pendingRewardsAfter = venft.getPendingRewards(tokenId);
+        uint256 pendingRewardsAfter = venft.pendingRewardsOf(tokenId);
         assertLt(pendingRewardsAfter, pendingRewardsBefore); // Lower voting power = fewer rewards
     }
 
@@ -2722,16 +2722,16 @@ contract ProratedVeNFTTest is Test {
         vm.stopPrank();
 
         // Get pending rewards before amount increase
-        uint256 pendingRewardsBefore = venft.getPendingRewards(tokenId);
+        uint256 pendingRewardsBefore = venft.pendingRewardsOf(tokenId);
         assertGt(pendingRewardsBefore, 0);
 
         // Increase amount
         vm.startPrank(user1);
-        venft.increaseAmount(tokenId, TOKEN_1);
+        venft.increaseLockAmount(tokenId, TOKEN_1);
         vm.stopPrank();
 
         // Get pending rewards after amount increase
-        uint256 pendingRewardsAfter = venft.getPendingRewards(tokenId);
+        uint256 pendingRewardsAfter = venft.pendingRewardsOf(tokenId);
         assertGt(pendingRewardsAfter, pendingRewardsBefore); // Higher voting power = more rewards
     }
 
@@ -2755,8 +2755,8 @@ contract ProratedVeNFTTest is Test {
         vm.stopPrank();
 
         // Both users should have equal pending rewards (same voting power)
-        uint256 pendingRewards1 = venft.getPendingRewards(tokenId1);
-        uint256 pendingRewards2 = venft.getPendingRewards(tokenId2);
+        uint256 pendingRewards1 = venft.pendingRewardsOf(tokenId1);
+        uint256 pendingRewards2 = venft.pendingRewardsOf(tokenId2);
 
         assertEq(pendingRewards1, pendingRewards2);
         assertGt(pendingRewards1, 0);
@@ -2776,7 +2776,7 @@ contract ProratedVeNFTTest is Test {
         vm.stopPrank();
 
         // Get pending rewards before compounding
-        uint256 pendingRewardsBefore = venft.getPendingRewards(tokenId);
+        uint256 pendingRewardsBefore = venft.pendingRewardsOf(tokenId);
         assertGt(pendingRewardsBefore, 0);
 
         // Compound rewards
@@ -2785,7 +2785,7 @@ contract ProratedVeNFTTest is Test {
         vm.stopPrank();
 
         // Get pending rewards after compounding
-        uint256 pendingRewardsAfter = venft.getPendingRewards(tokenId);
+        uint256 pendingRewardsAfter = venft.pendingRewardsOf(tokenId);
         assertEq(pendingRewardsAfter, 0); // All rewards should be compounded
 
         // Distribute more rewards
@@ -2794,7 +2794,7 @@ contract ProratedVeNFTTest is Test {
         vm.stopPrank();
 
         // Should have new pending rewards
-        uint256 newPendingRewards = venft.getPendingRewards(tokenId);
+        uint256 newPendingRewards = venft.pendingRewardsOf(tokenId);
         assertGt(newPendingRewards, 0);
     }
 
@@ -2812,8 +2812,8 @@ contract ProratedVeNFTTest is Test {
         vm.stopPrank();
 
         // Call as view function (should not modify state)
-        uint256 pendingRewards1 = venft.getPendingRewards(tokenId);
-        uint256 pendingRewards2 = venft.getPendingRewards(tokenId);
+        uint256 pendingRewards1 = venft.pendingRewardsOf(tokenId);
+        uint256 pendingRewards2 = venft.pendingRewardsOf(tokenId);
 
         // Should return same result
         assertEq(pendingRewards1, pendingRewards2);
@@ -3017,7 +3017,7 @@ contract ProratedVeNFTTest is Test {
         vm.startPrank(user1);
         token.mint(TOKEN_1, user1); // Mint tokens for increase
         token.approve(address(venft), TOKEN_1);
-        venft.increaseAmount(tokenId, TOKEN_1);
+        venft.increaseLockAmount(tokenId, TOKEN_1);
         vm.stopPrank();
 
         uint256 votingPower3 = venft.balanceOfNFT(tokenId);
@@ -3176,7 +3176,7 @@ contract ProratedVeNFTTest is Test {
         // Try to increase by zero
         vm.startPrank(user1);
         vm.expectRevert(ProratedVeNFT.ZeroAmount.selector);
-        venft.increaseAmount(tokenId, 0);
+        venft.increaseLockAmount(tokenId, 0);
         vm.stopPrank();
     }
 
@@ -3184,7 +3184,7 @@ contract ProratedVeNFTTest is Test {
         vm.startPrank(user1);
         token.approve(address(venft), TOKEN_1);
         vm.expectRevert("NOT_AUTHORIZED");
-        venft.increaseAmount(999, TOKEN_1);
+        venft.increaseLockAmount(999, TOKEN_1);
         vm.stopPrank();
     }
 
@@ -3203,7 +3203,7 @@ contract ProratedVeNFTTest is Test {
         token.mint(TOKEN_1, user1);
         token.approve(address(venft), TOKEN_1);
         vm.expectRevert(ProratedVeNFT.LockExpired.selector);
-        venft.increaseAmount(tokenId, TOKEN_1);
+        venft.increaseLockAmount(tokenId, TOKEN_1);
         vm.stopPrank();
     }
 
@@ -3293,7 +3293,7 @@ contract ProratedVeNFTTest is Test {
     function test_ErrorHandling_ExtendLockDurationNonExistentToken() public {
         vm.startPrank(user1);
         vm.expectRevert("NOT_AUTHORIZED");
-        venft.extendLockDuration(999, 4 weeks);
+        venft.increaseLockDuration(999, 4 weeks);
         vm.stopPrank();
     }
 
@@ -3307,7 +3307,7 @@ contract ProratedVeNFTTest is Test {
         // User2 tries to extend
         vm.startPrank(user2);
         vm.expectRevert("NOT_AUTHORIZED");
-        venft.extendLockDuration(tokenId, 8 weeks);
+        venft.increaseLockDuration(tokenId, 8 weeks);
         vm.stopPrank();
     }
 
@@ -3323,7 +3323,7 @@ contract ProratedVeNFTTest is Test {
 
         // Try to extend expired lock - should work since we're the owner (in-place)
         vm.startPrank(user1);
-        venft.extendLockDuration(tokenId, 4 weeks);
+        venft.increaseLockDuration(tokenId, 4 weeks);
         vm.stopPrank();
 
         // Verify the lock was extended in-place and end is in the future
@@ -3341,7 +3341,7 @@ contract ProratedVeNFTTest is Test {
         // Try to extend with invalid duration
         vm.startPrank(user1);
         vm.expectRevert(ProratedVeNFT.LockDurationNotInFuture.selector);
-        venft.extendLockDuration(tokenId, 0);
+        venft.increaseLockDuration(tokenId, 0);
         vm.stopPrank();
     }
 
@@ -3355,7 +3355,7 @@ contract ProratedVeNFTTest is Test {
         // Try to extend with too long duration
         vm.startPrank(user1);
         vm.expectRevert(ProratedVeNFT.LockDurationTooLong.selector);
-        venft.extendLockDuration(tokenId, MAXTIME + WEEK);
+        venft.increaseLockDuration(tokenId, MAXTIME + WEEK);
         vm.stopPrank();
     }
 
@@ -3394,7 +3394,7 @@ contract ProratedVeNFTTest is Test {
 
     function test_ErrorHandling_GetPendingRewardsNonExistentToken() public {
         // getPendingRewards returns 0 for non-existent tokens, doesn't revert
-        uint256 pendingRewards = venft.getPendingRewards(999);
+        uint256 pendingRewards = venft.pendingRewardsOf(999);
         assertEq(pendingRewards, 0);
     }
 
@@ -3527,7 +3527,7 @@ contract ProratedVeNFTTest is Test {
         vm.startPrank(user1);
         token.mint(TOKEN_1, user1);
         token.approve(address(venft), TOKEN_1);
-        venft.increaseAmount(tokenId, TOKEN_1);
+        venft.increaseLockAmount(tokenId, TOKEN_1);
         vm.stopPrank();
 
         skip(1 weeks);
@@ -3541,7 +3541,7 @@ contract ProratedVeNFTTest is Test {
 
         // Extend lock duration (in-place)
         vm.startPrank(user1);
-        venft.extendLockDuration(tokenId, 8 weeks);
+        venft.increaseLockDuration(tokenId, 8 weeks);
         vm.stopPrank();
 
         // Verify the final state on the same tokenId
@@ -3562,7 +3562,7 @@ contract ProratedVeNFTTest is Test {
             vm.startPrank(user1);
             token.mint(TOKEN_1, user1);
             token.approve(address(venft), TOKEN_1);
-            venft.increaseAmount(tokenId, TOKEN_1);
+            venft.increaseLockAmount(tokenId, TOKEN_1);
             vm.stopPrank();
 
             // Advance time slightly
@@ -3591,13 +3591,13 @@ contract ProratedVeNFTTest is Test {
         vm.startPrank(user1);
         token.mint(TOKEN_1, user1);
         token.approve(address(venft), TOKEN_1);
-        venft.increaseAmount(tokenId1, TOKEN_1);
+        venft.increaseLockAmount(tokenId1, TOKEN_1);
         vm.stopPrank();
 
         vm.startPrank(user2);
         token.mint(TOKEN_1, user2);
         token.approve(address(venft), TOKEN_1);
-        venft.increaseAmount(tokenId2, TOKEN_1);
+        venft.increaseLockAmount(tokenId2, TOKEN_1);
         vm.stopPrank();
 
         // Verify both locks are updated correctly
@@ -3682,7 +3682,7 @@ contract ProratedVeNFTTest is Test {
         vm.stopPrank();
 
         // New owner should have pending rewards
-        uint256 pendingRewards = venft.getPendingRewards(tokenId);
+        uint256 pendingRewards = venft.pendingRewardsOf(tokenId);
         assertGt(pendingRewards, 0);
     }
 
@@ -3696,7 +3696,7 @@ contract ProratedVeNFTTest is Test {
         // Extend lock duration multiple times on the same tokenId (in-place)
         for (uint256 i = 0; i < 3; i++) {
             vm.startPrank(user1);
-            venft.extendLockDuration(tokenId, 2 weeks);
+            venft.increaseLockDuration(tokenId, 2 weeks);
             vm.stopPrank();
             // Advance time to ensure the next extension strictly increases end
             skip(1 weeks);
@@ -3850,8 +3850,8 @@ contract ProratedVeNFTTest is Test {
         vm.stopPrank();
 
         // User2 should have more pending rewards than user1 (higher voting power)
-        uint256 pendingRewards1 = venft.getPendingRewards(tokenId1);
-        uint256 pendingRewards2 = venft.getPendingRewards(tokenId2);
+        uint256 pendingRewards1 = venft.pendingRewardsOf(tokenId1);
+        uint256 pendingRewards2 = venft.pendingRewardsOf(tokenId2);
         assertGt(pendingRewards2, pendingRewards1);
 
         // Compound rewards for both users
@@ -4015,7 +4015,7 @@ contract ProratedVeNFTTest is Test {
         token.mint(TOKEN_1, user2);
         token.approve(address(venft), TOKEN_1);
         vm.expectRevert("NOT_AUTHORIZED");
-        venft.increaseAmount(tokenId, TOKEN_1);
+        venft.increaseLockAmount(tokenId, TOKEN_1);
         vm.stopPrank();
     }
 
@@ -4063,7 +4063,7 @@ contract ProratedVeNFTTest is Test {
         // User2 tries to extend user1's lock
         vm.startPrank(user2);
         vm.expectRevert("NOT_AUTHORIZED");
-        venft.extendLockDuration(tokenId, 8 weeks);
+        venft.increaseLockDuration(tokenId, 8 weeks);
         vm.stopPrank();
     }
 
@@ -4203,7 +4203,7 @@ contract ProratedVeNFTTest is Test {
         // Try to extend with invalid duration (should fail)
         vm.startPrank(user1);
         vm.expectRevert(ProratedVeNFT.LockDurationNotInFuture.selector);
-        venft.extendLockDuration(tokenId, 0);
+        venft.increaseLockDuration(tokenId, 0);
         vm.stopPrank();
 
         // Verify voting power hasn't changed
@@ -4443,8 +4443,8 @@ contract ProratedVeNFTTest is Test {
         vm.stopPrank();
 
         // Verify both positions have pending rewards
-        uint256 pendingRewards1 = venft.getPendingRewards(tokenId1);
-        uint256 pendingRewards2 = venft.getPendingRewards(tokenId2);
+        uint256 pendingRewards1 = venft.pendingRewardsOf(tokenId1);
+        uint256 pendingRewards2 = venft.pendingRewardsOf(tokenId2);
         assertGt(pendingRewards1, 0);
         assertGt(pendingRewards2, 0);
         assertGt(pendingRewards2, pendingRewards1); // Higher voting power = more rewards
@@ -4653,7 +4653,7 @@ contract ProratedVeNFTTest is Test {
         // Note: extendLockDuration burns the old token and creates a new one
         // We need to track the new token ID
         vm.startPrank(users[1]);
-        venft.extendLockDuration(tokenIds[1], 12 weeks);
+        venft.increaseLockDuration(tokenIds[1], 12 weeks);
         vm.stopPrank();
 
         // The old token is burned, so we can't verify it exists
@@ -4707,7 +4707,7 @@ contract ProratedVeNFTTest is Test {
 
         // Verify all positions have accumulated rewards
         for (uint256 i = 0; i < numUsers; i++) {
-            uint256 pendingRewards = venft.getPendingRewards(tokenIds[i]);
+            uint256 pendingRewards = venft.pendingRewardsOf(tokenIds[i]);
             assertGt(pendingRewards, 0);
         }
 
@@ -4774,7 +4774,7 @@ contract ProratedVeNFTTest is Test {
 
         // Note: extendLockDuration burns the old token, so we can't use it after this
         vm.startPrank(user1);
-        venft.extendLockDuration(tokenId, 12 weeks);
+        venft.increaseLockDuration(tokenId, 12 weeks);
         vm.stopPrank();
 
         // The old token is now burned, so we can't continue with it
@@ -4924,7 +4924,7 @@ contract ProratedVeNFTTest is Test {
         }
 
         // Verify accumulated rewards
-        uint256 pendingRewards = venft.getPendingRewards(tokenId);
+        uint256 pendingRewards = venft.pendingRewardsOf(tokenId);
         assertGe(pendingRewards, 0); // Can be 0 if no rewards distributed yet
 
         // Final compound
@@ -4966,7 +4966,7 @@ contract ProratedVeNFTTest is Test {
                 vm.stopPrank();
             }
 
-            uint256 pendingRewards = venft.getPendingRewards(tokenId);
+            uint256 pendingRewards = venft.pendingRewardsOf(tokenId);
 
             // User compounds rewards occasionally
             if (i % 3 == 0 && pendingRewards > 0) {
@@ -4985,7 +4985,7 @@ contract ProratedVeNFTTest is Test {
 
         // User extends their lock near the end
         vm.startPrank(user1);
-        venft.extendLockDuration(tokenId, 12 weeks);
+        venft.increaseLockDuration(tokenId, 12 weeks);
         vm.stopPrank();
 
         // Verify the operation completed successfully (token was burned and recreated)
@@ -5044,7 +5044,7 @@ contract ProratedVeNFTTest is Test {
 
         // Verify all positions have accumulated rewards
         for (uint256 i = 0; i < 5; i++) {
-            uint256 pendingRewards = venft.getPendingRewards(tokenIds[i]);
+            uint256 pendingRewards = venft.pendingRewardsOf(tokenIds[i]);
             assertGe(pendingRewards, 0); // Can be 0 if no rewards distributed yet
         }
 
@@ -5092,7 +5092,7 @@ contract ReentrantContract {
             reentering = true;
             token.mint(TOKEN_1, address(this));
             token.approve(address(venft), TOKEN_1);
-            venft.increaseAmount(tokenId, TOKEN_1);
+            venft.increaseLockAmount(tokenId, TOKEN_1);
         }
     }
 
@@ -5113,7 +5113,7 @@ contract ReentrantContract {
     function attackExtendLockDuration(uint256 tokenId) external {
         if (!reentering) {
             reentering = true;
-            venft.extendLockDuration(tokenId, 8 weeks);
+            venft.increaseLockDuration(tokenId, 8 weeks);
         }
     }
 
