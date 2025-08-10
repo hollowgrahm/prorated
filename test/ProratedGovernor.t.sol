@@ -42,7 +42,11 @@ contract ProratedGovernorTest is Test {
         proratedToken = new ProratedToken("Prorated", "PROR");
 
         // Deploy Prorated veNFT (we'll use a mock LP token for now)
-        venft = new ProratedVeNFT(address(fundingToken), "Prorated veNFT - Funding Token", "veFUND"); // Using fundingToken as LP token for testing
+        venft = new ProratedVeNFT(
+            address(fundingToken),
+            "Prorated veNFT - Funding Token",
+            "veFUND"
+        ); // Using fundingToken as LP token for testing
 
         // Deploy ProratedPool
         ProratedPool.PoolConfig memory config = ProratedPool.PoolConfig({
@@ -215,7 +219,7 @@ contract ProratedGovernorTest is Test {
         bytes memory proposalData = abi.encodeWithSignature("someFunction()");
         string memory description = "Test proposal";
 
-        vm.expectRevert("Target not approved");
+        vm.expectRevert(ProratedGovernor.TargetNotApproved.selector);
         governor.createProposal(address(0x123), proposalData, description);
     }
 
