@@ -76,6 +76,18 @@ contract ProratedVeNFTTest is Test {
         token.mint(TOKEN_10, user2);
     }
 
+    function test_BalanceOfNFTAt_ExactCheckpointEqualsCurrent() public {
+        vm.startPrank(user1);
+        token.approve(address(venft), TOKEN_1);
+        uint256 tokenId = venft.createLock(TOKEN_1, 4 weeks);
+        vm.stopPrank();
+
+        // Immediately after createLock, there is a checkpoint at block.timestamp.
+        uint256 atNow = venft.balanceOfNFT(tokenId);
+        uint256 atCheckpoint = venft.balanceOfNFTAt(tokenId, block.timestamp);
+        assertEq(atCheckpoint, atNow);
+    }
+
     // ============ CONSTRUCTOR TESTS ============
 
     function test_Constructor_DynamicNaming() public {

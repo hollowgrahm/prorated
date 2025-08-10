@@ -237,25 +237,47 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
         emit LockExtended(_tokenId, oldLocked.end, oldLocked.end);
     }
 
+    /// @notice Rounds a timestamp up to the nearest week boundary
+    /// @param ts The timestamp to round
+    /// @return The timestamp rounded up to the next multiple of WEEK
     function _ceilToWeek(uint256 ts) internal pure returns (uint256) {
+        // Step 1: Perform ceiling division to the next week boundary
         return ((ts + WEEK - 1) / WEEK) * WEEK;
     }
 
+    /// @notice Computes the maximum allowed unlock time (now + MAXTIME) rounded to week boundary
+    /// @param nowTs The reference timestamp to add MAXTIME to
+    /// @return The maximum unlock time rounded to the nearest week boundary
     function _maxUnlockTimeWeek(uint256 nowTs) internal pure returns (uint256) {
+        // Step 1: Add MAXTIME and floor to the last completed week (equivalent to rounding target up once)
         return ((nowTs + MAXTIME) / WEEK) * WEEK;
     }
 
+    /// @notice Computes the canonical unlock time for a given duration with week rounding and max cap
+    /// @param lockDuration The desired lock duration in seconds
+    /// @return unlockTime The computed unlock time respecting rounding and MAXTIME
     function _computeUnlockTime(
         uint256 lockDuration
-    ) internal view returns (uint256) {
+    ) internal view returns (uint256 unlockTime) {
+        // Step 1: Validate duration bounds
         if (lockDuration == 0) revert LockDurationNotInFuture();
         if (lockDuration > MAXTIME) revert LockDurationTooLong();
-        uint256 unlockTime = _ceilToWeek(block.timestamp + lockDuration);
+        // Step 2: Round up (now + duration) to the nearest week
+        unlockTime = _ceilToWeek(block.timestamp + lockDuration);
+        // Step 3: Compute the maximum allowed unlock time rounded to a week
         uint256 maxUnlockTime = _maxUnlockTimeWeek(block.timestamp);
+        // Step 4: Cap unlock time at maximum
         if (unlockTime > maxUnlockTime) unlockTime = maxUnlockTime;
+        // Step 5: Return canonical unlock time
         return unlockTime;
     }
 
+    /// @notice Snapshots the reward accounting state for a token before a voting-power change
+    /// @param _tokenId The token ID to snapshot
+    /// @return globalIndexBefore The global reward index at snapshot
+    /// @return userPaidIndexBefore The user paid index at snapshot
+    /// @return votingPowerBefore The user voting power at snapshot
+    /// @return pendingBefore The computed pending rewards at snapshot
     function _snapshotPending(
         uint256 _tokenId
     )
@@ -268,9 +290,12 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
             uint256 pendingBefore
         )
     {
+        // Step 1: Capture indices
         globalIndexBefore = globalRewardPerVotingPower;
         userPaidIndexBefore = userRewardPerVotingPowerPaid[_tokenId];
+        // Step 2: Get current voting power
         votingPowerBefore = _balanceOfNFTAt(_tokenId, block.timestamp);
+        // Step 3: Compute pending rewards if eligible
         pendingBefore = 0;
         if (votingPowerBefore > 0 && globalIndexBefore > userPaidIndexBefore) {
             pendingBefore =
@@ -280,16 +305,24 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
         }
     }
 
+    /// @notice Adjusts the user paid index so that pending rewards remain unchanged after a change
+    /// @param _tokenId The token whose accounting is being adjusted
+    /// @param globalIndexBefore The global index captured before the change
+    /// @param pendingBefore The pending rewards computed before the change
     function _preservePendingAfter(
         uint256 _tokenId,
         uint256 globalIndexBefore,
         uint256 pendingBefore
     ) internal {
+        // Step 1: Recompute voting power after the change
         uint256 votingPowerAfter = _balanceOfNFTAt(_tokenId, block.timestamp);
+        // Step 2: If no voting power, set paid index to the current global index
         if (votingPowerAfter == 0) {
             userRewardPerVotingPowerPaid[_tokenId] = globalIndexBefore;
         } else {
+            // Step 3: Compute the index adjustment that preserves pending rewards
             uint256 adjustment = (pendingBefore * 1e18) / votingPowerAfter;
+            // Step 4: Apply adjustment defensively (saturate at zero)
             uint256 paidAfter = 0;
             if (globalIndexBefore > adjustment) {
                 paidAfter = globalIndexBefore - adjustment;
@@ -300,6 +333,8 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
 
     // ============ VOTING POWER QUERIES ============
     /// @notice Gets the current voting power of a veNFT position
+    /// @dev Returns 0 for non-existent tokens or fully expired locks; does not revert.
+    ///      At exact checkpoint timestamps, this returns the stored bias without additional decay.
     /// @param _tokenId The token ID of the veNFT position
     /// @return The current voting power of the position
     function balanceOfNFT(uint256 _tokenId) public view returns (uint256) {
@@ -307,6 +342,8 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
     }
 
     /// @notice Gets the voting power of a veNFT position at a specific timestamp
+    /// @dev Returns 0 for non-existent tokens or if voting power has fully decayed by `_t`.
+    ///      If `_t` equals a stored checkpoint timestamp, returns that exact checkpoint bias.
     /// @param _tokenId The token ID of the veNFT position
     /// @param _t The timestamp to query voting power at
     /// @return The voting power of the position at the specified timestamp
