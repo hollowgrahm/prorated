@@ -108,6 +108,24 @@ contract ProratedVeNFTTest is Test {
         assertEq(venft.symbol(), "veTEST");
     }
 
+    function test_TotalSupplyAt_ExactCheckpointEqualsCurrent() public {
+        // No locks yet: supply is zero at checkpoint
+        uint256 atNowBefore = venft.totalSupply();
+        uint256 atCheckpointBefore = venft.totalSupplyAt(block.timestamp);
+        assertEq(atCheckpointBefore, atNowBefore);
+
+        // Create a lock to generate a new checkpoint
+        vm.startPrank(user1);
+        token.approve(address(venft), TOKEN_1);
+        venft.createLock(TOKEN_1, 4 weeks);
+        vm.stopPrank();
+
+        // Immediately after, supplyAt(now) equals totalSupply()
+        uint256 atNowAfter = venft.totalSupply();
+        uint256 atCheckpointAfter = venft.totalSupplyAt(block.timestamp);
+        assertEq(atCheckpointAfter, atNowAfter);
+    }
+
     // ============ CATEGORY 1: createLock TESTS ============
 
     function test_CreateLock_ValidInputs() public {

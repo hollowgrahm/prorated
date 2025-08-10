@@ -355,12 +355,16 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
     }
 
     /// @notice Gets the total voting power across all veNFT positions
+    /// @dev Returns 0 when there are no active locks; does not revert.
+    ///      If called at an exact global checkpoint timestamp, this returns the stored bias.
     /// @return The total voting power at the current timestamp
     function totalSupply() external view returns (uint256) {
         return _supplyAt(block.timestamp);
     }
 
     /// @notice Gets the total voting power across all veNFT positions at a specific timestamp
+    /// @dev Returns 0 if supply has fully decayed by `_timestamp`. If `_timestamp` equals an
+    ///      existing global checkpoint, returns that checkpoint's bias without extra decay.
     /// @param _timestamp The timestamp to query total voting power at
     /// @return The total voting power at the specified timestamp
     function totalSupplyAt(uint256 _timestamp) external view returns (uint256) {
@@ -368,6 +372,7 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
     }
 
     /// @notice Internal function to get the total voting power at current timestamp
+    /// @dev Helper used by public supply getters; saturates at zero when fully decayed.
     /// @return The total voting power at the current timestamp
     function _totalSupply() internal view returns (uint256) {
         return _supplyAt(block.timestamp);
@@ -727,6 +732,8 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
     }
 
     /// @notice Internal function to get total voting power at a specific timestamp
+    /// @dev Returns the global bias at `_timestamp`, using the nearest checkpoint ≤ `_timestamp`
+    ///      and decaying it forward; saturates at zero.
     /// @param _timestamp The timestamp to query total voting power at
     /// @return The total voting power at the specified timestamp
     function _supplyAt(uint256 _timestamp) internal view returns (uint256) {
