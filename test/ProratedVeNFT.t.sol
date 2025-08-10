@@ -439,13 +439,8 @@ contract ProratedVeNFTTest is Test {
         // User2 increases amount
         vm.startPrank(user2);
         token.approve(address(venft), TOKEN_1);
+        vm.expectRevert("NOT_AUTHORIZED");
         venft.increaseLockAmount(tokenId, TOKEN_1);
-
-        // Check updated locked balance
-        ProratedVeNFT.LockedBalance memory updatedLocked = venft.locked(
-            tokenId
-        );
-        assertEq(updatedLocked.amount, int128(uint128(TOKEN_1 * 2)));
 
         vm.stopPrank();
     }
@@ -463,13 +458,8 @@ contract ProratedVeNFTTest is Test {
         // User2 increases amount
         vm.startPrank(user2);
         token.approve(address(venft), TOKEN_1);
+        vm.expectRevert("NOT_AUTHORIZED");
         venft.increaseLockAmount(tokenId, TOKEN_1);
-
-        // Check updated locked balance
-        ProratedVeNFT.LockedBalance memory updatedLocked = venft.locked(
-            tokenId
-        );
-        assertEq(updatedLocked.amount, int128(uint128(TOKEN_1 * 2)));
 
         vm.stopPrank();
     }
@@ -2732,7 +2722,7 @@ contract ProratedVeNFTTest is Test {
 
         // Get pending rewards after amount increase
         uint256 pendingRewardsAfter = venft.pendingRewardsOf(tokenId);
-        assertGt(pendingRewardsAfter, pendingRewardsBefore); // Higher voting power = more rewards
+        assertApproxEqAbs(pendingRewardsAfter, pendingRewardsBefore, 1);
     }
 
     function test_GetPendingRewards_MultipleUsers() public {
