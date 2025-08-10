@@ -183,7 +183,7 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
         uint256 _newDuration
     ) external nonReentrant {
         // Step 1: Owner-only authorization and compute target end (validates duration bounds)
-        if (_ownerOf[_tokenId] != msg.sender) revert("NOT_AUTHORIZED");
+        _requireOwner(_tokenId);
         uint256 newEnd = _computeUnlockTime(_newDuration);
         // Step 2: Load current lock and enforce monotonicity (newEnd must increase)
         LockedBalance memory oldLocked = _locked[_tokenId];
@@ -217,7 +217,7 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
         uint256 _value
     ) external nonReentrant {
         // Step 1: Owner-only authorization and input validation
-        if (_ownerOf[_tokenId] != msg.sender) revert("NOT_AUTHORIZED");
+        _requireOwner(_tokenId);
         if (_value == 0) revert ZeroAmount();
         LockedBalance memory oldLocked = _locked[_tokenId];
         if (oldLocked.amount <= 0) revert NoLockFound();
@@ -381,8 +381,9 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
     // ============ REWARD SYSTEM ============
     /// @notice Distributes rewards to all veNFT holders based on their voting power
     /// @param _rewardAmount Amount of LP tokens to distribute as rewards
-    /// @dev This function updates the global reward index and transfers tokens from the sender
-    function distributeRewards(uint256 _rewardAmount) external {
+    /// @dev CEI: Updates global index before the external transfer.
+    ///      Reentrancy: Guarded with nonReentrant since it performs an external token transfer.
+    function distributeRewards(uint256 _rewardAmount) external nonReentrant {
         if (_rewardAmount == 0) revert NoRewardsToDistribute();
 
         uint256 totalVotingPower = _totalSupply();
@@ -417,11 +418,10 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
     /// @param _tokenId The token ID of the veNFT position to compound rewards for
     /// @return The amount that was compounded
     function _compound(uint256 _tokenId) internal returns (uint256) {
-        uint256 userVotingPower = balanceOfNFT(_tokenId);
-        uint256 owed = ((userVotingPower *
-            (globalRewardPerVotingPower -
-                userRewardPerVotingPowerPaid[_tokenId])) / 1e18);
+        // Step 1: Compute current user pending rewards using helper
+        uint256 owed = _pendingRewards(_tokenId);
 
+        // Step 2: If there are rewards, add them to locked amount and checkpoint
         if (owed > 0) {
             LockedBalance memory oldLocked = _locked[_tokenId];
             LockedBalance memory newLocked = LockedBalance(
@@ -433,21 +433,40 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
             _checkpoint(_tokenId, oldLocked, newLocked);
         }
 
+        // Step 3: Update user paid index to current global index
         userRewardPerVotingPowerPaid[_tokenId] = globalRewardPerVotingPower;
+        // Step 4: Return compounded amount
         return owed;
     }
 
     /// @notice Gets the pending rewards for a veNFT position
+    /// @dev Non-reverting view. Formula: balanceOfNFT(tokenId) *
+    ///      (globalRewardPerVotingPower - userRewardPerVotingPowerPaid[tokenId]) / 1e18.
+    ///      Returns 0 if token has no voting power or is non-existent.
     /// @param _tokenId The token ID of the veNFT position
     /// @return The amount of pending rewards for the position
     function pendingRewardsOf(
         uint256 _tokenId
     ) external view returns (uint256) {
+        return _pendingRewards(_tokenId);
+    }
+
+    /// @notice Internal helper to compute pending rewards using the canonical formula
+    /// @param _tokenId The token ID
+    /// @return pending The computed pending rewards
+    function _pendingRewards(
+        uint256 _tokenId
+    ) internal view returns (uint256 pending) {
+        // Step 1: Get current voting power
         uint256 userVotingPower = balanceOfNFT(_tokenId);
-        uint256 owed = ((userVotingPower *
-            (globalRewardPerVotingPower -
-                userRewardPerVotingPowerPaid[_tokenId])) / 1e18);
-        return owed;
+        // Step 2: Apply formula; safe to underflow-check since global >= paid is not guaranteed
+        uint256 global = globalRewardPerVotingPower;
+        uint256 paid = userRewardPerVotingPowerPaid[_tokenId];
+        if (global > paid && userVotingPower > 0) {
+            pending = (userVotingPower * (global - paid)) / 1e18;
+        } else {
+            pending = 0;
+        }
     }
 
     // ============ WITHDRAWAL OPERATIONS ============
@@ -455,7 +474,7 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
     /// @param _tokenId The token ID of the veNFT position to withdraw from
     /// @dev This function burns the veNFT and transfers all locked tokens to the owner
     function withdraw(uint256 _tokenId) external nonReentrant {
-        if (!_isApprovedOrOwner(msg.sender, _tokenId)) revert("NOT_AUTHORIZED");
+        _requireOwner(_tokenId);
 
         LockedBalance memory oldLocked = _locked[_tokenId];
         if (block.timestamp < oldLocked.end) revert LockNotExpired();
@@ -478,9 +497,10 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
     /// @param _tokenId The token ID of the veNFT position to withdraw from
     /// @dev This function allows partial withdrawal while maintaining voting power for the remaining portion
     function withdrawDecayed(uint256 _tokenId) external nonReentrant {
-        if (!_isApprovedOrOwner(msg.sender, _tokenId)) revert("NOT_AUTHORIZED");
+        _requireOwner(_tokenId);
 
         LockedBalance memory oldLocked = _locked[_tokenId];
+        if (oldLocked.end <= block.timestamp) revert LockExpired();
         uint256 currentVotingPower = balanceOfNFT(_tokenId);
         uint256 decayedAmount = oldLocked.amount.toUint256() -
             currentVotingPower;
@@ -525,11 +545,21 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
         address _spender,
         uint256 _tokenId
     ) internal view returns (bool) {
+        // Step 1: Load token owner
         address tokenOwner = _ownerOf[_tokenId];
+        // Step 2: Evaluate approval conditions
         bool spenderIsOwner = tokenOwner == _spender;
         bool spenderIsApproved = _spender == getApproved[_tokenId];
         bool spenderIsApprovedForAll = isApprovedForAll[tokenOwner][_spender];
+        // Step 3: Return authorization result
         return spenderIsOwner || spenderIsApproved || spenderIsApprovedForAll;
+    }
+
+    /// @notice Ensures the caller is the owner of the veNFT position
+    /// @param _tokenId The token ID to check ownership for
+    function _requireOwner(uint256 _tokenId) internal view {
+        // Step 1: Compare msg.sender to recorded owner
+        if (_ownerOf[_tokenId] != msg.sender) revert("NOT_AUTHORIZED");
     }
 
     /// @notice Internal function to deposit tokens for a veNFT position
@@ -543,24 +573,30 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
         uint256 _unlockTime,
         LockedBalance memory _oldLocked
     ) internal {
+        // Step 1: Increase global supply by deposit value
         uint256 supplyBefore = supply;
         supply = supplyBefore + _value;
 
+        // Step 2: Start from previous locked state
         LockedBalance memory newLocked;
         (newLocked.amount, newLocked.end) = (_oldLocked.amount, _oldLocked.end);
 
+        // Step 3: Apply amount increase and optional unlock time change
         newLocked.amount += _value.toInt128();
         if (_unlockTime != 0) {
             newLocked.end = _unlockTime;
         }
         _locked[_tokenId] = newLocked;
 
+        // Step 4: Update checkpoints with old/new locked states
         _checkpoint(_tokenId, _oldLocked, newLocked);
 
+        // Step 5: Pull tokens from sender if depositing value
         if (_value != 0) {
             TOKEN.safeTransferFrom(msg.sender, address(this), _value);
         }
 
+        // Step 6: Emit deposit event
         emit Deposit(
             msg.sender,
             _tokenId,
@@ -579,6 +615,7 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
         LockedBalance memory _oldLocked,
         LockedBalance memory _newLocked
     ) internal {
+        // Step 1: Prepare user points and deltas
         UserPoint memory uOld;
         UserPoint memory uNew;
         int128 oldDslope = 0;
@@ -609,6 +646,7 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
             }
         }
 
+        // Step 2: Iterate weekly checkpoints to the current timestamp
         GlobalPoint memory lastPoint = GlobalPoint({
             bias: 0,
             slope: 0,
@@ -650,6 +688,7 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
             }
         }
 
+        // Step 3: Apply user deltas to last point if applicable
         if (_tokenId != 0) {
             lastPoint.slope += (uNew.slope - uOld.slope);
             lastPoint.bias += (uNew.bias - uOld.bias);
@@ -661,6 +700,7 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
             }
         }
 
+        // Step 4: Store latest global point
         if (_epoch != 1 && _pointHistory[_epoch - 1].ts == block.timestamp) {
             _pointHistory[_epoch - 1] = lastPoint;
         } else {
@@ -668,6 +708,7 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
             _pointHistory[_epoch] = lastPoint;
         }
 
+        // Step 5: Update slope changes and user history
         if (_tokenId != 0) {
             if (_oldLocked.end > block.timestamp) {
                 oldDslope += uOld.slope;
@@ -706,9 +747,11 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
         uint256 _tokenId,
         uint256 _t
     ) internal view returns (uint256) {
+        // Step 1: Read the last user epoch; if none, voting power is zero
         uint256 _epoch = userPointEpoch[_tokenId];
         if (_epoch == 0) return 0;
 
+        // Step 2: Binary search for the latest checkpoint at or before _t
         uint256 lower = 0;
         uint256 upper = _epoch;
         while (upper > lower) {
@@ -723,6 +766,7 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
             }
         }
 
+        // Step 3: Decay the last checkpoint bias forward to _t and saturate at zero
         UserPoint memory lastPoint = _userPointHistory[_tokenId][lower];
         lastPoint.bias -= lastPoint.slope * (_t - lastPoint.ts).toInt128();
         if (lastPoint.bias < 0) {
@@ -737,7 +781,9 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
     /// @param _timestamp The timestamp to query total voting power at
     /// @return The total voting power at the specified timestamp
     function _supplyAt(uint256 _timestamp) internal view returns (uint256) {
+        // Step 1: Get last global epoch
         uint256 _epoch = epoch;
+        // Step 2: Binary search for the latest global checkpoint at or before timestamp
         uint256 lower = 0;
         uint256 upper = _epoch;
         while (upper > lower) {
@@ -752,6 +798,7 @@ contract ProratedVeNFT is ERC721, ReentrancyGuard {
             }
         }
 
+        // Step 3: Decay the global bias forward to timestamp and saturate at zero
         GlobalPoint memory lastPoint = _pointHistory[lower];
         lastPoint.bias -=
             lastPoint.slope *

@@ -648,14 +648,10 @@ contract ProratedVeNFTTest is Test {
         // Fast forward past lock expiry
         skip(2 weeks);
 
-        // User2 withdraws (tokens go to user2, not user1)
+        // User2 attempts withdraw and is not authorized (owner-only)
         vm.startPrank(user2);
+        vm.expectRevert("NOT_AUTHORIZED");
         venft.withdraw(tokenId);
-
-        // Check token transfer to user2 (msg.sender)
-        assertEq(token.balanceOf(user1), TOKEN_10 - TOKEN_1); // Still has initial balance minus locked amount
-        assertEq(token.balanceOf(user2), TOKEN_10 + TOKEN_1); // Gets the withdrawn tokens
-
         vm.stopPrank();
     }
 
@@ -672,14 +668,10 @@ contract ProratedVeNFTTest is Test {
         // Fast forward past lock expiry
         skip(2 weeks);
 
-        // User2 withdraws (tokens go to user2, not user1)
+        // User2 attempts withdraw and is not authorized (owner-only)
         vm.startPrank(user2);
+        vm.expectRevert("NOT_AUTHORIZED");
         venft.withdraw(tokenId);
-
-        // Check token transfer to user2 (msg.sender)
-        assertEq(token.balanceOf(user1), TOKEN_10 - TOKEN_1); // Still has initial balance minus locked amount
-        assertEq(token.balanceOf(user2), TOKEN_10 + TOKEN_1); // Gets the withdrawn tokens
-
         vm.stopPrank();
     }
 
@@ -949,17 +941,10 @@ contract ProratedVeNFTTest is Test {
         // Fast forward to create some decay
         skip(2 weeks);
 
-        // User2 withdraws decayed (tokens go to user2)
+        // User2 attempts withdrawDecayed and is not authorized (owner-only)
         vm.startPrank(user2);
-        uint256 currentVotingPower = venft.balanceOfNFT(tokenId);
-        uint256 expectedDecayedAmount = TOKEN_1 - currentVotingPower;
-
+        vm.expectRevert("NOT_AUTHORIZED");
         venft.withdrawDecayed(tokenId);
-
-        // Check token transfer to user2 (msg.sender)
-        assertEq(token.balanceOf(user1), TOKEN_10 - TOKEN_1); // Still has initial balance minus locked amount
-        assertEq(token.balanceOf(user2), TOKEN_10 + expectedDecayedAmount); // Gets the decayed tokens
-
         vm.stopPrank();
     }
 
@@ -976,17 +961,10 @@ contract ProratedVeNFTTest is Test {
         // Fast forward to create some decay
         skip(2 weeks);
 
-        // User2 withdraws decayed (tokens go to user2)
+        // User2 attempts withdrawDecayed and is not authorized (owner-only)
         vm.startPrank(user2);
-        uint256 currentVotingPower = venft.balanceOfNFT(tokenId);
-        uint256 expectedDecayedAmount = TOKEN_1 - currentVotingPower;
-
+        vm.expectRevert("NOT_AUTHORIZED");
         venft.withdrawDecayed(tokenId);
-
-        // Check token transfer to user2 (msg.sender)
-        assertEq(token.balanceOf(user1), TOKEN_10 - TOKEN_1); // Still has initial balance minus locked amount
-        assertEq(token.balanceOf(user2), TOKEN_10 + expectedDecayedAmount); // Gets the decayed tokens
-
         vm.stopPrank();
     }
 
@@ -1113,11 +1091,9 @@ contract ProratedVeNFTTest is Test {
         uint256 currentVotingPower = venft.balanceOfNFT(tokenId);
         uint256 lockedAmount = uint256(int256(venft.locked(tokenId).amount));
 
-        // If voting power equals locked amount (both should be 0 for expired lock), there's no decay
-        if (currentVotingPower == lockedAmount) {
-            vm.expectRevert(ProratedVeNFT.ZeroBalance.selector);
-            venft.withdrawDecayed(tokenId);
-        }
+        // After expiry, withdrawDecayed is not allowed; must use withdraw
+        vm.expectRevert(ProratedVeNFT.LockExpired.selector);
+        venft.withdrawDecayed(tokenId);
 
         vm.stopPrank();
     }
@@ -2837,6 +2813,32 @@ contract ProratedVeNFTTest is Test {
 
         // Should return same result
         assertEq(pendingRewards1, pendingRewards2);
+    }
+
+    function test_PendingRewards_FormulaEquality() public {
+        // Create a lock
+        vm.startPrank(user1);
+        token.approve(address(venft), TOKEN_1);
+        uint256 tokenId = venft.createLock(TOKEN_1, 4 weeks);
+        vm.stopPrank();
+
+        // Distribute rewards
+        token.mint(TOKEN_1, address(this));
+        token.approve(address(venft), TOKEN_1);
+        venft.distributeRewards(TOKEN_1);
+
+        // Manual formula
+        uint256 vp = venft.balanceOfNFT(tokenId);
+        uint256 global = venft.globalRewardPerVotingPower();
+        uint256 paid = venft.userRewardPerVotingPowerPaid(tokenId);
+        uint256 manual = (vp * (global - paid)) / 1e18;
+
+        // Function value
+        uint256 pending = venft.pendingRewardsOf(tokenId);
+        assertEq(pending, manual);
+
+        // Non-existent token → 0
+        assertEq(venft.pendingRewardsOf(999_999), 0);
     }
 
     // ============ CATEGORY 11: CHECKPOINT SYSTEM TESTS ============
