@@ -23,6 +23,11 @@ contract ProratedGovernor is Owned, ReentrancyGuard {
     error VotingDelayNotMet();
 
     // ============ EVENTS ============
+    event GovernorInitialized(
+        address indexed venft,
+        address indexed owner,
+        uint256 ts
+    );
     event ProposalCreated(
         uint256 indexed proposalId,
         address indexed proposer,
@@ -45,11 +50,6 @@ contract ProratedGovernor is Owned, ReentrancyGuard {
         bytes data
     );
     event ProposalCanceled(uint256 indexed proposalId);
-    event GovernorInitialized(
-        address indexed venft,
-        address indexed owner,
-        uint256 ts
-    );
 
     // ============ CONSTANTS ============
     uint256 public constant VOTING_DELAY = 2 days;
@@ -160,22 +160,24 @@ contract ProratedGovernor is Owned, ReentrancyGuard {
         if (block.timestamp > proposal.endTime) revert VotingEnded();
         if (hasVoted[proposalId][tokenId]) revert AlreadyVoted();
 
-        // Get voting power from veNFT (returns 0 for non-existent token)
+        // Step 1: Get voting power from veNFT (returns 0 for non-existent token)
         uint256 votingPower = venft.balanceOfNFT(tokenId);
         if (votingPower == 0) revert InsufficientVotingPower();
 
-        // Owner-only voting: ensure caller owns the veNFT token (after power check to keep error semantics)
+        // Step 2: Owner-only voting: ensure caller owns the veNFT token (after power check to keep error semantics)
         if (venft.ownerOf(tokenId) != msg.sender) revert NotOwner();
 
-        // Record vote
+        // Step 3: Record vote
         hasVoted[proposalId][tokenId] = true;
 
+        // Step 4: Update proposal tallies
         if (support) {
             proposal.forVotes += votingPower;
         } else {
             proposal.againstVotes += votingPower;
         }
 
+        // Step 5: Emit event for off-chain indexing
         emit VoteCast(msg.sender, tokenId, proposalId, support, votingPower);
     }
 
@@ -282,11 +284,5 @@ contract ProratedGovernor is Owned, ReentrancyGuard {
     function removeApprovedTarget(address target) external onlyOwner {
         // Step 1: Mark target as not approved
         approvedTargets[target] = false;
-    }
-
-    /// @notice Validates that this is a legitimate ProratedGovernor contract
-    /// @return True if this is a valid ProratedGovernor contract
-    function validateInterface() external pure returns (bool) {
-        return true; // Only legitimate ProratedGovernor contracts return true
     }
 }

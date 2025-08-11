@@ -677,7 +677,7 @@ contract ProratedPoolTest is Test {
         );
     }
 
-    function test_DevTeamFundsWithdraw() public {
+    function test_DeveloperFundsWithdraw() public {
         // Setup: Add contributions and finalize pool
         vm.startPrank(user1);
         fundingToken.approve(address(pool), 200000e18);
@@ -704,7 +704,7 @@ contract ProratedPoolTest is Test {
             uint256 initialBalance = fundingToken.balanceOf(address(this));
 
             // Dev team withdraw (should succeed after liquidity is deployed)
-            pool.devTeamFundsWithdraw();
+            pool.developerFundsWithdraw();
 
             uint256 finalBalance = fundingToken.balanceOf(address(this));
             assertTrue(
@@ -713,16 +713,16 @@ contract ProratedPoolTest is Test {
             );
         } else {
             // If no tokens remain after liquidity deployment, withdrawal should still succeed but transfer 0
-            pool.devTeamFundsWithdraw();
+            pool.developerFundsWithdraw();
         }
     }
 
-    function test_DevTeamFundsWithdrawNotFinalized() public {
+    function test_DeveloperFundsWithdrawNotFinalized() public {
         vm.expectRevert(ProratedPool.VeNFTNotDeployed.selector);
-        pool.devTeamFundsWithdraw();
+        pool.developerFundsWithdraw();
     }
 
-    function test_DevTeamFundsWithdraw_Unauthorized() public {
+    function test_DeveloperFundsWithdraw_Unauthorized() public {
         // Setup: Add contributions and finalize pool
         vm.startPrank(user1);
         fundingToken.approve(address(pool), 200000e18);
@@ -738,10 +738,10 @@ contract ProratedPoolTest is Test {
         // Try to call with non-owner (should fail)
         vm.expectRevert("UNAUTHORIZED");
         vm.prank(user1);
-        pool.devTeamFundsWithdraw();
+        pool.developerFundsWithdraw();
     }
 
-    function test_DevTeamFundsWithdraw_EventEmission() public {
+    function test_DeveloperFundsWithdraw_EventEmission() public {
         // Setup: Add contributions and finalize pool
         vm.startPrank(user1);
         fundingToken.approve(address(pool), 200000e18);
@@ -756,7 +756,7 @@ contract ProratedPoolTest is Test {
         pool.deployVeNFT();
 
         // Dev team withdraw (event emission is implicitly tested)
-        pool.devTeamFundsWithdraw();
+        pool.developerFundsWithdraw();
 
         // Verify the function completed successfully (even if 0 tokens transferred)
         assertTrue(true, "Dev team withdrawal should succeed");
@@ -817,7 +817,7 @@ contract ProratedPoolTest is Test {
         );
     }
 
-    function test_DevTeamTokenAllocation() public {
+    function test_DeveloperTokenAllocation() public {
         // Setup: Add contributions and finalize pool
         vm.startPrank(user1);
         fundingToken.approve(address(pool), 200000e18);
@@ -852,11 +852,11 @@ contract ProratedPoolTest is Test {
 
         // Try to release dev team LP tokens (should fail - only governor can call)
         vm.expectRevert(ProratedPool.Unauthorized.selector);
-        pool.releaseDevTeamLPTokens();
+        pool.createDeveloperVeNFT();
 
         // Simulate governor call (for testing)
         vm.prank(address(pool.proratedGovernor()));
-        pool.releaseDevTeamLPTokens();
+        pool.createDeveloperVeNFT();
 
         // Check that dev team received tokens and veNFT position
         assertEq(
@@ -1049,7 +1049,7 @@ contract ProratedPoolTest is Test {
         );
 
         // Release treasury LP tokens (should work for anyone)
-        pool.releaseTreasuryLPTokens();
+        pool.createTreasuryVeNFT();
 
         // Check that treasury allocation is cleared
         assertEq(
@@ -1089,7 +1089,7 @@ contract ProratedPoolTest is Test {
         assertEq(pool.proratedVeNFT().ownerOf(1), user1);
     }
 
-    function test_DevTeamVeNFTTransfer() public {
+    function test_DeveloperVeNFTTransfer() public {
         // Setup: Add contributions and finalize pool
         vm.startPrank(user1);
         fundingToken.approve(address(pool), 200000e18);
@@ -1109,7 +1109,7 @@ contract ProratedPoolTest is Test {
 
         // Release dev team LP tokens (should create veNFT for dev team)
         vm.prank(address(pool.proratedGovernor()));
-        pool.releaseDevTeamLPTokens();
+        pool.createDeveloperVeNFT();
 
         // Check that dev team allocation is cleared
         assertEq(pool.developerLPTokens(), 0);
@@ -1118,7 +1118,7 @@ contract ProratedPoolTest is Test {
         assertEq(pool.proratedVeNFT().ownerOf(1), pool.developer());
     }
 
-    function test_ReleaseDevTeamLPTokens_GovernorNotDeployed() public {
+    function test_CreateDeveloperVeNFT_GovernorNotDeployed() public {
         // Setup: Add contributions and finalize pool
         vm.startPrank(user1);
         fundingToken.approve(address(pool), 200000e18);
@@ -1136,10 +1136,10 @@ contract ProratedPoolTest is Test {
         // Try to release dev team LP tokens without governor deployed
         vm.expectRevert(ProratedPool.GovernorNotDeployed.selector);
         vm.prank(address(0x123)); // Any address
-        pool.releaseDevTeamLPTokens();
+        pool.createDeveloperVeNFT();
     }
 
-    function test_ReleaseDevTeamLPTokens_EventEmission() public {
+    function test_CreateDeveloperVeNFT_EventEmission() public {
         // Setup: Add contributions and finalize pool
         vm.startPrank(user1);
         fundingToken.approve(address(pool), 200000e18);
@@ -1156,7 +1156,7 @@ contract ProratedPoolTest is Test {
 
         // Release dev team LP tokens (event emission is implicitly tested)
         vm.prank(address(pool.proratedGovernor()));
-        pool.releaseDevTeamLPTokens();
+        pool.createDeveloperVeNFT();
 
         // Verify the function completed successfully
         assertEq(
@@ -1186,7 +1186,7 @@ contract ProratedPoolTest is Test {
         assertGt(pool.treasuryLPTokens(), 0);
 
         // Release treasury LP tokens (should create veNFT for treasury)
-        pool.releaseTreasuryLPTokens();
+        pool.createTreasuryVeNFT();
 
         // Check that treasury allocation is cleared
         assertEq(pool.treasuryLPTokens(), 0);
@@ -1216,7 +1216,7 @@ contract ProratedPoolTest is Test {
 
         // Try to release treasury LP tokens (should fail - treasury not deployed)
         vm.expectRevert(ProratedPool.TreasuryNotDeployed.selector);
-        pool.releaseTreasuryLPTokens();
+        pool.createTreasuryVeNFT();
     }
 
     function test_ReleaseTreasuryLPTokens_NoTokensReserved() public {
@@ -1236,11 +1236,11 @@ contract ProratedPoolTest is Test {
         pool.deployTreasury();
 
         // Release treasury LP tokens first time (should succeed)
-        pool.releaseTreasuryLPTokens();
+        pool.createTreasuryVeNFT();
 
         // Try to release treasury LP tokens again (should fail - no tokens reserved)
         vm.expectRevert(ProratedPool.NoLPTokensReserved.selector);
-        pool.releaseTreasuryLPTokens();
+        pool.createTreasuryVeNFT();
     }
 
     function test_ReleaseTreasuryLPTokens_EventEmission() public {
@@ -1264,7 +1264,7 @@ contract ProratedPoolTest is Test {
         assertGt(initialAllocation, 0, "Should have initial allocation");
 
         // Release treasury LP tokens
-        pool.releaseTreasuryLPTokens();
+        pool.createTreasuryVeNFT();
 
         // Verify the function completed successfully
         assertEq(

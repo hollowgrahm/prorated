@@ -97,7 +97,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     event PairDeployed(address indexed pair);
     event LiquidityDeployed(
         uint256 lpTokensReceived,
-        uint256 devTeamAllocation,
+        uint256 developerAllocation,
         uint256 treasuryAllocation
     );
     event TreasuryDeployed(address indexed treasury);
@@ -489,7 +489,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
                     ProratedTreasury.TreasuryParams({
                         venft: address(proratedVeNFT),
                         governor: address(proratedGovernor),
-                        proswapPair: proswapPair,
+                        pair: proswapPair,
                         owner: developer
                     })
                 )
@@ -547,7 +547,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     // ============ GOVERNANCE & WITHDRAWAL FUNCTIONS ============
     /// @notice Allows dev team to withdraw remaining funding tokens after pool is finalized
     /// @dev Can only be called by dev team after pool has reached minimum and ended, after liquidity is deployed
-    function devTeamFundsWithdraw() external onlyOwner {
+    function developerFundsWithdraw() external onlyOwner {
         // Step 1: Check that veNFT has been deployed (required for withdrawal)
         if (address(proratedVeNFT) == address(0)) revert VeNFTNotDeployed();
 
@@ -560,7 +560,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
 
     /// @notice Release dev team's LP tokens (governance function)
     /// @dev Can only be called by approved governor after successful proposal
-    function releaseDevTeamLPTokens() external nonReentrant {
+    function createDeveloperVeNFT() external nonReentrant {
         // Step 1: Check that governor has been deployed
         if (address(proratedGovernor) == address(0))
             revert GovernorNotDeployed();
@@ -575,21 +575,21 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
 
         // Step 5: Create max-locked veNFT position for developer (MAX_LOCK weeks)
         ERC20(proswapPair).approve(address(proratedVeNFT), allocation);
-        uint256 devTeamTokenId = proratedVeNFT.createLock(
+        uint256 developerTokenId = proratedVeNFT.createLock(
             allocation,
             MAX_LOCK * WEEK
         );
 
         // Step 6: Transfer the veNFT to developer
-        proratedVeNFT.transferFrom(address(this), developer, devTeamTokenId);
+        proratedVeNFT.transferFrom(address(this), developer, developerTokenId);
 
         // Step 7: Emit event for off-chain tracking
-        emit DeveloperTokensReleased(developer, allocation, devTeamTokenId);
+        emit DeveloperTokensReleased(developer, allocation, developerTokenId);
     }
 
     /// @notice Release treasury's LP tokens (governance function)
     /// @dev Can be called by anyone after successful governance proposal
-    function releaseTreasuryLPTokens() external nonReentrant {
+    function createTreasuryVeNFT() external nonReentrant {
         // Step 1: Check that treasury has been deployed (required for treasury operations)
         if (address(proratedTreasury) == address(0))
             revert TreasuryNotDeployed();

@@ -27,62 +27,97 @@ contract ProratedTreasury is Owned, ReentrancyGuard {
         uint256 lockDuration
     );
     event TreasuryVeNFTWithdrawn(uint256 tokenId, uint256 amount);
+    event TreasuryFundsTransferred(
+        address indexed recipient,
+        uint256 amount,
+        string reason
+    );
 
     IProratedVeNFT public venft;
     IProratedGovernor public governor;
-    ERC20 public proswapPair;
+    ERC20 public pair;
 
-    // Treasury's veNFT position
     uint256 public treasuryVeNFTTokenId;
     bool public treasuryVeNFTCreated;
 
     struct TreasuryParams {
         address venft;
         address governor;
-        address proswapPair;
+        address pair;
         address owner;
     }
 
     constructor(TreasuryParams memory params) Owned(params.owner) {
         venft = IProratedVeNFT(params.venft);
         governor = IProratedGovernor(params.governor);
-        proswapPair = ERC20(params.proswapPair);
+        pair = ERC20(params.pair);
     }
 
     // ============ TREASURY OPERATIONS ============
 
     /// @notice Withdraws decayed amount from treasury veNFT position
-    /// @dev Can only be called by governor
-    function withdrawTreasuryDecayed() external {
+    /// @dev Governor-only; nonReentrant
+    function withdrawTreasuryDecayed() external nonReentrant {
         if (msg.sender != address(governor)) revert Unauthorized();
         if (!treasuryVeNFTCreated) revert NoVeNFTPosition();
 
-        uint256 balanceBefore = proswapPair.balanceOf(address(this));
+        uint256 balanceBefore = pair.balanceOf(address(this));
         venft.withdrawDecayed(treasuryVeNFTTokenId);
-        uint256 withdrawnAmount = proswapPair.balanceOf(address(this)) -
-            balanceBefore;
+        uint256 withdrawnAmount = pair.balanceOf(address(this)) - balanceBefore;
 
         emit TreasuryVeNFTWithdrawn(treasuryVeNFTTokenId, withdrawnAmount);
     }
 
-    /// @notice Distributes LP tokens to a recipient
+    /// @notice Transfers LP tokens from treasury to a recipient (e.g., expenses)
     /// @param recipient Address to receive the tokens
-    /// @param amount Amount of LP tokens to distribute
-    /// @param reason Reason for distribution
-    /// @dev Can only be called by governor
-    function distributeFunds(
+    /// @param amount Amount to transfer
+    /// @param reason Reason for transfer
+    /// @dev Governor-only; nonReentrant
+    function transferTreasuryFunds(
         address recipient,
         uint256 amount,
         string memory reason
-    ) external {
+    ) external nonReentrant {
         if (msg.sender != address(governor)) revert Unauthorized();
+        if (recipient == address(0)) revert Unauthorized();
         if (amount == 0) revert InvalidAmount();
-        if (proswapPair.balanceOf(address(this)) < amount)
+        if (pair.balanceOf(address(this)) < amount)
+            revert InsufficientBalance();
+        pair.safeTransfer(recipient, amount);
+        emit TreasuryFundsTransferred(recipient, amount, reason);
+    }
+
+    /// @notice Increases the treasury veNFT lock amount with available LP tokens
+    /// @param amount Amount to add to the lock
+    /// @dev Governor-only; nonReentrant
+    function increaseTreasuryLockAmount(uint256 amount) external nonReentrant {
+        if (msg.sender != address(governor)) revert Unauthorized();
+        if (!treasuryVeNFTCreated) revert NoVeNFTPosition();
+        if (amount == 0) revert InvalidAmount();
+        if (pair.balanceOf(address(this)) < amount)
             revert InsufficientBalance();
 
-        proswapPair.safeTransfer(recipient, amount);
+        pair.approve(address(venft), amount);
+        venft.increaseLockAmount(treasuryVeNFTTokenId, amount);
+    }
 
-        emit TreasuryFundsDistributed(recipient, amount, reason);
+    /// @notice Extends the treasury veNFT lock duration
+    /// @param newDuration New lock duration in seconds
+    /// @dev Governor-only; nonReentrant
+    function extendTreasuryLockDuration(
+        uint256 newDuration
+    ) external nonReentrant {
+        if (msg.sender != address(governor)) revert Unauthorized();
+        if (!treasuryVeNFTCreated) revert NoVeNFTPosition();
+        venft.increaseLockDuration(treasuryVeNFTTokenId, newDuration);
+    }
+
+    /// @notice Compounds treasury pending rewards into the veNFT position
+    /// @dev Governor-only; nonReentrant
+    function compoundTreasuryRewards() external nonReentrant {
+        if (msg.sender != address(governor)) revert Unauthorized();
+        if (!treasuryVeNFTCreated) revert NoVeNFTPosition();
+        venft.compound(treasuryVeNFTTokenId);
     }
 
     // ============ QUERY FUNCTIONS ============
@@ -97,6 +132,6 @@ contract ProratedTreasury is Owned, ReentrancyGuard {
     /// @notice Gets treasury's LP token balance (including veNFT position)
     /// @return totalBalance Total LP tokens controlled by treasury
     function getTreasuryBalance() external view returns (uint256) {
-        return proswapPair.balanceOf(address(this));
+        return pair.balanceOf(address(this));
     }
 }

@@ -34,6 +34,22 @@ interface IProratedVeNFT {
     /// @param _tokenId The token ID to withdraw from
     function withdrawDecayed(uint256 _tokenId) external;
 
+    /// @notice Distributes rewards to veNFT holders
+    /// @param _rewardAmount Amount of LP tokens to distribute
+    function distributeRewards(uint256 _rewardAmount) external;
+
+    /// @notice Increase lock amount for a specific token id
+    function increaseLockAmount(uint256 _tokenId, uint256 _value) external;
+
+    /// @notice Extend lock duration for a specific token id
+    function increaseLockDuration(
+        uint256 _tokenId,
+        uint256 _newDuration
+    ) external;
+
+    /// @notice Compound pending rewards for a specific token id
+    function compound(uint256 _tokenId) external;
+
     /// @notice Transfers a veNFT from one address to another
     /// @param from The address to transfer from
     /// @param to The address to transfer to
