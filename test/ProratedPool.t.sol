@@ -762,61 +762,6 @@ contract ProratedPoolTest is Test {
         assertTrue(true, "Dev team withdrawal should succeed");
     }
 
-    function test_ProtocolFeeIntegration() public {
-        // Setup: Add contributions and finalize pool
-        vm.startPrank(user1);
-        fundingToken.approve(address(pool), 200000e18);
-        vm.warp(startTime + 1);
-        pool.contribute(200000e18, 52);
-        vm.stopPrank();
-
-        vm.startPrank(user2);
-        fundingToken.approve(address(pool), 200000e18);
-        vm.warp(startTime + 1);
-        pool.contribute(200000e18, 52);
-        vm.stopPrank();
-
-        vm.warp(endTime + 1);
-        pool.deployToken();
-        pool.deployPair();
-        pool.deployLiquidity();
-
-        // Protocol fees are only collected during swaps, not during liquidity addition
-        uint256 factoryFees = factory.protocolFees(address(fundingToken));
-        assertEq(
-            factoryFees,
-            0,
-            "Protocol fees should not be collected during liquidity addition"
-        );
-
-        // Perform a swap to trigger protocol fee collection
-        address pair = pool.proswapPair();
-        vm.startPrank(user1);
-        fundingToken.approve(pair, 1000e18);
-        fundingToken.transfer(pair, 1000e18);
-
-        // Get the pair interface and perform a swap
-        IProswapPair(pair).swap(0, 500e18, user1, "");
-        vm.stopPrank();
-
-        // Now check that protocol fees are being collected
-        factoryFees = factory.protocolFees(address(fundingToken));
-        assertTrue(
-            factoryFees > 0,
-            "Protocol fees should be collected during swaps"
-        );
-
-        // Owner can withdraw protocol fees
-        uint256 initialBalance = fundingToken.balanceOf(owner);
-        vm.prank(owner);
-        factory.withdrawProtocolFees(address(fundingToken));
-        uint256 finalBalance = fundingToken.balanceOf(owner);
-        assertTrue(
-            finalBalance > initialBalance,
-            "Owner should receive protocol fees"
-        );
-    }
-
     function test_DeveloperTokenAllocation() public {
         // Setup: Add contributions and finalize pool
         vm.startPrank(user1);

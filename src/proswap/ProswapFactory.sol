@@ -5,17 +5,11 @@ import "../proswap/ProswapPair.sol";
 import "../interfaces/IProswapPair.sol";
 import {ReentrancyGuard} from "lib/solmate/src/utils/ReentrancyGuard.sol";
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
-import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
-import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
 
 contract ProswapFactory is ReentrancyGuard, Owned {
-    using SafeTransferLib for ERC20;
-
     error IdenticalAddresses();
     error PairExists();
     error ZeroAddress();
-    error InvalidFeeRatio();
-    error MaxFeeExceeded();
 
     event PairCreated(
         address indexed token80,
@@ -23,19 +17,9 @@ contract ProswapFactory is ReentrancyGuard, Owned {
         address pair,
         uint256 allPairsLength
     );
-    event ProtocolFeeCollected(address indexed token, uint256 amount);
-    event ProtocolFeeWithdrawn(address indexed token, uint256 amount);
-    event ProtocolFeeUpdated(uint256 newNumerator, uint256 newDenominator);
 
-    mapping(address => uint256) public protocolFees;
     mapping(address => mapping(address => address)) public pairs;
     address[] public allPairs;
-
-    uint256 public protocolFeeNumerator = 25; // 25% of swap fee
-    uint256 public protocolFeeDenominator = 100; // 100%
-    uint256 public constant SWAP_FEE_NUMERATOR = 3; // 0.3% = 3/1000
-    uint256 public constant SWAP_FEE_DENOMINATOR = 1000;
-    uint256 public constant MAX_PROTOCOL_FEE_PERCENTAGE = 50; // 50% max
 
     // ============ CONSTRUCTOR ============
     /// @notice Creates a new Proswap factory
@@ -78,76 +62,5 @@ contract ProswapFactory is ReentrancyGuard, Owned {
         emit PairCreated(token80, token20, pair, allPairs.length);
     }
 
-    // ============ PROTOCOL FEE MANAGEMENT ============
-
-    /// @notice Update global protocol fee percentage
-    /// @param newNumerator New protocol fee numerator
-    /// @param newDenominator New protocol fee denominator
-    /// @dev Can only be called by owner
-    function setProtocolFee(
-        uint256 newNumerator,
-        uint256 newDenominator
-    ) external onlyOwner {
-        if (newDenominator == 0) revert InvalidFeeRatio();
-        if (newNumerator > newDenominator) revert InvalidFeeRatio();
-        if (newNumerator > MAX_PROTOCOL_FEE_PERCENTAGE) revert MaxFeeExceeded();
-
-        protocolFeeNumerator = newNumerator;
-        protocolFeeDenominator = newDenominator;
-
-        emit ProtocolFeeUpdated(newNumerator, newDenominator);
-    }
-
-    /// @notice Get current protocol fee percentage
-    /// @return feePercentage Protocol fee as basis points (e.g., 2500 = 25%)
-    function getProtocolFeePercentage() external view returns (uint256) {
-        return (protocolFeeNumerator * 10000) / protocolFeeDenominator;
-    }
-
-    /// @notice Calculate protocol fee amount for given input
-    /// @param amountIn Input amount
-    /// @return protocolFeeAmount Calculated protocol fee
-    function calculateProtocolFee(
-        uint256 amountIn
-    ) external view returns (uint256) {
-        return
-            (amountIn * protocolFeeNumerator * SWAP_FEE_NUMERATOR) /
-            (protocolFeeDenominator * SWAP_FEE_DENOMINATOR);
-    }
-
-    /// @notice Called by pairs to collect protocol fees
-    /// @param token The token being collected as fees
-    /// @param amount The amount of fees collected
-    function collectProtocolFee(address token, uint256 amount) external {
-        // No validation needed - any token can be sent to factory
-        protocolFees[token] += amount;
-        emit ProtocolFeeCollected(token, amount);
-    }
-
-    /// @notice Withdraw accumulated protocol fees for a specific token
-    /// @param token The token to withdraw fees for
-    function withdrawProtocolFees(address token) external onlyOwner {
-        uint256 amount = protocolFees[token];
-        if (amount > 0) {
-            protocolFees[token] = 0;
-            ERC20(token).safeTransfer(owner, amount);
-            emit ProtocolFeeWithdrawn(token, amount);
-        }
-    }
-
-    /// @notice Withdraw all accumulated protocol fees for multiple tokens
-    /// @param tokens Array of token addresses to withdraw fees for
-    function withdrawProtocolFeesMultiple(
-        address[] calldata tokens
-    ) external onlyOwner {
-        for (uint256 i = 0; i < tokens.length; i++) {
-            address token = tokens[i];
-            uint256 amount = protocolFees[token];
-            if (amount > 0) {
-                protocolFees[token] = 0;
-                ERC20(token).safeTransfer(owner, amount);
-                emit ProtocolFeeWithdrawn(token, amount);
-            }
-        }
-    }
+    // Protocol-wide fee management removed in prototype
 }

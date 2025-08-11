@@ -254,31 +254,7 @@ contract ProswapPair is ERC20, ReentrancyGuard {
             revert InsufficientInputAmount();
 
         // Collect protocol fees from factory
-        // Step 4: Collect protocol fees via factory hooks
-        if (amount80In > 0) {
-            uint256 protocolFee = proswapFactory.calculateProtocolFee(
-                amount80In
-            );
-            if (protocolFee > 0) {
-                ERC20(token80).safeTransfer(
-                    address(proswapFactory),
-                    protocolFee
-                );
-                proswapFactory.collectProtocolFee(token80, protocolFee);
-            }
-        }
-        if (amount20In > 0) {
-            uint256 protocolFee = proswapFactory.calculateProtocolFee(
-                amount20In
-            );
-            if (protocolFee > 0) {
-                ERC20(token20).safeTransfer(
-                    address(proswapFactory),
-                    protocolFee
-                );
-                proswapFactory.collectProtocolFee(token20, protocolFee);
-            }
-        }
+        // Step 4: Protocol-wide fee removed in prototype; only LP fee (0.30%) remains in invariant adjustment
 
         // Step 5: Enhanced bounds checking to prevent excessive slippage
         // MAX_IN_RATIO = 30% prevents manipulation and extreme price impact
