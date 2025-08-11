@@ -22,6 +22,7 @@ contract ProswapRouter is ReentrancyGuard {
     /// @notice Creates a new Proswap router
     /// @param factoryAddress Address of the Proswap factory contract
     constructor(address factoryAddress) {
+        // Step 1: Store factory reference
         factory = IProswapFactory(factoryAddress);
     }
 
@@ -52,10 +53,12 @@ contract ProswapRouter is ReentrancyGuard {
         nonReentrant
         returns (uint256 amount80, uint256 amount20, uint256 liquidity)
     {
+        // Step 1: Ensure pair exists (create if missing)
         if (factory.pairs(token80, token20) == address(0)) {
             factory.createPair(token80, token20);
         }
 
+        // Step 2: Calculate optimal amounts with invariant ratio checks
         (amount80, amount20) = _calculateLiquidity(
             token80,
             token20,
@@ -64,6 +67,7 @@ contract ProswapRouter is ReentrancyGuard {
             amount80Min,
             amount20Min
         );
+        // Step 3: Transfer tokens to pair and mint LP to recipient
         address pairAddress = ProswapLibrary.pairFor(
             address(factory),
             token80,
@@ -92,13 +96,16 @@ contract ProswapRouter is ReentrancyGuard {
         uint256 amount20Min,
         address to
     ) public nonReentrant returns (uint256 amount80, uint256 amount20) {
+        // Step 1: Locate the pair
         address pair = ProswapLibrary.pairFor(
             address(factory),
             token80,
             token20
         );
+        // Step 2: Transfer LP tokens to pair and burn
         IProswapPair(pair).transferFrom(msg.sender, pair, liquidity);
         (amount80, amount20) = IProswapPair(pair).burn(to);
+        // Step 3: Enforce minimum output amounts
         if (amount80 < amount80Min) revert Insufficient80Amount();
         if (amount20 < amount20Min) revert Insufficient20Amount();
     }
@@ -123,6 +130,7 @@ contract ProswapRouter is ReentrancyGuard {
         uint256 amount80Min,
         uint256 amount20Min
     ) internal returns (uint256 amount80, uint256 amount20) {
+        // Step 1: Fetch current reserves for target pair
         (uint256 reserve80, uint256 reserve20) = ProswapLibrary.getReserves(
             address(factory),
             token80,
@@ -130,8 +138,10 @@ contract ProswapRouter is ReentrancyGuard {
         );
 
         if (reserve80 == 0 && reserve20 == 0) {
+            // Step 2a: First liquidity — accept desired amounts
             (amount80, amount20) = (amount80Desired, amount20Desired);
         } else {
+            // Step 2b: Compute optimal counterpart amount using current price
             uint256 amount20Optimal = ProswapLibrary.quote(
                 amount80Desired,
                 reserve80,
@@ -145,6 +155,7 @@ contract ProswapRouter is ReentrancyGuard {
                 // This ensures new liquidity doesn't dramatically change the pool's invariant
                 // MAX_INVARIANT_RATIO = 300% prevents manipulation through large liquidity additions
                 // MIN_INVARIANT_RATIO = 70% prevents dramatic invariant reduction
+                // Step 3: Invariant ratio guard — forward case
                 uint256 newInvariant = Math.computeInvariant(
                     reserve80 + amount80Desired,
                     reserve20 + amount20Optimal
@@ -178,6 +189,7 @@ contract ProswapRouter is ReentrancyGuard {
                 if (amount80ToUse <= amount80Min) revert Insufficient80Amount();
 
                 // SECURITY: Same invariant ratio checking for the reverse case
+                // Step 4: Invariant ratio guard — reverse case
                 uint256 newInvariant = Math.computeInvariant(
                     reserve80 + amount80ToUse,
                     reserve20 + amount20Desired
