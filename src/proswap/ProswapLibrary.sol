@@ -31,12 +31,13 @@ library ProswapLibrary {
         address factoryAddress,
         address token80,
         address token20
-    ) public returns (uint256 reserve80, uint256 reserve20) {
-        // WEIGHTED PAIR: Use input order directly - token80 is 80% weight, token20 is 20% weight
-        (uint256 reserve80_, uint256 reserve20_, ) = IProswapPair(
+    ) public view returns (uint256, uint256) {
+        // Step 1: Resolve pair address using input order (token80, token20)
+        (uint112 reserve80, uint112 reserve20, ) = IProswapPair(
             pairFor(factoryAddress, token80, token20)
         ).getReserves();
-        (reserve80, reserve20) = (reserve80_, reserve20_); // Always in input order
+        // Step 2: Return reserves in input order (cast to uint256)
+        return (uint256(reserve80), uint256(reserve20));
     }
 
     /// @notice Calculates the output amount for a given input using weighted invariant
@@ -50,6 +51,7 @@ library ProswapLibrary {
         uint256 reserveIn,
         uint256 reserveOut
     ) public pure returns (uint256 amountOut) {
+        // Step 1: Validate inputs
         if (amountIn == 0) revert InsufficientAmount();
         if (reserveIn == 0 || reserveOut == 0) revert InsufficientLiquidity();
 
@@ -64,6 +66,7 @@ library ProswapLibrary {
         // Old invariant: amountOut = (100 * 4000) / 1000 = 400
         // New invariant: amountOut ≈ 400 (same for this case)
         // The weighted invariant behaves similarly for small trades but differs for large trades
+        // Step 2: Compute out given exact in for weighted invariant
         return
             Math.computeOutGivenExactIn(
                 reserveIn,
@@ -72,19 +75,6 @@ library ProswapLibrary {
                 WEIGHT_20, // 0.2 weight for tokenOut
                 amountIn
             );
-    }
-
-    /// @notice Gets the pair address for two tokens in input order
-    /// @param token80 First token address (80% weight)
-    /// @param token20 Second token address (20% weight)
-    /// @return token80_ First token (80% weight)
-    /// @return token20_ Second token (20% weight)
-    /// @dev Uses input order directly for weighted pairs
-    function getTokenOrder(
-        address token80,
-        address token20
-    ) internal pure returns (address token80_, address token20_) {
-        return (token80, token20); // No sorting - preserve user's intended weight assignment
     }
 
     // ============ UTILITY FUNCTIONS ============
@@ -101,15 +91,13 @@ library ProswapLibrary {
         address token80,
         address token20
     ) internal pure returns (address pairAddress) {
-        // WEIGHTED PAIR: Use input order directly - no sorting
-        (address token80_, address token20_) = getTokenOrder(token80, token20);
-
-        // Create bytecode with constructor parameter
+        // Step 1: Create bytecode with constructor parameter
         bytes memory bytecode = abi.encodePacked(
             type(ProswapPair).creationCode,
             abi.encode(factoryAddress)
         );
 
+        // Step 2: Compute CREATE2 address using input order (token80, token20)
         pairAddress = address(
             uint160(
                 uint256(
@@ -117,7 +105,7 @@ library ProswapLibrary {
                         abi.encodePacked(
                             hex"ff",
                             factoryAddress,
-                            keccak256(abi.encodePacked(token80_, token20_)),
+                            keccak256(abi.encodePacked(token80, token20)),
                             keccak256(bytecode)
                         )
                     )
@@ -132,19 +120,18 @@ library ProswapLibrary {
     /// @param reserveOut Reserve of output token
     /// @return Calculated output amount after fees
     /// @dev Applies 0.3% fee and uses weighted invariant for price calculation
-    /// @dev Note: Protocol fee is collected separately and not included in this calculation
-    /// @dev Total fee breakdown: 0.3% total, 0.075% protocol fee, 0.225% LP fee
+    /// @dev Applies only LP fee (0.3%); no protocol-wide fee in prototype
     function getAmountOut(
         uint256 amountIn,
         uint256 reserveIn,
         uint256 reserveOut
     ) public pure returns (uint256) {
+        // Step 1: Validate inputs
         if (amountIn == 0) revert InsufficientAmount();
         if (reserveIn == 0 || reserveOut == 0) revert InsufficientLiquidity();
 
-        // Apply 0.3% fee (same as Uniswap V2)
-        // Note: Protocol fee is collected separately in the swap function
-        // Total fee: 0.3% (0.075% protocol + 0.225% LP)
+        // Apply 0.3% LP fee (same as Uniswap V2)
+        // Step 2: Apply LP fee to input amount
         uint256 amountInWithFee = (amountIn * 997) / 1000;
 
         // INVARIANT MIGRATION: Changed from constant product to weighted invariant
@@ -155,6 +142,7 @@ library ProswapLibrary {
         // Old invariant: amountOut = (99.7 * 1000) / (1000 + 99.7) ≈ 99.7
         // New invariant: amountOut ≈ 99.7 (similar for small trades)
         // The weighted invariant creates different slippage characteristics for large trades
+        // Step 3: Compute out given exact in for weighted invariant
         return
             Math.computeOutGivenExactIn(
                 reserveIn,
@@ -176,6 +164,7 @@ library ProswapLibrary {
         uint256 reserveIn,
         uint256 reserveOut
     ) public pure returns (uint256) {
+        // Step 1: Validate inputs
         if (amountOut == 0) revert InsufficientAmount();
         if (reserveIn == 0 || reserveOut == 0) revert InsufficientLiquidity();
 
@@ -187,6 +176,7 @@ library ProswapLibrary {
         // Old invariant: amountIn = (100 * 1000) / (1000 - 100) + 1 ≈ 112.11
         // New invariant: amountIn ≈ 112.11 (similar for small trades)
         // The weighted invariant creates different slippage characteristics for large trades
+        // Step 2: Compute in given exact out for weighted invariant
         uint256 amountInWithFee = Math.computeInGivenExactOut(
             reserveIn,
             WEIGHT_80, // 0.8 weight for tokenIn
@@ -195,7 +185,7 @@ library ProswapLibrary {
             amountOut
         );
 
-        // Add 0.3% fee back: amountIn = amountInWithFee * 1000 / 997
+        // Step 3: Adjust for 0.3% LP fee: amountIn = amountInWithFee * 1000 / 997
         return (amountInWithFee * 1000) / 997;
     }
 }
