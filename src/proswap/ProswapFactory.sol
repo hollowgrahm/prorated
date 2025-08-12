@@ -38,13 +38,15 @@ contract ProswapFactory is ReentrancyGuard, Owned {
         address token80,
         address token20
     ) public nonReentrant returns (address pair) {
+        // Step 1: Validate addresses
         if (token80 == token20) revert IdenticalAddresses();
         if (token80 == address(0) || token20 == address(0))
             revert ZeroAddress();
 
+        // Step 2: Ensure pair does not already exist
         if (pairs[token80][token20] != address(0)) revert PairExists();
 
-        // Create pair with factory address parameter
+        // Step 3: Create pair with factory address parameter
         bytes memory bytecode = abi.encodePacked(
             type(ProswapPair).creationCode,
             abi.encode(address(this))
@@ -54,13 +56,14 @@ contract ProswapFactory is ReentrancyGuard, Owned {
             pair := create2(0, add(bytecode, 32), mload(bytecode), salt)
         }
 
+        // Step 4: Initialize pair with token ordering
         IProswapPair(pair).initialize(token80, token20);
 
+        // Step 5: Record in registry and append to list
         pairs[token80][token20] = pair;
         allPairs.push(pair);
 
+        // Step 6: Emit creation event with running length
         emit PairCreated(token80, token20, pair, allPairs.length);
     }
-
-    // Protocol-wide fee management removed in prototype
 }
