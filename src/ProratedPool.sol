@@ -6,13 +6,19 @@ import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
 import {ReentrancyGuard} from "lib/solmate/src/utils/ReentrancyGuard.sol";
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {ProratedPoolStorage} from "./ProratedPoolStorage.sol";
-import {ProratedToken} from "./ProratedToken.sol";
 import {IProratedToken} from "./interfaces/IProratedToken.sol";
 import {IProswapFactory} from "./interfaces/IProswapFactory.sol";
 import {IProswapRouter} from "./interfaces/IProswapRouter.sol";
 import {IProratedVeNFT} from "./interfaces/IProratedVeNFT.sol";
 import {IProratedGovernor} from "./interfaces/IProratedGovernor.sol";
 import {IProratedTreasury} from "./interfaces/IProratedTreasury.sol";
+import {ITokenDeployer} from "./interfaces/ITokenDeployer.sol";
+import {IPairDeployer} from "./interfaces/IPairDeployer.sol";
+import {ILiquidityDeployer} from "./interfaces/ILiquidityDeployer.sol";
+import {IVeNFTDeployer} from "./interfaces/IVeNFTDeployer.sol";
+import {IGovernorDeployer} from "./interfaces/IGovernorDeployer.sol";
+import {ITreasuryDeployer} from "./interfaces/ITreasuryDeployer.sol";
+import {ProratedToken} from "./ProratedToken.sol";
 import {ProratedVeNFT} from "./ProratedVeNFT.sol";
 import {ProratedGovernor} from "./ProratedGovernor.sol";
 import {ProratedTreasury} from "./ProratedTreasury.sol";
@@ -151,11 +157,42 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         _;
     }
 
+    modifier onlyTokenDeployer() {
+        if (msg.sender != address(tokenDeployer)) revert Unauthorized();
+        _;
+    }
+    modifier onlyPairDeployer() {
+        if (msg.sender != address(pairDeployer)) revert Unauthorized();
+        _;
+    }
+    modifier onlyLiquidityDeployer() {
+        if (msg.sender != address(liquidityDeployer)) revert Unauthorized();
+        _;
+    }
+    modifier onlyVeNFTDeployer() {
+        if (msg.sender != address(veNFTDeployer)) revert Unauthorized();
+        _;
+    }
+    modifier onlyGovernorDeployer() {
+        if (msg.sender != address(governorDeployer)) revert Unauthorized();
+        _;
+    }
+    modifier onlyTreasuryDeployer() {
+        if (msg.sender != address(treasuryDeployer)) revert Unauthorized();
+        _;
+    }
+
     // ============ CONSTRUCTOR & SETUP ============
     constructor(
         PoolConfig memory config,
         address _proswapFactory,
-        address _proswapRouter
+        address _proswapRouter,
+        address _tokenDeployer,
+        address _pairDeployer,
+        address _liquidityDeployer,
+        address _veNFTDeployer,
+        address _governorDeployer,
+        address _treasuryDeployer
     ) Owned(config.owner) {
         // Step 0: Validate configuration parameters
         if (bytes(config.tokenName).length == 0) revert EmptyString();
@@ -196,6 +233,12 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         fundingToken = ERC20(config.fundingToken);
         proswapFactory = IProswapFactory(_proswapFactory);
         proswapRouter = IProswapRouter(_proswapRouter);
+        tokenDeployer = ITokenDeployer(_tokenDeployer);
+        pairDeployer = IPairDeployer(_pairDeployer);
+        liquidityDeployer = ILiquidityDeployer(_liquidityDeployer);
+        veNFTDeployer = IVeNFTDeployer(_veNFTDeployer);
+        governorDeployer = IGovernorDeployer(_governorDeployer);
+        treasuryDeployer = ITreasuryDeployer(_treasuryDeployer);
 
         // Step 6: Set allocation percentages for developer, treasury, and dao
         developerPercent = config.developerPercent;
@@ -284,21 +327,21 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         uint256 userAmount = contributions[msg.sender].amount;
         uint256 oldLockDuration = contributions[msg.sender].lockDuration;
 
-        // Step 1.1: Enforce increase-only semantics for lock duration
+        // Step 2: Enforce increase-only semantics for lock duration
         if (newLockDuration <= oldLockDuration)
             revert LockDurationNotIncreased();
 
-        // Step 2: Calculate new shares based on existing amount * new lock duration
+        // Step 3: Calculate new shares based on existing amount * new lock duration
         uint256 newShares = newLockDuration * userAmount;
 
-        // Step 3: Update global total shares (remove old shares, add new shares)
+        // Step 4: Update global total shares (remove old shares, add new shares)
         totalShares = totalShares - oldShares + newShares;
 
-        // Step 4: Update user's contribution record with new lock duration and shares
+        // Step 5: Update user's contribution record with new lock duration and shares
         contributions[msg.sender].lockDuration = newLockDuration;
         contributions[msg.sender].shares = newShares;
 
-        // Step 5: Emit event for off-chain tracking
+        // Step 6: Emit event for off-chain tracking
         emit LockDurationIncreased(
             msg.sender,
             oldLockDuration,
@@ -345,164 +388,118 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     }
 
     // ============ DEPLOYMENT SEQUENCE ============
-    /// @notice Deploys the prorated token contract (first deployment function)
-    /// @dev Can only be called after minimum contributions are reached and pool has ended
-    function deployToken() external poolEnded nonReentrant {
-        // Step 2: Check if minimum contributions have been reached (success requirement)
+    /// @notice Thin forwarder to deploy token via shared deployer
+    function deployToken() external poolEnded {
         if (!hasReachedMinimum()) revert MinimumNotReached();
-        // Step 3: Check if token has already been deployed (prevent double deployment)
         if (address(proratedToken) != address(0)) revert TokenAlreadyDeployed();
-
-        // Step 4: Deploy the ProratedToken contract with configured name and symbol
-        proratedToken = IProratedToken(
-            address(new ProratedToken(tokenName, tokenSymbol))
-        );
-
-        // Step 5: Mint the total supply to the pool contract
-        proratedToken.mint(address(this), tokenTotalSupply);
-
-        // Step 6: Emit event for off-chain tracking
-        emit TokenDeployed(address(proratedToken));
+        tokenDeployer.deployToken(address(this));
     }
 
     /// @notice Deploys the pair (second deployment function)
     /// @dev Can only be called after token is deployed
-    function deployPair() external tokenDeployed nonReentrant {
-        // Step 1: Check if pair has already been deployed (prevent double deployment)
+    function deployPair() external tokenDeployed {
         if (proswapPair != address(0)) revert PairAlreadyDeployed();
-
-        // Step 2: Create the trading pair using Proswap factory
-        address pair = proswapFactory.createPair(
-            address(proratedToken),
-            address(fundingToken)
-        );
-
-        // Step 3: Store the pair address for future use
-        proswapPair = pair;
-
-        // Step 4: Emit event for off-chain tracking
-        emit PairDeployed(proswapPair);
+        pairDeployer.deployPair(address(this));
     }
 
     /// @notice Seeds liquidity and calculates allocations (third deployment function)
     /// @dev Can only be called after pair is deployed
-    function deployLiquidity() external nonReentrant {
-        // Step 1: Check if pair has been deployed (prerequisite)
+    function deployLiquidity() external {
         if (proswapPair == address(0)) revert PairNotDeployed();
-        // Step 2: Check if liquidity has already been deployed (prevent double deployment)
         if (totalLPTokensReceived > 0) revert LiquidityAlreadyDeployed();
-
-        // Step 3: Approve router to spend tokens for liquidity provision
-        proratedToken.approve(address(proswapRouter), type(uint256).max);
-        fundingToken.safeApprove(address(proswapRouter), type(uint256).max);
-
-        // Step 4: Get available token balances for liquidity provision (reserve developmentFund for developer)
-        uint256 fundingAmount = fundingToken.balanceOf(address(this)) -
-            developmentFund;
-        uint256 proratedAmount = proratedToken.balanceOf(address(this));
-
-        // Step 5: Add liquidity to the pair using all available tokens
-        proswapRouter.addLiquidity(
-            address(proratedToken),
-            address(fundingToken),
-            proratedAmount,
-            fundingAmount,
-            proratedAmount,
-            fundingAmount,
-            address(this)
-        );
-
-        // Step 6: Record total LP tokens received from liquidity provision
-        totalLPTokensReceived = ERC20(proswapPair).balanceOf(address(this));
-
-        // Step 7: Calculate LP token allocations for developer and treasury
-        developerLPTokens = (totalLPTokensReceived * developerPercent) / 100;
-        treasuryLPTokens = (totalLPTokensReceived * treasuryPercent) / 100;
-
-        // Step 8: Calculate LP tokens available for DAO (contributors)
-        daoLPTokens =
-            totalLPTokensReceived -
-            developerLPTokens -
-            treasuryLPTokens;
-
-        // Step 9: Emit LiquidityDeployed event
-        emit LiquidityDeployed(
-            totalLPTokensReceived,
-            developerLPTokens,
-            treasuryLPTokens
-        );
+        liquidityDeployer.deployLiquidity(address(this));
     }
 
     /// @notice Deploy veNFT contract (anyone can call, first deployment wins)
     function deployVeNFT() external {
-        // Step 1: Check if veNFT has already been deployed (prevent double deployment)
         if (address(proratedVeNFT) != address(0)) revert VeNFTAlreadyDeployed();
-        // Step 2: Check if liquidity has been deployed (prerequisite)
         if (totalLPTokensReceived == 0) revert LiquidityNotDeployed();
-
-        // Step 3: Build dynamic ERC721 name/symbol from LP token metadata
-        string memory lpName = ERC20(proswapPair).name();
-        string memory lpSymbol = ERC20(proswapPair).symbol();
-        string memory veName = string(
-            abi.encodePacked("Prorated veNFT - ", lpName)
-        );
-        string memory veSymbol = string(abi.encodePacked("ve", lpSymbol));
-
-        // Step 4: Deploy the Prorated veNFT contract with the pair address and dynamic metadata
-        proratedVeNFT = IProratedVeNFT(
-            address(new ProratedVeNFT(address(proswapPair), veName, veSymbol))
-        );
-
-        // Step 5: Emit event for off-chain tracking
-        emit VeNFTDeployed(address(proratedVeNFT));
+        veNFTDeployer.deployVeNFT(address(this));
     }
 
     /// @notice Deploy Governor contract (anyone can call, first deployment wins)
     function deployGovernor() external {
-        // Step 1: Check if governor has already been deployed (prevent double deployment)
         if (address(proratedGovernor) != address(0))
             revert GovernorAlreadyDeployed();
-        // Step 2: Check if veNFT has been deployed (prerequisite)
         if (address(proratedVeNFT) == address(0)) revert VeNFTNotDeployed();
-
-        // Step 4: Deploy the ProratedGovernor contract with veNFT and pool addresses
-        proratedGovernor = IProratedGovernor(
-            address(new ProratedGovernor(address(proratedVeNFT), address(this)))
-        );
-
-        // Step 5: Add pool as approved target for governance proposals
-        proratedGovernor.addApprovedTarget(address(this));
-
-        // Step 6: Emit event for off-chain tracking
-        emit GovernorDeployed(address(proratedGovernor));
+        governorDeployer.deployGovernor(address(this));
     }
 
     /// @notice Deploy Treasury contract (anyone can call, first deployment wins)
     function deployTreasury() external {
-        // Step 1: Check if treasury has already been deployed (prevent double deployment)
         if (address(proratedTreasury) != address(0))
             revert TreasuryAlreadyDeployed();
-        // Step 2: Check if governor has been deployed (prerequisite)
         if (address(proratedGovernor) == address(0))
             revert GovernorNotDeployed();
-
-        // Step 3: Deploy the ProratedTreasury contract with all required parameters
-        proratedTreasury = IProratedTreasury(
-            address(
-                new ProratedTreasury(
-                    ProratedTreasury.TreasuryParams({
-                        venft: address(proratedVeNFT),
-                        governor: address(proratedGovernor),
-                        pair: proswapPair,
-                        owner: developer
-                    })
-                )
-            )
-        );
-
-        // Step 4: Emit event for off-chain tracking
-        emit TreasuryDeployed(address(proratedTreasury));
+        treasuryDeployer.deployTreasury(address(this));
     }
+
+    // ============ ONLY-DEPLOYER HOOKS ============
+    function setToken(address token) external onlyTokenDeployer {
+        if (token != address(0) && address(proratedToken) == address(0)) {
+            proratedToken = IProratedToken(token);
+            emit TokenDeployed(token);
+        }
+    }
+
+    function setPair(address pair) external onlyPairDeployer {
+        if (pair != address(0) && proswapPair == address(0)) {
+            proswapPair = pair;
+            emit PairDeployed(pair);
+        }
+    }
+
+    function setVeNFT(address venft) external onlyVeNFTDeployer {
+        if (venft != address(0) && address(proratedVeNFT) == address(0)) {
+            proratedVeNFT = IProratedVeNFT(venft);
+            emit VeNFTDeployed(venft);
+        }
+    }
+
+    function setGovernor(address governor) external onlyGovernorDeployer {
+        if (governor != address(0) && address(proratedGovernor) == address(0)) {
+            proratedGovernor = IProratedGovernor(governor);
+            emit GovernorDeployed(governor);
+            // As pool is the owner of the governor, approve self as a target
+            proratedGovernor.addApprovedTarget(address(this));
+        }
+    }
+
+    function setTreasury(address treasury) external onlyTreasuryDeployer {
+        if (treasury != address(0) && address(proratedTreasury) == address(0)) {
+            proratedTreasury = IProratedTreasury(treasury);
+            emit TreasuryDeployed(treasury);
+        }
+    }
+
+    function setLPAllocations(
+        uint256 totalLp,
+        uint256 developerLp,
+        uint256 treasuryLp,
+        uint256 daoLp
+    ) external {
+        if (msg.sender != address(liquidityDeployer)) revert Unauthorized();
+        totalLPTokensReceived = totalLp;
+        developerLPTokens = developerLp;
+        treasuryLPTokens = treasuryLp;
+        daoLPTokens = daoLp;
+
+        emit LiquidityDeployed(totalLp, developerLp, treasuryLp);
+    }
+
+    function moveLiquidityToPair(
+        uint256 tokenAmount,
+        uint256 fundingAmount
+    ) external onlyLiquidityDeployer nonReentrant {
+        if (proswapPair == address(0)) revert PairNotDeployed();
+        if (totalLPTokensReceived > 0) revert LiquidityAlreadyDeployed();
+
+        // Transfer both tokens from the pool to the pair
+        ERC20(address(proratedToken)).safeTransfer(proswapPair, tokenAmount);
+        fundingToken.safeTransfer(proswapPair, fundingAmount);
+    }
+
+    // removed executeLiquidityProvision: LiquidityDeployer mints directly
 
     // ============ USER POSITION MANAGEMENT ============
     /// @notice Creates a veNFT position for a user based on their contribution

@@ -8,6 +8,12 @@ import {IProswapRouter} from "./interfaces/IProswapRouter.sol";
 import {IProratedVeNFT} from "./interfaces/IProratedVeNFT.sol";
 import {IProratedGovernor} from "./interfaces/IProratedGovernor.sol";
 import {IProratedTreasury} from "./interfaces/IProratedTreasury.sol";
+import {ITokenDeployer} from "./interfaces/ITokenDeployer.sol";
+import {IPairDeployer} from "./interfaces/IPairDeployer.sol";
+import {ILiquidityDeployer} from "./interfaces/ILiquidityDeployer.sol";
+import {IVeNFTDeployer} from "./interfaces/IVeNFTDeployer.sol";
+import {IGovernorDeployer} from "./interfaces/IGovernorDeployer.sol";
+import {ITreasuryDeployer} from "./interfaces/ITreasuryDeployer.sol";
 
 contract ProratedPoolStorage {
     string public tokenName;
@@ -28,6 +34,13 @@ contract ProratedPoolStorage {
     IProratedVeNFT public proratedVeNFT;
     IProratedGovernor public proratedGovernor;
     IProratedTreasury public proratedTreasury;
+
+    ITokenDeployer public tokenDeployer;
+    IPairDeployer public pairDeployer;
+    ILiquidityDeployer public liquidityDeployer;
+    IVeNFTDeployer public veNFTDeployer;
+    IGovernorDeployer public governorDeployer;
+    ITreasuryDeployer public treasuryDeployer;
 
     address public developer;
     uint256 public totalContributions;

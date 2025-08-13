@@ -7,6 +7,12 @@ import "../src/proswap/ProswapFactory.sol";
 import "../src/proswap/ProswapRouter.sol";
 import "../src/ProratedToken.sol";
 import "../src/ProratedVeNFT.sol";
+import "../src/deployers/TokenDeployer.sol";
+import "../src/deployers/PairDeployer.sol";
+import "../src/deployers/LiquidityDeployer.sol";
+import "../src/deployers/VeNFTDeployer.sol";
+import "../src/deployers/GovernorDeployer.sol";
+import "../src/deployers/TreasuryDeployer.sol";
 import "./mocks/ERC20Mintable.sol";
 import "../src/interfaces/IProratedToken.sol";
 import "../src/interfaces/IProswapFactory.sol";
@@ -17,6 +23,12 @@ contract ProratedPoolTest is Test {
     ProratedPool pool;
     ProswapFactory factory;
     ProswapRouter router;
+    TokenDeployer tokenDeployer;
+    PairDeployer pairDeployer;
+    LiquidityDeployer liquidityDeployer;
+    VeNFTDeployer veNFTDeployer;
+    GovernorDeployer governorDeployer;
+    TreasuryDeployer treasuryDeployer;
     ERC20Mintable fundingToken;
     ProratedToken proratedToken;
     ProratedVeNFT venftContract;
@@ -44,6 +56,12 @@ contract ProratedPoolTest is Test {
         // Deploy Proswap contracts
         factory = new ProswapFactory(owner);
         router = new ProswapRouter(address(factory));
+        tokenDeployer = new TokenDeployer();
+        pairDeployer = new PairDeployer();
+        liquidityDeployer = new LiquidityDeployer();
+        veNFTDeployer = new VeNFTDeployer();
+        governorDeployer = new GovernorDeployer();
+        treasuryDeployer = new TreasuryDeployer();
 
         // Deploy ProratedPool
         ProratedPool.PoolConfig memory config = ProratedPool.PoolConfig({
@@ -60,7 +78,17 @@ contract ProratedPoolTest is Test {
             treasuryPercent: 15, // 15% treasury allocation
             daoPercent: 65
         });
-        pool = new ProratedPool(config, address(factory), address(router));
+        pool = new ProratedPool(
+            config,
+            address(factory),
+            address(router),
+            address(tokenDeployer),
+            address(pairDeployer),
+            address(liquidityDeployer),
+            address(veNFTDeployer),
+            address(governorDeployer),
+            address(treasuryDeployer)
+        );
 
         // Mint tokens to users
         fundingToken.mint(2000000e18, user1);
@@ -81,8 +109,8 @@ contract ProratedPoolTest is Test {
         assertEq(pool.startTime(), startTime);
         assertEq(pool.endTime(), endTime);
         assertEq(address(pool.fundingToken()), address(fundingToken));
-        assertEq(address(pool.proswapFactory()), address(0));
-        assertEq(address(pool.proswapRouter()), address(0));
+        assertEq(address(pool.proswapFactory()), address(factory));
+        assertEq(address(pool.proswapRouter()), address(router));
         assertEq(address(pool.proratedToken()), address(0));
     }
 
@@ -1224,6 +1252,12 @@ contract ModifierTests is Test {
     ERC20Mintable public fundingToken;
     ProswapFactory public factory;
     ProswapRouter public router;
+    TokenDeployer tokenDeployer;
+    PairDeployer pairDeployer;
+    LiquidityDeployer liquidityDeployer;
+    VeNFTDeployer veNFTDeployer;
+    GovernorDeployer governorDeployer;
+    TreasuryDeployer treasuryDeployer;
 
     address public owner = address(this);
     address public user1 = address(0x1);
@@ -1244,6 +1278,12 @@ contract ModifierTests is Test {
         // Deploy Proswap contracts
         factory = new ProswapFactory(owner);
         router = new ProswapRouter(address(factory));
+        tokenDeployer = new TokenDeployer();
+        pairDeployer = new PairDeployer();
+        liquidityDeployer = new LiquidityDeployer();
+        veNFTDeployer = new VeNFTDeployer();
+        governorDeployer = new GovernorDeployer();
+        treasuryDeployer = new TreasuryDeployer();
 
         // Deploy ProratedPool
         ProratedPool.PoolConfig memory config = ProratedPool.PoolConfig({
@@ -1260,7 +1300,17 @@ contract ModifierTests is Test {
             treasuryPercent: 15,
             daoPercent: 65
         });
-        pool = new ProratedPool(config, address(factory), address(router));
+        pool = new ProratedPool(
+            config,
+            address(factory),
+            address(router),
+            address(tokenDeployer),
+            address(pairDeployer),
+            address(liquidityDeployer),
+            address(veNFTDeployer),
+            address(governorDeployer),
+            address(treasuryDeployer)
+        );
 
         // Mint tokens to users
         fundingToken.mint(2000000e18, user1);

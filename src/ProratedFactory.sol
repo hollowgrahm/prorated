@@ -23,19 +23,43 @@ contract ProratedFactory is ReentrancyGuard, Owned {
     address[] public allPools;
     address public proswapFactory;
     address public proswapRouter;
+    address public tokenDeployer;
+    address public pairDeployer;
+    address public liquidityDeployer;
+    address public veNFTDeployer;
+    address public governorDeployer;
+    address public treasuryDeployer;
 
     // ============ CONSTRUCTOR ============
     /// @notice Initializes the factory with an owner and fixed Proswap endpoints
     /// @param _owner The owner address
     /// @param _proswapFactory The Proswap factory address
     /// @param _proswapRouter The Proswap router address
+    /// @param _tokenDeployer Token deployer
+    /// @param _pairDeployer Pair deployer
+    /// @param _liquidityDeployer Liquidity deployer
+    /// @param _veNFTDeployer VeNFT deployer
+    /// @param _governorDeployer Governor deployer
+    /// @param _treasuryDeployer Treasury deployer
     constructor(
         address _owner,
         address _proswapFactory,
-        address _proswapRouter
+        address _proswapRouter,
+        address _tokenDeployer,
+        address _pairDeployer,
+        address _liquidityDeployer,
+        address _veNFTDeployer,
+        address _governorDeployer,
+        address _treasuryDeployer
     ) Owned(_owner) {
         proswapFactory = _proswapFactory;
         proswapRouter = _proswapRouter;
+        tokenDeployer = _tokenDeployer;
+        pairDeployer = _pairDeployer;
+        liquidityDeployer = _liquidityDeployer;
+        veNFTDeployer = _veNFTDeployer;
+        governorDeployer = _governorDeployer;
+        treasuryDeployer = _treasuryDeployer;
     }
 
     // ============ DEPLOYMENT API ============
@@ -50,7 +74,17 @@ contract ProratedFactory is ReentrancyGuard, Owned {
         // Step 1: Assemble bytecode with constructor args (factory injects endpoints via constructor)
         bytes memory bytecode = abi.encodePacked(
             type(ProratedPool).creationCode,
-            abi.encode(config, proswapFactory, proswapRouter)
+            abi.encode(
+                config,
+                proswapFactory,
+                proswapRouter,
+                tokenDeployer,
+                pairDeployer,
+                liquidityDeployer,
+                veNFTDeployer,
+                governorDeployer,
+                treasuryDeployer
+            )
         );
 
         // Step 2: Compute expected address and revert if already deployed

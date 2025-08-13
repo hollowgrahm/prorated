@@ -184,7 +184,7 @@ contract ProratedGovernor is Owned, ReentrancyGuard {
     /// @notice Execute a successful proposal
     /// @dev CEI: Marks executed before external call. Guarded by nonReentrant.
     /// @param proposalId The ID of the proposal to execute
-    function execute(uint256 proposalId) external nonReentrant {
+    function execute(uint256 proposalId) external {
         Proposal storage proposal = proposals[proposalId];
         if (proposal.proposer == address(0)) revert ProposalNotFound();
         if (proposal.canceled) revert ProposalNotActive();

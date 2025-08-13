@@ -9,6 +9,12 @@ import {ProratedToken} from "../src/ProratedToken.sol";
 import {ProswapFactory} from "../src/proswap/ProswapFactory.sol";
 import {ProswapRouter} from "../src/proswap/ProswapRouter.sol";
 import {ERC20Mintable} from "./mocks/ERC20Mintable.sol";
+import {TokenDeployer} from "../src/deployers/TokenDeployer.sol";
+import {PairDeployer} from "../src/deployers/PairDeployer.sol";
+import {LiquidityDeployer} from "../src/deployers/LiquidityDeployer.sol";
+import {VeNFTDeployer} from "../src/deployers/VeNFTDeployer.sol";
+import {GovernorDeployer} from "../src/deployers/GovernorDeployer.sol";
+import {TreasuryDeployer} from "../src/deployers/TreasuryDeployer.sol";
 import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
 
 contract ProratedGovernorTest is Test {
@@ -20,6 +26,12 @@ contract ProratedGovernorTest is Test {
     ProswapFactory public factory;
     ProswapRouter public router;
     ERC20Mintable public fundingToken;
+    TokenDeployer public tokenDeployer;
+    PairDeployer public pairDeployer;
+    LiquidityDeployer public liquidityDeployer;
+    VeNFTDeployer public veNFTDeployer;
+    GovernorDeployer public governorDeployer;
+    TreasuryDeployer public treasuryDeployer;
 
     address public user1 = address(0x1);
     address public user2 = address(0x2);
@@ -37,6 +49,12 @@ contract ProratedGovernorTest is Test {
         // Deploy Proswap contracts
         factory = new ProswapFactory(owner);
         router = new ProswapRouter(address(factory));
+        tokenDeployer = new TokenDeployer();
+        pairDeployer = new PairDeployer();
+        liquidityDeployer = new LiquidityDeployer();
+        veNFTDeployer = new VeNFTDeployer();
+        governorDeployer = new GovernorDeployer();
+        treasuryDeployer = new TreasuryDeployer();
 
         // Deploy ProratedToken
         proratedToken = new ProratedToken("Prorated", "PROR");
@@ -63,7 +81,17 @@ contract ProratedGovernorTest is Test {
             treasuryPercent: 15, // 15% treasury allocation
             daoPercent: 65
         });
-        pool = new ProratedPool(config, address(factory), address(router));
+        pool = new ProratedPool(
+            config,
+            address(factory),
+            address(router),
+            address(tokenDeployer),
+            address(pairDeployer),
+            address(liquidityDeployer),
+            address(veNFTDeployer),
+            address(governorDeployer),
+            address(treasuryDeployer)
+        );
 
         // Governor will be deployed by ProratedPool during finalization
         // For testing, we'll deploy it separately with owner as governor owner
