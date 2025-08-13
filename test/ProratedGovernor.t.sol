@@ -59,13 +59,11 @@ contract ProratedGovernorTest is Test {
             startTime: block.timestamp,
             endTime: block.timestamp + 7 days,
             fundingToken: address(fundingToken),
-            proswapFactory: address(factory),
-            proswapRouter: address(router),
             developerPercent: 20, // 20% developer allocation
             treasuryPercent: 15, // 15% treasury allocation
             daoPercent: 65
         });
-        pool = new ProratedPool(config);
+        pool = new ProratedPool(config, address(factory), address(router));
 
         // Governor will be deployed by ProratedPool during finalization
         // For testing, we'll deploy it separately with owner as governor owner

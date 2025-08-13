@@ -56,13 +56,11 @@ contract ProratedPoolTest is Test {
             startTime: startTime,
             endTime: endTime,
             fundingToken: address(fundingToken),
-            proswapFactory: address(factory),
-            proswapRouter: address(router),
             developerPercent: 20, // 20% developer allocation
             treasuryPercent: 15, // 15% treasury allocation
             daoPercent: 65
         });
-        pool = new ProratedPool(config);
+        pool = new ProratedPool(config, address(factory), address(router));
 
         // Mint tokens to users
         fundingToken.mint(2000000e18, user1);
@@ -83,8 +81,8 @@ contract ProratedPoolTest is Test {
         assertEq(pool.startTime(), startTime);
         assertEq(pool.endTime(), endTime);
         assertEq(address(pool.fundingToken()), address(fundingToken));
-        assertEq(address(pool.proswapFactory()), address(factory));
-        assertEq(address(pool.proswapRouter()), address(router));
+        assertEq(address(pool.proswapFactory()), address(0));
+        assertEq(address(pool.proswapRouter()), address(0));
         assertEq(address(pool.proratedToken()), address(0));
     }
 
@@ -1255,16 +1253,14 @@ contract ModifierTests is Test {
             tokenTotalSupply: tokenTotalSupply,
             developmentFund: desiredContributions,
             liquidityFund: desiredContributions,
-            developerPercent: 20,
-            treasuryPercent: 15,
-            daoPercent: 65,
             startTime: startTime,
             endTime: endTime,
             fundingToken: address(fundingToken),
-            proswapFactory: address(factory),
-            proswapRouter: address(router)
+            developerPercent: 20,
+            treasuryPercent: 15,
+            daoPercent: 65
         });
-        pool = new ProratedPool(config);
+        pool = new ProratedPool(config, address(factory), address(router));
 
         // Mint tokens to users
         fundingToken.mint(2000000e18, user1);

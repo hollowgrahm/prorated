@@ -20,6 +20,7 @@ import {ProratedTreasury} from "./ProratedTreasury.sol";
 contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     using SafeTransferLib for ERC20;
 
+    // ============ ERRORS ============
     error PoolClosed();
     error InvalidLockDuration();
     error InvalidAmount();
@@ -51,23 +52,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     error StartTimeTooFar();
     error EndTimeTooLong();
 
-    struct PoolConfig {
-        address owner;
-        string tokenName;
-        string tokenSymbol;
-        uint256 tokenTotalSupply;
-        uint256 developmentFund;
-        uint256 liquidityFund;
-        uint256 startTime;
-        uint256 endTime;
-        address fundingToken;
-        address proswapFactory;
-        address proswapRouter;
-        uint256 developerPercent;
-        uint256 treasuryPercent;
-        uint256 daoPercent;
-    }
-
+    // ============ EVENTS ============
     event Contributed(
         address indexed contributor,
         uint256 amount,
@@ -122,6 +107,23 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         uint256 tokenId
     );
 
+    // ============ STRUCTS ============
+    struct PoolConfig {
+        address owner;
+        string tokenName;
+        string tokenSymbol;
+        uint256 tokenTotalSupply;
+        uint256 developmentFund;
+        uint256 liquidityFund;
+        uint256 startTime;
+        uint256 endTime;
+        address fundingToken;
+        uint256 developerPercent;
+        uint256 treasuryPercent;
+        uint256 daoPercent;
+    }
+
+    // ============ MODIFIERS ============
     modifier poolActive() {
         if (block.timestamp < startTime || block.timestamp > endTime)
             revert PoolClosed();
@@ -149,14 +151,16 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         _;
     }
 
-    // 1. CONSTRUCTOR & SETUP
-    constructor(PoolConfig memory config) Owned(config.owner) {
+    // ============ CONSTRUCTOR & SETUP ============
+    constructor(
+        PoolConfig memory config,
+        address _proswapFactory,
+        address _proswapRouter
+    ) Owned(config.owner) {
         // Step 0: Validate configuration parameters
         if (bytes(config.tokenName).length == 0) revert EmptyString();
         if (bytes(config.tokenSymbol).length == 0) revert EmptyString();
         if (config.fundingToken == address(0)) revert ZeroAddress();
-        if (config.proswapFactory == address(0)) revert ZeroAddress();
-        if (config.proswapRouter == address(0)) revert ZeroAddress();
         if (config.tokenTotalSupply == 0) revert InvalidAmount();
         if (config.developmentFund == 0) revert InvalidAmount();
         if (config.liquidityFund == 0) revert InvalidAmount();
@@ -190,8 +194,8 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
 
         // Step 5: Initialize external contract interfaces
         fundingToken = ERC20(config.fundingToken);
-        proswapFactory = IProswapFactory(config.proswapFactory);
-        proswapRouter = IProswapRouter(config.proswapRouter);
+        proswapFactory = IProswapFactory(_proswapFactory);
+        proswapRouter = IProswapRouter(_proswapRouter);
 
         // Step 6: Set allocation percentages for developer, treasury, and dao
         developerPercent = config.developerPercent;
@@ -199,7 +203,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         daoPercent = config.daoPercent;
     }
 
-    // ============ CONTRIBUTION & USER FUNCTIONS ============
+    // ============ USER FUNCTIONS ============
     /// @notice Contributes tokens to the pool with a specified lock duration
     /// @param amount Amount of funding tokens to contribute
     /// @param lockDuration Lock duration in weeks (1-208 weeks)
@@ -304,7 +308,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         );
     }
 
-    // ============ QUERY FUNCTIONS ============
+    // ============ VIEW FUNCTIONS ============
     /// @notice Checks if the user has a contribution
     /// @param user The address of the user to check
     /// @return True if the user has a contribution, false otherwise
