@@ -10,3 +10,6 @@
 [submodule "lib/contracts"]
 	path = lib/contracts
 	url = https://github.com/velodrome-finance/contracts
+[submodule "lib/fraxlend"]
+	path = lib/fraxlend
+	url = https://github.com/FraxFinance/fraxlend.git
