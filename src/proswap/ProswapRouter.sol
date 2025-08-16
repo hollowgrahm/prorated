@@ -3,6 +3,7 @@ pragma solidity ^0.8.10;
 
 import "../interfaces/IProswapFactory.sol";
 import "../interfaces/IProswapPair.sol";
+import "../proswap/ProswapCore.sol";
 import "../proswap/ProswapLibrary.sol";
 import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
@@ -68,7 +69,7 @@ contract ProswapRouter is ReentrancyGuard {
             amount20Min
         );
         // Step 3: Transfer tokens to pair and mint LP to recipient
-        address pairAddress = ProswapLibrary.pairFor(
+        address pairAddress = ProswapCore.pairFor(
             address(factory),
             token80,
             token20
@@ -97,11 +98,7 @@ contract ProswapRouter is ReentrancyGuard {
         address to
     ) public nonReentrant returns (uint256 amount80, uint256 amount20) {
         // Step 1: Locate the pair
-        address pair = ProswapLibrary.pairFor(
-            address(factory),
-            token80,
-            token20
-        );
+        address pair = ProswapCore.pairFor(address(factory), token80, token20);
         // Step 2: Transfer LP tokens to pair and burn
         IProswapPair(pair).transferFrom(msg.sender, pair, liquidity);
         (amount80, amount20) = IProswapPair(pair).burn(to);
@@ -131,7 +128,7 @@ contract ProswapRouter is ReentrancyGuard {
         uint256 amount20Min
     ) internal returns (uint256 amount80, uint256 amount20) {
         // Step 1: Fetch current reserves for target pair
-        (uint256 reserve80, uint256 reserve20) = ProswapLibrary.getReserves(
+        (uint256 reserve80, uint256 reserve20) = ProswapCore.getReserves(
             address(factory),
             token80,
             token20

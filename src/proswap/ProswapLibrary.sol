@@ -2,14 +2,13 @@
 pragma solidity ^0.8.10;
 
 import "../libraries/Math.sol";
-import "../interfaces/IProswapFactory.sol";
-import "../interfaces/IProswapPair.sol";
-import {ProswapPair} from "../proswap/ProswapPair.sol";
 
+/// @title ProswapLibrary
+/// @notice Swap calculation functions for Proswap DEX with weighted invariant
+/// @dev Heavy math library with Balancer-style weighted calculations
 library ProswapLibrary {
     error InsufficientAmount();
     error InsufficientLiquidity();
-    error InvalidPath();
 
     // ============ CONSTANTS ============
     // INVARIANT MIGRATION: Weights for x^0.8 * y^0.2 = k invariant
@@ -17,28 +16,6 @@ library ProswapLibrary {
     // WEIGHT_80 = 80% favors token80, WEIGHT_20 = 20% disfavors token20
     uint256 internal constant WEIGHT_80 = 8e17; // 0.8 (80%)
     uint256 internal constant WEIGHT_20 = 2e17; // 0.2 (20%)
-
-    // ============ CORE LIBRARY FUNCTIONS ============
-
-    /// @notice Gets the reserves for a pair of tokens
-    /// @param factoryAddress Address of the factory contract
-    /// @param token80 Address of token with 80% weight
-    /// @param token20 Address of token with 20% weight
-    /// @return reserve80 Reserve of token with 80% weight
-    /// @return reserve20 Reserve of token with 20% weight
-    /// @dev Returns reserves in the order of the input tokens (no sorting)
-    function getReserves(
-        address factoryAddress,
-        address token80,
-        address token20
-    ) public view returns (uint256, uint256) {
-        // Step 1: Resolve pair address using input order (token80, token20)
-        (uint112 reserve80, uint112 reserve20, ) = IProswapPair(
-            pairFor(factoryAddress, token80, token20)
-        ).getReserves();
-        // Step 2: Return reserves in input order (cast to uint256)
-        return (uint256(reserve80), uint256(reserve20));
-    }
 
     /// @notice Calculates the output amount for a given input using weighted invariant
     /// @param amountIn Amount of input token
@@ -50,7 +27,7 @@ library ProswapLibrary {
         uint256 amountIn,
         uint256 reserveIn,
         uint256 reserveOut
-    ) public pure returns (uint256 amountOut) {
+    ) external pure returns (uint256 amountOut) {
         // Step 1: Validate inputs
         if (amountIn == 0) revert InsufficientAmount();
         if (reserveIn == 0 || reserveOut == 0) revert InsufficientLiquidity();
@@ -77,43 +54,6 @@ library ProswapLibrary {
             );
     }
 
-    // ============ UTILITY FUNCTIONS ============
-
-    /// @notice Calculates the deterministic pair address for two tokens in input order
-    /// @param factoryAddress Address of the factory contract
-    /// @param token80 Address of token with 80% weight
-    /// @param token20 Address of token with 20% weight
-    /// @return pairAddress Deterministic address of the pair
-    /// @dev Uses CREATE2 to calculate the pair address without deployment
-    /// @dev The order matters: pairFor(WETH, USDC) ≠ pairFor(USDC, WETH)
-    function pairFor(
-        address factoryAddress,
-        address token80,
-        address token20
-    ) internal pure returns (address pairAddress) {
-        // Step 1: Create bytecode with constructor parameter
-        bytes memory bytecode = abi.encodePacked(
-            type(ProswapPair).creationCode,
-            abi.encode(factoryAddress)
-        );
-
-        // Step 2: Compute CREATE2 address using input order (token80, token20)
-        pairAddress = address(
-            uint160(
-                uint256(
-                    keccak256(
-                        abi.encodePacked(
-                            hex"ff",
-                            factoryAddress,
-                            keccak256(abi.encodePacked(token80, token20)),
-                            keccak256(bytecode)
-                        )
-                    )
-                )
-            )
-        );
-    }
-
     /// @notice Calculates output amount for exact input swap with 0.3% fee
     /// @param amountIn Amount of input token
     /// @param reserveIn Reserve of input token
@@ -125,7 +65,7 @@ library ProswapLibrary {
         uint256 amountIn,
         uint256 reserveIn,
         uint256 reserveOut
-    ) public pure returns (uint256) {
+    ) external pure returns (uint256) {
         // Step 1: Validate inputs
         if (amountIn == 0) revert InsufficientAmount();
         if (reserveIn == 0 || reserveOut == 0) revert InsufficientLiquidity();
@@ -163,7 +103,7 @@ library ProswapLibrary {
         uint256 amountOut,
         uint256 reserveIn,
         uint256 reserveOut
-    ) public pure returns (uint256) {
+    ) external pure returns (uint256) {
         // Step 1: Validate inputs
         if (amountOut == 0) revert InsufficientAmount();
         if (reserveIn == 0 || reserveOut == 0) revert InsufficientLiquidity();

@@ -2,6 +2,7 @@
 pragma solidity ^0.8.10;
 
 import "forge-std/Test.sol";
+import "../src/proswap/ProswapCore.sol";
 import "../src/proswap/ProswapLibrary.sol";
 import "../src/proswap/ProswapFactory.sol";
 import "../src/proswap/ProswapPair.sol";
@@ -43,7 +44,7 @@ contract ProswapLibraryTest is Test {
 
         ProswapPair(address(pair)).mint(address(this));
 
-        (uint256 reserve80, uint256 reserve20) = ProswapLibrary.getReserves(
+        (uint256 reserve80, uint256 reserve20) = ProswapCore.getReserves(
             address(factory),
             address(token80),
             address(token20)
@@ -83,7 +84,7 @@ contract ProswapLibraryTest is Test {
     }
 
     function testPairFor() public {
-        address pairAddress = ProswapLibrary.pairFor(
+        address pairAddress = ProswapCore.pairFor(
             address(factory),
             address(token80),
             address(token20)
@@ -96,13 +97,13 @@ contract ProswapLibraryTest is Test {
     }
 
     function testPairForTokensSorting() public {
-        address pairAddress1 = ProswapLibrary.pairFor(
+        address pairAddress1 = ProswapCore.pairFor(
             address(factory),
             address(token80),
             address(token20)
         );
 
-        address pairAddress2 = ProswapLibrary.pairFor(
+        address pairAddress2 = ProswapCore.pairFor(
             address(factory),
             address(token80),
             address(token20)
@@ -110,7 +111,7 @@ contract ProswapLibraryTest is Test {
 
         assertEq(pairAddress1, pairAddress2);
 
-        address pairAddress3 = ProswapLibrary.pairFor(
+        address pairAddress3 = ProswapCore.pairFor(
             address(factory),
             address(token20),
             address(token80)
@@ -123,13 +124,13 @@ contract ProswapLibraryTest is Test {
     }
 
     function testPairForNonexistentFactory() public {
-        address pairAddress = ProswapLibrary.pairFor(
+        address pairAddress = ProswapCore.pairFor(
             address(0xaabbcc),
             address(token20),
             address(token80)
         );
 
-        address pairAddress2 = ProswapLibrary.pairFor(
+        address pairAddress2 = ProswapCore.pairFor(
             address(0xaabbcc),
             address(token20),
             address(token80)
