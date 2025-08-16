@@ -121,8 +121,8 @@ interface IProlendPair {
 
     // ===== View Functions =====
     function assetToken() external view returns (address);
-    function collateralToken() external view returns (address);
-    function priceOracle() external view returns (address);
+    function getCollateralToken() external view returns (address);
+    function getPriceOracle() external view returns (address);
     function admin() external view returns (address);
 
     // Risk parameters
