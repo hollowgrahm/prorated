@@ -51,12 +51,6 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     error Unauthorized();
     error NoLPTokensReserved();
     error LockDurationNotIncreased();
-    error InvalidPercentages();
-    error ZeroAddress();
-    error EmptyString();
-    error InvalidTimeRange();
-    error StartTimeTooFar();
-    error EndTimeTooLong();
 
     // ============ EVENTS ============
     event Contributed(
@@ -157,31 +151,6 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         _;
     }
 
-    modifier onlyTokenDeployer() {
-        if (msg.sender != address(tokenDeployer)) revert Unauthorized();
-        _;
-    }
-    modifier onlyPairDeployer() {
-        if (msg.sender != address(pairDeployer)) revert Unauthorized();
-        _;
-    }
-    modifier onlyLiquidityDeployer() {
-        if (msg.sender != address(liquidityDeployer)) revert Unauthorized();
-        _;
-    }
-    modifier onlyVeNFTDeployer() {
-        if (msg.sender != address(veNFTDeployer)) revert Unauthorized();
-        _;
-    }
-    modifier onlyGovernorDeployer() {
-        if (msg.sender != address(governorDeployer)) revert Unauthorized();
-        _;
-    }
-    modifier onlyTreasuryDeployer() {
-        if (msg.sender != address(treasuryDeployer)) revert Unauthorized();
-        _;
-    }
-
     // ============ CONSTRUCTOR & SETUP ============
     constructor(
         PoolConfig memory config,
@@ -194,23 +163,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         address _governorDeployer,
         address _treasuryDeployer
     ) Owned(config.owner) {
-        // Step 0: Validate configuration parameters
-        if (bytes(config.tokenName).length == 0) revert EmptyString();
-        if (bytes(config.tokenSymbol).length == 0) revert EmptyString();
-        if (config.fundingToken == address(0)) revert ZeroAddress();
-        if (config.tokenTotalSupply == 0) revert InvalidAmount();
-        if (config.developmentFund == 0) revert InvalidAmount();
-        if (config.liquidityFund == 0) revert InvalidAmount();
-        if (
-            (config.developerPercent +
-                config.treasuryPercent +
-                config.daoPercent) != 100
-        ) revert InvalidPercentages();
-        if (config.startTime >= config.endTime) revert InvalidTimeRange();
-        if (config.startTime > block.timestamp + 30 days)
-            revert StartTimeTooFar();
-        if (config.endTime > config.startTime + 30 days)
-            revert EndTimeTooLong();
+        // No validation needed - factory validates before deployment
 
         // Step 1: Set developer address (same as owner for clarity)
         developer = config.owner;
@@ -414,7 +367,13 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     function deployVeNFT() external {
         if (address(proratedVeNFT) != address(0)) revert VeNFTAlreadyDeployed();
         if (totalLPTokensReceived == 0) revert LiquidityNotDeployed();
-        veNFTDeployer.deployVeNFT(address(this));
+        string memory lpName = ERC20(proswapPair).name();
+        string memory lpSymbol = ERC20(proswapPair).symbol();
+        string memory veName = string(
+            abi.encodePacked("Prorated veNFT - ", lpName)
+        );
+        string memory veSymbol = string(abi.encodePacked("ve", lpSymbol));
+        veNFTDeployer.deployVeNFT(address(this), veName, veSymbol);
     }
 
     /// @notice Deploy Governor contract (anyone can call, first deployment wins)
@@ -435,28 +394,32 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     }
 
     // ============ ONLY-DEPLOYER HOOKS ============
-    function setToken(address token) external onlyTokenDeployer {
+    function setToken(address token) external {
+        if (msg.sender != address(tokenDeployer)) revert Unauthorized();
         if (token != address(0) && address(proratedToken) == address(0)) {
             proratedToken = IProratedToken(token);
             emit TokenDeployed(token);
         }
     }
 
-    function setPair(address pair) external onlyPairDeployer {
+    function setPair(address pair) external {
+        if (msg.sender != address(pairDeployer)) revert Unauthorized();
         if (pair != address(0) && proswapPair == address(0)) {
             proswapPair = pair;
             emit PairDeployed(pair);
         }
     }
 
-    function setVeNFT(address venft) external onlyVeNFTDeployer {
+    function setVeNFT(address venft) external {
+        if (msg.sender != address(veNFTDeployer)) revert Unauthorized();
         if (venft != address(0) && address(proratedVeNFT) == address(0)) {
             proratedVeNFT = IProratedVeNFT(venft);
             emit VeNFTDeployed(venft);
         }
     }
 
-    function setGovernor(address governor) external onlyGovernorDeployer {
+    function setGovernor(address governor) external {
+        if (msg.sender != address(governorDeployer)) revert Unauthorized();
         if (governor != address(0) && address(proratedGovernor) == address(0)) {
             proratedGovernor = IProratedGovernor(governor);
             emit GovernorDeployed(governor);
@@ -465,7 +428,8 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         }
     }
 
-    function setTreasury(address treasury) external onlyTreasuryDeployer {
+    function setTreasury(address treasury) external {
+        if (msg.sender != address(treasuryDeployer)) revert Unauthorized();
         if (treasury != address(0) && address(proratedTreasury) == address(0)) {
             proratedTreasury = IProratedTreasury(treasury);
             emit TreasuryDeployed(treasury);
@@ -490,7 +454,8 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     function moveLiquidityToPair(
         uint256 tokenAmount,
         uint256 fundingAmount
-    ) external onlyLiquidityDeployer nonReentrant {
+    ) external nonReentrant {
+        if (msg.sender != address(liquidityDeployer)) revert Unauthorized();
         if (proswapPair == address(0)) revert PairNotDeployed();
         if (totalLPTokensReceived > 0) revert LiquidityAlreadyDeployed();
 
