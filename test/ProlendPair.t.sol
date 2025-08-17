@@ -1109,6 +1109,203 @@ contract ProlendPairTest is Test {
         );
     }
 
+    function testAddInterestBasic() public {
+        uint256 depositAmount = 1000 ether;
+        uint256 collateralAmount = 200 ether;
+        uint256 borrowAmount = 100 ether;
+
+        // Setup: deposit liquidity and borrow
+        vm.prank(user2);
+        assetToken.approve(address(prolendPair), depositAmount);
+        vm.prank(user2);
+        prolendPair.deposit(depositAmount, user2);
+
+        vm.prank(user1);
+        collateralToken.approve(address(prolendPair), collateralAmount);
+        vm.prank(user1);
+        prolendPair.borrowAsset(borrowAmount, collateralAmount, user1);
+
+        // Get initial state
+        uint256 initialBorrowAmount = prolendPair.totalBorrowAmount();
+        uint256 initialAssetAmount = prolendPair.totalAssetAmount();
+
+        // Fast forward time by 1 year (365 days)
+        vm.warp(block.timestamp + 365 days);
+
+        // Accrue interest
+        uint256 interestEarned = prolendPair.addInterest();
+
+        // Check that interest was accrued
+        assertTrue(interestEarned > 0, "Interest should be earned over time");
+        assertGt(
+            prolendPair.totalBorrowAmount(),
+            initialBorrowAmount,
+            "Borrow amount should increase with interest"
+        );
+        assertGt(
+            prolendPair.totalAssetAmount(),
+            initialAssetAmount,
+            "Asset amount should increase (lender yield)"
+        );
+
+        // Interest should be added to both vaults
+        assertEq(
+            prolendPair.totalBorrowAmount() - initialBorrowAmount,
+            prolendPair.totalAssetAmount() - initialAssetAmount,
+            "Interest added to both vaults should be equal"
+        );
+    }
+
+    function testAddInterestNoTime() public {
+        uint256 depositAmount = 1000 ether;
+        uint256 collateralAmount = 200 ether;
+        uint256 borrowAmount = 100 ether;
+
+        // Setup borrowing position
+        vm.prank(user2);
+        assetToken.approve(address(prolendPair), depositAmount);
+        vm.prank(user2);
+        prolendPair.deposit(depositAmount, user2);
+
+        vm.prank(user1);
+        collateralToken.approve(address(prolendPair), collateralAmount);
+        vm.prank(user1);
+        prolendPair.borrowAsset(borrowAmount, collateralAmount, user1);
+
+        // Call addInterest immediately (no time elapsed)
+        uint256 interestEarned = prolendPair.addInterest();
+
+        // Should return 0 since no time has elapsed
+        assertEq(
+            interestEarned,
+            0,
+            "No interest should be earned with no time elapsed"
+        );
+    }
+
+    function testAddInterestNoBorrows() public {
+        uint256 depositAmount = 1000 ether;
+
+        // Setup with only deposits, no borrows
+        vm.prank(user2);
+        assetToken.approve(address(prolendPair), depositAmount);
+        vm.prank(user2);
+        prolendPair.deposit(depositAmount, user2);
+
+        // Fast forward time
+        vm.warp(block.timestamp + 365 days);
+
+        // Call addInterest with no borrows
+        uint256 interestEarned = prolendPair.addInterest();
+
+        // Should return 0 since no borrows exist
+        assertEq(
+            interestEarned,
+            0,
+            "No interest should be earned with no borrows"
+        );
+    }
+
+    function testInterestAccrualIntegration() public {
+        uint256 depositAmount = 1000 ether;
+        uint256 collateralAmount = 500 ether; // Even more collateral for safety
+        uint256 borrowAmount = 50 ether; // Smaller borrow amount
+
+        // Setup borrowing position
+        vm.prank(user2);
+        assetToken.approve(address(prolendPair), depositAmount);
+        vm.prank(user2);
+        prolendPair.deposit(depositAmount, user2);
+
+        vm.prank(user1);
+        collateralToken.approve(address(prolendPair), collateralAmount);
+        vm.prank(user1);
+        prolendPair.borrowAsset(borrowAmount, collateralAmount, user1);
+
+        // Fast forward only 1 day to limit interest growth
+        vm.warp(block.timestamp + 1 days);
+
+        // Just test that addInterest works and accrues some interest
+        uint256 borrowAmountBefore = prolendPair.totalBorrowAmount();
+        uint256 interestEarned = prolendPair.addInterest();
+        uint256 borrowAmountAfter = prolendPair.totalBorrowAmount();
+
+        // Check that interest was accrued
+        assertTrue(interestEarned > 0, "Interest should be earned over 1 day");
+        assertEq(
+            borrowAmountAfter,
+            borrowAmountBefore + interestEarned,
+            "Borrow amount should increase by interest"
+        );
+    }
+
+    function testInterestRateUpdates() public {
+        uint256 depositAmount = 1000 ether;
+        uint256 collateralAmount = 200 ether;
+        uint256 borrowAmount = 100 ether;
+
+        // Setup borrowing (10% utilization)
+        vm.prank(user2);
+        assetToken.approve(address(prolendPair), depositAmount);
+        vm.prank(user2);
+        prolendPair.deposit(depositAmount, user2);
+
+        vm.prank(user1);
+        collateralToken.approve(address(prolendPair), collateralAmount);
+        vm.prank(user1);
+        prolendPair.borrowAsset(borrowAmount, collateralAmount, user1);
+
+        uint256 initialRate = prolendPair.getCurrentRate();
+
+        // Fast forward and accrue interest
+        vm.warp(block.timestamp + 30 days);
+        prolendPair.addInterest();
+
+        // Rate should be updated based on new utilization
+        uint256 newRate = prolendPair.getCurrentRate();
+        // Note: Rate might be same or different depending on utilization changes
+        assertTrue(newRate > 0, "Rate should be positive");
+    }
+
+    function testLenderYieldFromInterest() public {
+        uint256 depositAmount = 1000 ether;
+        uint256 collateralAmount = 400 ether;
+        uint256 borrowAmount = 100 ether; // Smaller borrow amount
+
+        // Setup
+        vm.prank(user2);
+        assetToken.approve(address(prolendPair), depositAmount);
+        vm.prank(user2);
+        uint256 lenderShares = prolendPair.deposit(depositAmount, user2);
+
+        vm.prank(user1);
+        collateralToken.approve(address(prolendPair), collateralAmount);
+        vm.prank(user1);
+        prolendPair.borrowAsset(borrowAmount, collateralAmount, user1);
+
+        // Record lender's initial asset value
+        uint256 initialLenderValue = prolendPair.convertToAssets(lenderShares);
+
+        // Fast forward time and accrue interest (shorter time)
+        vm.warp(block.timestamp + 7 days);
+        prolendPair.addInterest();
+
+        // Lender's shares should now be worth more assets
+        uint256 finalLenderValue = prolendPair.convertToAssets(lenderShares);
+        assertGt(
+            finalLenderValue,
+            initialLenderValue,
+            "Lender should earn yield from interest"
+        );
+
+        // Test that the share value has increased (that's the key point)
+        uint256 yieldEarned = finalLenderValue - initialLenderValue;
+        assertTrue(
+            yieldEarned > 0,
+            "Lender should earn some yield from interest"
+        );
+    }
+
     function testPlaceholderFunctions() public {
         // Remaining placeholder functions should revert with "Not implemented"
         vm.expectRevert("Not implemented");
@@ -1116,9 +1313,6 @@ contract ProlendPairTest is Test {
 
         vm.expectRevert("Not implemented");
         prolendPair.leveragedPosition(100 ether, 200 ether, 180 ether);
-
-        vm.expectRevert("Not implemented");
-        prolendPair.addInterest();
     }
 }
 

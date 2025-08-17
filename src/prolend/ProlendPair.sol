@@ -246,6 +246,9 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         uint256 assets,
         address receiver
     ) public override nonReentrant returns (uint256 shares) {
+        // Accrue interest before any operation
+        _addInterest();
+
         // Validate inputs
         if (receiver == address(0)) revert InvalidAddress();
         if (assets == 0) revert InvalidAmount();
@@ -273,6 +276,9 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         uint256 shares,
         address receiver
     ) public override nonReentrant returns (uint256 assets) {
+        // Accrue interest before any operation
+        _addInterest();
+
         // Validate inputs
         if (receiver == address(0)) revert InvalidAddress();
         if (shares == 0) revert InvalidAmount();
@@ -302,6 +308,9 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         address receiver,
         address owner
     ) public override nonReentrant returns (uint256 shares) {
+        // Accrue interest before any operation
+        _addInterest();
+
         // Validate inputs
         if (receiver == address(0)) revert InvalidAddress();
         if (assets == 0) revert InvalidAmount();
@@ -339,6 +348,9 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         address receiver,
         address owner
     ) public override nonReentrant returns (uint256 assets) {
+        // Accrue interest before any operation
+        _addInterest();
+
         // Validate inputs
         if (receiver == address(0)) revert InvalidAddress();
         if (shares == 0) revert InvalidAmount();
@@ -377,6 +389,9 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         uint256 amount,
         address borrower
     ) external nonReentrant {
+        // Accrue interest before any operation
+        _addInterest();
+
         // Validate inputs
         if (borrower == address(0)) revert InvalidAddress();
         if (amount == 0) revert InvalidAmount();
@@ -398,6 +413,9 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         uint256 amount,
         address receiver
     ) external nonReentrant {
+        // Accrue interest before any operation
+        _addInterest();
+
         // Validate inputs
         if (receiver == address(0)) revert InvalidAddress();
         if (amount == 0) revert InvalidAmount();
@@ -431,6 +449,9 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         uint256 collateralAmount,
         address receiver
     ) external nonReentrant returns (uint256 shares) {
+        // Accrue interest before any operation
+        _addInterest();
+
         // Validate inputs
         if (receiver == address(0)) revert InvalidAddress();
         if (borrowAmount == 0) revert InvalidAmount();
@@ -481,6 +502,9 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         uint256 shares,
         address borrower
     ) external nonReentrant returns (uint256 amountRepaid) {
+        // Accrue interest before any operation
+        _addInterest();
+
         // Validate inputs
         if (borrower == address(0)) revert InvalidAddress();
         if (shares == 0) revert InvalidAmount();
@@ -524,10 +548,62 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         revert("Not implemented");
     }
 
-    /// @notice Placeholder for addInterest function
-    function addInterest() external returns (uint256) {
-        // TODO: Implement in interest accrual task
-        revert("Not implemented");
+    // ===== Interest Accrual =====
+
+    /// @notice Accrue interest for all borrowers and update rates
+    /// @return interestEarned Total interest earned by lenders
+    function addInterest() external returns (uint256 interestEarned) {
+        return _addInterest();
+    }
+
+    /// @notice Internal function to accrue interest, called before major operations
+    /// @return interestEarned Amount of interest accrued
+    function _addInterest() internal returns (uint256 interestEarned) {
+        // Check if enough time has passed since last update
+        uint256 timeElapsed = block.timestamp - lastInterestUpdate;
+        if (timeElapsed == 0) {
+            return 0; // No time elapsed, no interest to accrue
+        }
+
+        // Get current borrow amounts before interest accrual
+        uint256 totalBorrowAmountBefore = borrowVault.amount;
+        if (totalBorrowAmountBefore == 0) {
+            // Update timestamp even if no borrows
+            lastInterestUpdate = block.timestamp;
+            return 0;
+        }
+
+        // Calculate new interest rate based on current utilization
+        uint256 utilization = rateCalculator.calculateUtilization(
+            totalBorrowAmountBefore,
+            assetVault.amount
+        );
+        uint256 newRate = rateCalculator.calculateInterestRate(utilization);
+
+        // Calculate compound interest for the time elapsed
+        uint256 totalBorrowAmountAfter = rateCalculator
+            .calculateCompoundInterest(
+                totalBorrowAmountBefore,
+                currentRate, // Use current rate for the elapsed period
+                timeElapsed
+            );
+
+        // Calculate interest earned
+        interestEarned = totalBorrowAmountAfter - totalBorrowAmountBefore;
+
+        if (interestEarned > 0) {
+            // Effects: Update borrow vault with accrued interest (only amount, shares stay same)
+            borrowVault.addToVault(0, interestEarned);
+
+            // Effects: Update asset vault with earned interest (increases lender yield)
+            assetVault.addToVault(0, interestEarned);
+        }
+
+        // Effects: Update interest rate state
+        currentRate = newRate;
+        lastInterestUpdate = block.timestamp;
+
+        emit InterestAccrued(interestEarned, newRate);
     }
 
     /// @notice Placeholder for price oracle functions
