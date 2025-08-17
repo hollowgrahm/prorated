@@ -85,9 +85,9 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
     event Repay(address indexed borrower, uint256 repayAmount, uint256 shares);
     event Liquidate(
         address indexed borrower,
-        address indexed liquidator,
-        uint256 repayShares,
-        uint256 collateralSeized
+        uint256 collateralReceived,
+        uint256 shares,
+        uint256 debtRepaid
     );
     event InterestAccrued(uint256 interestEarned, uint256 newRate);
     event LeveragedPosition(
@@ -104,6 +104,7 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
     error InsufficientLiquidity();
     error UserSolvent();
     error UserInsolvent();
+    error BorrowerSolvent();
     error InvalidAmount();
     error InvalidAddress();
     error LiquidationFailed();
@@ -529,13 +530,61 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         emit Repay(borrower, amountRepaid, shares);
     }
 
-    /// @notice Placeholder for liquidate function
+    // ===== Liquidation =====
+
+    /// @notice Liquidate an insolvent borrower's position
+    /// @param shares Number of borrow shares to liquidate
+    /// @param borrower Address of the borrower to liquidate
+    /// @return collateralReceived Amount of collateral tokens received by liquidator
     function liquidate(
         uint256 shares,
         address borrower
-    ) external returns (uint256) {
-        // TODO: Implement in liquidation task
-        revert("Not implemented");
+    ) external nonReentrant returns (uint256 collateralReceived) {
+        // Accrue interest before liquidation
+        _addInterest();
+
+        // Validate inputs
+        if (borrower == address(0)) revert InvalidAddress();
+        if (shares == 0) revert InvalidAmount();
+        if (userBorrowShares[borrower] < shares)
+            revert InsufficientBorrowBalance();
+
+        // Check if borrower is actually insolvent
+        if (_isSolvent(borrower)) revert BorrowerSolvent();
+
+        // Calculate liquidation amounts
+        uint256 debtToRepay = borrowVault.toAmount(shares, true); // Round up to favor protocol
+        uint256 borrowValue = getBorrowValue(debtToRepay);
+
+        // Calculate collateral to seize (debt + 10% liquidation bonus)
+        uint256 collateralValueToSeize = (borrowValue *
+            (1e5 + LIQUIDATION_FEE)) / 1e5;
+
+        // Convert collateral value back to collateral token amount using exchange rate
+        uint256 exchangeRate = getExchangeRate();
+        collateralReceived = (collateralValueToSeize * 1e18) / exchangeRate;
+
+        // Ensure we don't seize more collateral than borrower has
+        if (collateralReceived > userCollateralBalance[borrower]) {
+            collateralReceived = userCollateralBalance[borrower];
+        }
+
+        // Effects: Update borrower's debt (via standard repayment accounting)
+        borrowVault.removeFromVault(shares, debtToRepay);
+        userBorrowShares[borrower] -= shares;
+        assetVault.addToVault(0, debtToRepay); // Add repaid assets back to lenders
+
+        // Effects: Update borrower's collateral
+        userCollateralBalance[borrower] -= collateralReceived;
+        totalCollateral -= collateralReceived;
+
+        // Interactions: Transfer repayment from liquidator
+        asset.safeTransferFrom(msg.sender, address(this), debtToRepay);
+
+        // Interactions: Transfer collateral to liquidator
+        collateralToken.safeTransfer(msg.sender, collateralReceived);
+
+        emit Liquidate(borrower, collateralReceived, shares, debtToRepay);
     }
 
     /// @notice Placeholder for leveragedPosition function
@@ -606,7 +655,7 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         emit InterestAccrued(interestEarned, newRate);
     }
 
-    /// @notice Placeholder for price oracle functions
+    /// @notice Get the current interest rate
     function getCurrentRate() external view returns (uint256) {
         return currentRate;
     }
