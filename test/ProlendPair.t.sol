@@ -811,11 +811,306 @@ contract ProlendPairTest is Test {
         );
     }
 
+    function testRepayAssetBasic() public {
+        uint256 depositAmount = 1000 ether;
+        uint256 collateralAmount = 200 ether;
+        uint256 borrowAmount = 100 ether;
+        uint256 repayShares = 50 ether; // Repay half
+
+        // Setup: deposit liquidity and borrow
+        vm.prank(user2);
+        assetToken.approve(address(prolendPair), depositAmount);
+        vm.prank(user2);
+        prolendPair.deposit(depositAmount, user2);
+
+        vm.prank(user1);
+        collateralToken.approve(address(prolendPair), collateralAmount);
+        vm.prank(user1);
+        uint256 borrowShares = prolendPair.borrowAsset(
+            borrowAmount,
+            collateralAmount,
+            user1
+        );
+
+        // Repay half the debt
+        uint256 expectedRepayAmount = borrowAmount / 2; // 1:1 ratio initially
+        vm.prank(user1);
+        assetToken.approve(address(prolendPair), expectedRepayAmount);
+
+        vm.prank(user1);
+        uint256 amountRepaid = prolendPair.repayAsset(repayShares, user1);
+
+        // Check results
+        assertEq(
+            amountRepaid,
+            expectedRepayAmount,
+            "Should repay expected amount"
+        );
+        assertEq(
+            prolendPair.userBorrowShares(user1),
+            borrowShares - repayShares,
+            "User borrow shares should be reduced"
+        );
+        assertEq(
+            prolendPair.totalBorrowAmount(),
+            borrowAmount - amountRepaid,
+            "Total borrow amount should be reduced"
+        );
+        assertEq(
+            prolendPair.totalBorrowShares(),
+            borrowShares - repayShares,
+            "Total borrow shares should be reduced"
+        );
+        assertEq(
+            assetToken.balanceOf(user1),
+            1000 ether + borrowAmount - expectedRepayAmount,
+            "User asset balance should reflect repayment"
+        );
+    }
+
+    function testRepayAssetFull() public {
+        uint256 depositAmount = 1000 ether;
+        uint256 collateralAmount = 200 ether;
+        uint256 borrowAmount = 100 ether;
+
+        // Setup: deposit liquidity and borrow
+        vm.prank(user2);
+        assetToken.approve(address(prolendPair), depositAmount);
+        vm.prank(user2);
+        prolendPair.deposit(depositAmount, user2);
+
+        vm.prank(user1);
+        collateralToken.approve(address(prolendPair), collateralAmount);
+        vm.prank(user1);
+        uint256 borrowShares = prolendPair.borrowAsset(
+            borrowAmount,
+            collateralAmount,
+            user1
+        );
+
+        // Repay full debt
+        vm.prank(user1);
+        assetToken.approve(address(prolendPair), borrowAmount);
+
+        vm.prank(user1);
+        uint256 amountRepaid = prolendPair.repayAsset(borrowShares, user1);
+
+        // Check results
+        assertEq(amountRepaid, borrowAmount, "Should repay full amount");
+        assertEq(
+            prolendPair.userBorrowShares(user1),
+            0,
+            "User should have no remaining borrow shares"
+        );
+        assertEq(
+            prolendPair.totalBorrowAmount(),
+            0,
+            "No remaining total borrow amount"
+        );
+        assertEq(
+            prolendPair.totalBorrowShares(),
+            0,
+            "No remaining total borrow shares"
+        );
+        assertEq(
+            assetToken.balanceOf(user1),
+            1000 ether,
+            "User should be back to original balance"
+        );
+
+        // User should be fully solvent and able to withdraw all collateral
+        assertTrue(
+            prolendPair.isSolvent(user1),
+            "User should be solvent after full repayment"
+        );
+
+        vm.prank(user1);
+        prolendPair.removeCollateral(collateralAmount, user1);
+        assertEq(
+            prolendPair.userCollateralBalance(user1),
+            0,
+            "User should have no remaining collateral"
+        );
+    }
+
+    function testRepayAssetForOtherUser() public {
+        uint256 depositAmount = 500 ether; // Reduced so user2 has enough left to repay
+        uint256 collateralAmount = 200 ether;
+        uint256 borrowAmount = 100 ether;
+
+        // Setup: user1 borrows, user2 will repay for them
+        vm.prank(user2);
+        assetToken.approve(address(prolendPair), depositAmount);
+        vm.prank(user2);
+        prolendPair.deposit(depositAmount, user2);
+
+        vm.prank(user1);
+        collateralToken.approve(address(prolendPair), collateralAmount);
+        vm.prank(user1);
+        uint256 borrowShares = prolendPair.borrowAsset(
+            borrowAmount,
+            collateralAmount,
+            user1
+        );
+
+        // User2 repays for user1
+        vm.prank(user2);
+        assetToken.approve(address(prolendPair), borrowAmount);
+
+        vm.prank(user2);
+        uint256 amountRepaid = prolendPair.repayAsset(borrowShares, user1);
+
+        // Check results
+        assertEq(amountRepaid, borrowAmount, "Should repay full amount");
+        assertEq(
+            prolendPair.userBorrowShares(user1),
+            0,
+            "User1 debt should be cleared"
+        );
+        assertEq(
+            assetToken.balanceOf(user2),
+            1000 ether - depositAmount - borrowAmount,
+            "User2 paid for repayment"
+        );
+        assertEq(
+            assetToken.balanceOf(user1),
+            1000 ether + borrowAmount,
+            "User1 keeps borrowed assets"
+        );
+    }
+
+    function testRepayAssetInvalidInputs() public {
+        uint256 depositAmount = 1000 ether;
+        uint256 collateralAmount = 200 ether;
+        uint256 borrowAmount = 100 ether;
+
+        // Setup borrowing position
+        vm.prank(user2);
+        assetToken.approve(address(prolendPair), depositAmount);
+        vm.prank(user2);
+        prolendPair.deposit(depositAmount, user2);
+
+        vm.prank(user1);
+        collateralToken.approve(address(prolendPair), collateralAmount);
+        vm.prank(user1);
+        prolendPair.borrowAsset(borrowAmount, collateralAmount, user1);
+
+        // Test zero shares
+        vm.prank(user1);
+        vm.expectRevert(
+            abi.encodeWithSelector(ProlendPair.InvalidAmount.selector)
+        );
+        prolendPair.repayAsset(0, user1);
+
+        // Test zero address borrower
+        vm.prank(user1);
+        vm.expectRevert(
+            abi.encodeWithSelector(ProlendPair.InvalidAddress.selector)
+        );
+        prolendPair.repayAsset(100 ether, address(0));
+
+        // Test insufficient borrow balance
+        vm.prank(user1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ProlendPair.InsufficientBorrowBalance.selector
+            )
+        );
+        prolendPair.repayAsset(200 ether, user1); // More than borrowed
+
+        // Test repaying for user with no debt
+        vm.prank(user1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ProlendPair.InsufficientBorrowBalance.selector
+            )
+        );
+        prolendPair.repayAsset(10 ether, user2); // User2 has no debt
+    }
+
+    function testRepayAssetVaultAccounting() public {
+        uint256 depositAmount = 1000 ether;
+        uint256 collateralAmount = 200 ether;
+        uint256 borrowAmount = 100 ether;
+        uint256 repayShares = 30 ether;
+
+        // Setup borrowing
+        vm.prank(user2);
+        assetToken.approve(address(prolendPair), depositAmount);
+        vm.prank(user2);
+        prolendPair.deposit(depositAmount, user2);
+
+        vm.prank(user1);
+        collateralToken.approve(address(prolendPair), collateralAmount);
+        vm.prank(user1);
+        prolendPair.borrowAsset(borrowAmount, collateralAmount, user1);
+
+        // Check state before repayment
+        uint256 assetVaultBefore = prolendPair.totalAssetAmount();
+        uint256 borrowVaultBefore = prolendPair.totalBorrowAmount();
+
+        // Partial repayment
+        vm.prank(user1);
+        assetToken.approve(address(prolendPair), 30 ether);
+        vm.prank(user1);
+        uint256 amountRepaid = prolendPair.repayAsset(repayShares, user1);
+
+        // Check vault accounting after repayment
+        assertEq(
+            prolendPair.totalAssetAmount(),
+            assetVaultBefore + amountRepaid,
+            "Asset vault should increase by repayment"
+        );
+        assertEq(
+            prolendPair.totalBorrowAmount(),
+            borrowVaultBefore - amountRepaid,
+            "Borrow vault should decrease by repayment"
+        );
+        assertEq(
+            prolendPair.totalAssets(),
+            assetVaultBefore + amountRepaid,
+            "Total assets should reflect repayment"
+        );
+    }
+
+    function testRepayAssetRounding() public {
+        // Test that repayment rounds up in favor of the protocol
+        uint256 depositAmount = 1000 ether;
+        uint256 collateralAmount = 200 ether;
+        uint256 borrowAmount = 100 ether;
+
+        vm.prank(user2);
+        assetToken.approve(address(prolendPair), depositAmount);
+        vm.prank(user2);
+        prolendPair.deposit(depositAmount, user2);
+
+        vm.prank(user1);
+        collateralToken.approve(address(prolendPair), collateralAmount);
+        vm.prank(user1);
+        uint256 borrowShares = prolendPair.borrowAsset(
+            borrowAmount,
+            collateralAmount,
+            user1
+        );
+
+        // Try to repay with very small shares to test rounding
+        uint256 smallShares = 1;
+        uint256 expectedAmount = 1; // Should be at least 1 wei for 1 share
+
+        vm.prank(user1);
+        assetToken.approve(address(prolendPair), expectedAmount);
+        vm.prank(user1);
+        uint256 amountRepaid = prolendPair.repayAsset(smallShares, user1);
+
+        // The amount should be rounded up (favoring the protocol)
+        assertTrue(
+            amountRepaid >= smallShares,
+            "Repayment should round up for conservative accounting"
+        );
+    }
+
     function testPlaceholderFunctions() public {
         // Remaining placeholder functions should revert with "Not implemented"
-        vm.expectRevert("Not implemented");
-        prolendPair.repayAsset(100 ether, user1);
-
         vm.expectRevert("Not implemented");
         prolendPair.liquidate(100 ether, user1);
 

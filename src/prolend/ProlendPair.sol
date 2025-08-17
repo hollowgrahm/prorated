@@ -473,13 +473,36 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         emit Borrow(msg.sender, borrowAmount, shares);
     }
 
-    /// @notice Placeholder for repayAsset function
+    /// @notice Repay borrowed assets using borrow shares
+    /// @param shares Number of borrow shares to repay
+    /// @param borrower Address of the borrower whose debt to repay
+    /// @return amountRepaid Amount of asset tokens transferred for repayment
     function repayAsset(
         uint256 shares,
         address borrower
-    ) external returns (uint256) {
-        // TODO: Implement in repay task
-        revert("Not implemented");
+    ) external nonReentrant returns (uint256 amountRepaid) {
+        // Validate inputs
+        if (borrower == address(0)) revert InvalidAddress();
+        if (shares == 0) revert InvalidAmount();
+        if (userBorrowShares[borrower] < shares)
+            revert InsufficientBorrowBalance();
+
+        // Calculate amount to repay based on shares (round up to favor protocol)
+        amountRepaid = borrowVault.toAmount(shares, true);
+
+        // Effects: Update borrow vault accounting
+        borrowVault.removeFromVault(shares, amountRepaid);
+
+        // Effects: Update user's borrow shares
+        userBorrowShares[borrower] -= shares;
+
+        // Effects: Update asset vault (add repaid assets back)
+        assetVault.addToVault(0, amountRepaid); // Only add amount, shares stay with lenders
+
+        // Interactions: Transfer repayment from sender
+        asset.safeTransferFrom(msg.sender, address(this), amountRepaid);
+
+        emit Repay(borrower, amountRepaid, shares);
     }
 
     /// @notice Placeholder for liquidate function
