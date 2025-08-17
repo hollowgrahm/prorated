@@ -101,6 +101,7 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
     error InsufficientCollateral();
     error InsufficientBorrowBalance();
     error InsufficientCollateralBalance();
+    error InsufficientLiquidity();
     error UserSolvent();
     error UserInsolvent();
     error InvalidAmount();
@@ -418,14 +419,58 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         emit RemoveCollateral(msg.sender, amount);
     }
 
-    /// @notice Placeholder for borrowAsset function
+    // ===== Borrowing Functions =====
+
+    /// @notice Borrow asset tokens against collateral
+    /// @param borrowAmount Amount of asset tokens to borrow
+    /// @param collateralAmount Amount of collateral to add (if any)
+    /// @param receiver Address to receive the borrowed assets
+    /// @return shares Number of borrow shares minted to the borrower
     function borrowAsset(
         uint256 borrowAmount,
         uint256 collateralAmount,
         address receiver
-    ) external {
-        // TODO: Implement in borrowing task
-        revert("Not implemented");
+    ) external nonReentrant returns (uint256 shares) {
+        // Validate inputs
+        if (receiver == address(0)) revert InvalidAddress();
+        if (borrowAmount == 0) revert InvalidAmount();
+
+        // Add collateral if specified
+        if (collateralAmount > 0) {
+            // Transfer collateral from sender and credit to borrower
+            collateralToken.safeTransferFrom(
+                msg.sender,
+                address(this),
+                collateralAmount
+            );
+            userCollateralBalance[msg.sender] += collateralAmount;
+            totalCollateral += collateralAmount;
+            emit AddCollateral(msg.sender, collateralAmount);
+        }
+
+        // Check available liquidity
+        uint256 availableAssets = assetVault.amount;
+        if (availableAssets < borrowAmount) revert InsufficientLiquidity();
+
+        // Calculate borrow shares to issue
+        shares = borrowVault.toShares(borrowAmount, true); // Round up for borrows
+
+        // Effects: Update borrow vault accounting
+        borrowVault.addToVault(shares, borrowAmount);
+
+        // Effects: Update user's borrow shares
+        userBorrowShares[msg.sender] += shares;
+
+        // Check solvency after borrow
+        if (!_isSolvent(msg.sender)) revert UserInsolvent();
+
+        // Effects: Update asset vault (reduce available assets)
+        assetVault.removeFromVault(0, borrowAmount); // Only reduce amount, shares stay with lenders
+
+        // Interactions: Transfer borrowed assets to receiver
+        asset.safeTransfer(receiver, borrowAmount);
+
+        emit Borrow(msg.sender, borrowAmount, shares);
     }
 
     /// @notice Placeholder for repayAsset function
