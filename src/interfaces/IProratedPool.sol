@@ -23,6 +23,8 @@ interface IProratedPool {
     function proratedVeNFT() external view returns (address);
     function proratedGovernor() external view returns (address);
     function proratedTreasury() external view returns (address);
+    function prolendPair80() external view returns (address);
+    function prolendPair20() external view returns (address);
 
     function developer() external view returns (address);
 
@@ -37,6 +39,7 @@ interface IProratedPool {
     function setVeNFT(address venft) external;
     function setGovernor(address governor) external;
     function setTreasury(address treasury) external;
+    function setProlendPairs(address prolendPair80, address prolendPair20) external;
 
     function setLPAllocations(
         uint256 totalLp,

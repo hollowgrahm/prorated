@@ -18,6 +18,7 @@ import {ILiquidityDeployer} from "./interfaces/ILiquidityDeployer.sol";
 import {IVeNFTDeployer} from "./interfaces/IVeNFTDeployer.sol";
 import {IGovernorDeployer} from "./interfaces/IGovernorDeployer.sol";
 import {ITreasuryDeployer} from "./interfaces/ITreasuryDeployer.sol";
+import {IProlendFactory} from "./interfaces/IProlendFactory.sol";
 import {ProratedToken} from "./ProratedToken.sol";
 import {ProratedVeNFT} from "./ProratedVeNFT.sol";
 import {ProratedGovernor} from "./ProratedGovernor.sol";
@@ -48,6 +49,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     error GovernorAlreadyDeployed();
     error TreasuryNotDeployed();
     error TreasuryAlreadyDeployed();
+    error ProlendAlreadyDeployed();
     error Unauthorized();
     error NoLPTokensReserved();
     error LockDurationNotIncreased();
@@ -87,6 +89,10 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     );
     event TreasuryDeployed(address indexed treasury);
     event GovernorDeployed(address indexed governor);
+    event ProlendDeployed(
+        address indexed prolendPair80,
+        address indexed prolendPair20
+    );
 
     event VeNFTPositionCreated(
         address indexed user,
@@ -161,7 +167,8 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         address _liquidityDeployer,
         address _veNFTDeployer,
         address _governorDeployer,
-        address _treasuryDeployer
+        address _treasuryDeployer,
+        address _prolendDeployer
     ) Owned(config.owner) {
         // No validation needed - factory validates before deployment
 
@@ -192,6 +199,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         veNFTDeployer = IVeNFTDeployer(_veNFTDeployer);
         governorDeployer = IGovernorDeployer(_governorDeployer);
         treasuryDeployer = ITreasuryDeployer(_treasuryDeployer);
+        prolendDeployer = IProlendFactory(_prolendDeployer);
 
         // Step 6: Set allocation percentages for developer, treasury, and dao
         developerPercent = config.developerPercent;
@@ -393,6 +401,13 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         treasuryDeployer.deployTreasury(address(this));
     }
 
+    /// @notice Deploy Prolend lending pairs (anyone can call, first deployment wins)
+    function deployProlend() external {
+        if (prolendPair80 != address(0)) revert ProlendAlreadyDeployed();
+        if (proswapPair == address(0)) revert PairNotDeployed();
+        prolendDeployer.deployProlendPairs(address(this));
+    }
+
     // ============ ONLY-DEPLOYER HOOKS ============
     function setToken(address token) external {
         if (msg.sender != address(tokenDeployer)) revert Unauthorized();
@@ -433,6 +448,18 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         if (treasury != address(0) && address(proratedTreasury) == address(0)) {
             proratedTreasury = IProratedTreasury(treasury);
             emit TreasuryDeployed(treasury);
+        }
+    }
+
+    function setProlendPairs(
+        address _prolendPair80,
+        address _prolendPair20
+    ) external {
+        if (msg.sender != address(prolendDeployer)) revert Unauthorized();
+        if (_prolendPair80 != address(0) && prolendPair80 == address(0)) {
+            prolendPair80 = _prolendPair80;
+            prolendPair20 = _prolendPair20;
+            emit ProlendDeployed(_prolendPair80, _prolendPair20);
         }
     }
 

@@ -14,6 +14,7 @@ import {ILiquidityDeployer} from "./interfaces/ILiquidityDeployer.sol";
 import {IVeNFTDeployer} from "./interfaces/IVeNFTDeployer.sol";
 import {IGovernorDeployer} from "./interfaces/IGovernorDeployer.sol";
 import {ITreasuryDeployer} from "./interfaces/ITreasuryDeployer.sol";
+import {IProlendFactory} from "./interfaces/IProlendFactory.sol";
 
 contract ProratedPoolStorage {
     string public tokenName;
@@ -34,6 +35,8 @@ contract ProratedPoolStorage {
     IProratedVeNFT public proratedVeNFT;
     IProratedGovernor public proratedGovernor;
     IProratedTreasury public proratedTreasury;
+    address public prolendPair80;
+    address public prolendPair20;
 
     ITokenDeployer public tokenDeployer;
     IPairDeployer public pairDeployer;
@@ -41,6 +44,7 @@ contract ProratedPoolStorage {
     IVeNFTDeployer public veNFTDeployer;
     IGovernorDeployer public governorDeployer;
     ITreasuryDeployer public treasuryDeployer;
+    IProlendFactory public prolendDeployer;
 
     address public developer;
     uint256 public totalContributions;

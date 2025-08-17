@@ -37,6 +37,7 @@ contract ProratedFactory is Owned {
     address public immutable veNFTDeployer;
     address public immutable governorDeployer;
     address public immutable treasuryDeployer;
+    address public immutable prolendDeployer;
 
     // ============ CONSTRUCTOR ============
     /// @notice Initializes the factory with an owner and fixed Proswap endpoints
@@ -50,6 +51,7 @@ contract ProratedFactory is Owned {
     /// @param _veNFTDeployer VeNFT deployer
     /// @param _governorDeployer Governor deployer
     /// @param _treasuryDeployer Treasury deployer
+    /// @param _prolendDeployer Prolend deployer
     constructor(
         address _owner,
         address _bytecodeHolder,
@@ -60,7 +62,8 @@ contract ProratedFactory is Owned {
         address _liquidityDeployer,
         address _veNFTDeployer,
         address _governorDeployer,
-        address _treasuryDeployer
+        address _treasuryDeployer,
+        address _prolendDeployer
     ) Owned(_owner) {
         bytecodeHolder = ProratedPoolBytecode(_bytecodeHolder);
         proswapFactory = _proswapFactory;
@@ -71,6 +74,7 @@ contract ProratedFactory is Owned {
         veNFTDeployer = _veNFTDeployer;
         governorDeployer = _governorDeployer;
         treasuryDeployer = _treasuryDeployer;
+        prolendDeployer = _prolendDeployer;
     }
 
     // ============ DEPLOYMENT API ============
@@ -98,7 +102,8 @@ contract ProratedFactory is Owned {
             liquidityDeployer,
             veNFTDeployer,
             governorDeployer,
-            treasuryDeployer
+            treasuryDeployer,
+            prolendDeployer
         );
 
         // Step 4: Combine creation code + constructor args

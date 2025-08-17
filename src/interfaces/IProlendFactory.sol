@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Unlicensed
 pragma solidity ^0.8.10;
 
-/// @title IProlendDeployer Interface
+/// @title IProlendFactory Interface
 /// @notice Interface for deploying Prolend lending pairs
-interface IProlendDeployer {
+interface IProlendFactory {
     // ===== Events =====
     event ProlendPairDeployed(
         address indexed proswapPair,
@@ -15,7 +15,11 @@ interface IProlendDeployer {
     );
 
     // ===== Deployment Functions =====
-    /// @notice Deploys two lending pairs for a Proswap 80/20 pool
+    /// @notice Deploys two lending pairs for a Proswap 80/20 pool (called by ProratedPool)
+    /// @param pool The ProratedPool address (for admin identification)
+    function deployProlendPairs(address pool) external;
+
+    /// @notice Deploys two lending pairs for a Proswap 80/20 pool (public interface)
     /// @param proswapPair The address of the Proswap pair (80/20 pool)
     /// @param admin The admin address (typically the ProratedPool developer)
     /// @return prolendPair80 Address of the lending pair with token80 as asset
