@@ -504,17 +504,60 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         return borrowVault.toAmount(userBorrowShares[user], false);
     }
 
-    function getCollateralValue(
-        uint256 collateralAmount
-    ) external view returns (uint256) {
-        // TODO: Implement proper price oracle in oracle task
-        return collateralAmount; // Placeholder 1:1 pricing
+    // ===== Proswap Oracle Integration =====
+
+    /// @notice Gets the current exchange rate from the Proswap 80/20 pool
+    /// @return rate Price of collateral token in terms of asset token (scaled by 1e18)
+    /// @dev Uses the weighted pool reserves to calculate spot price
+    function getExchangeRate() public view returns (uint256 rate) {
+        (uint112 reserve80, uint112 reserve20, ) = priceOracle.getReserves();
+
+        // Handle case where no liquidity exists
+        if (reserve80 == 0 || reserve20 == 0) {
+            return 1e18; // Default to 1:1 if no liquidity
+        }
+
+        // Determine which token is asset vs collateral based on pair structure
+        address token80 = priceOracle.token80();
+        address token20 = priceOracle.token20();
+
+        if (address(asset) == token80 && address(collateralToken) == token20) {
+            // Asset is token80 (80% weight), Collateral is token20 (20% weight)
+            // Price = how much asset (token80) per unit of collateral (token20)
+            // For weighted pools: Price = (Reserve_collateral/Weight_collateral) / (Reserve_asset/Weight_asset)
+            // Price = (reserve20/0.2) / (reserve80/0.8) = (reserve20 * 0.8) / (reserve80 * 0.2) = (reserve20 * 4) / reserve80
+            rate = (uint256(reserve20) * 4 * 1e18) / uint256(reserve80);
+        } else if (
+            address(asset) == token20 && address(collateralToken) == token80
+        ) {
+            // Asset is token20 (20% weight), Collateral is token80 (80% weight)
+            // Price = how much asset (token20) per unit of collateral (token80)
+            // Price = (reserve80/0.8) / (reserve20/0.2) = (reserve80 * 0.2) / (reserve20 * 0.8) = reserve80 / (reserve20 * 4)
+            rate = (uint256(reserve80) * 1e18) / (uint256(reserve20) * 4);
+        } else {
+            // This shouldn't happen if the pair is set up correctly, but fallback to 1:1
+            rate = 1e18;
+        }
     }
 
+    /// @notice Calculates the value of collateral in terms of asset tokens
+    /// @param collateralAmount Amount of collateral tokens
+    /// @return assetValue Value in asset tokens (scaled to asset token decimals)
+    function getCollateralValue(
+        uint256 collateralAmount
+    ) public view returns (uint256 assetValue) {
+        uint256 exchangeRate = getExchangeRate();
+        assetValue = (collateralAmount * exchangeRate) / 1e18;
+    }
+
+    /// @notice Calculates the collateral value of a borrow amount (for LTV calculations)
+    /// @param borrowAmount Amount of asset tokens borrowed
+    /// @return collateralValue Equivalent value in collateral tokens
     function getBorrowValue(
         uint256 borrowAmount
-    ) external view returns (uint256) {
-        // TODO: Implement proper price oracle in oracle task
-        return borrowAmount; // Placeholder 1:1 pricing
+    ) public view returns (uint256 collateralValue) {
+        uint256 exchangeRate = getExchangeRate();
+        // To get collateral value, we need the inverse rate
+        collateralValue = (borrowAmount * 1e18) / exchangeRate;
     }
 }

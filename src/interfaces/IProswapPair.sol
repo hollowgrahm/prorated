@@ -13,4 +13,8 @@ interface IProswapPair {
     function transferFrom(address, address, uint256) external returns (bool);
 
     function swap(uint256, uint256, address, bytes calldata) external;
+
+    // Token getters (public variables in ProswapPair)
+    function token80() external view returns (address);
+    function token20() external view returns (address);
 }

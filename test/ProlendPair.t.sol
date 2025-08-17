@@ -32,6 +32,9 @@ contract ProlendPairTest is Test {
             address(mockPair)
         );
 
+        // Set up mock pair tokens (assume asset is token80, collateral is token20)
+        mockPair.setTokens(address(assetToken), address(collateralToken));
+
         // Mint tokens for testing
         assetToken.mint(1000 ether, user1);
         assetToken.mint(1000 ether, user2);
@@ -331,6 +334,71 @@ contract ProlendPairTest is Test {
         prolendPair.withdraw(100 ether, address(0), user1);
     }
 
+    function testProswapOracle() public {
+        // Test exchange rate calculation
+        // Default: 1000 ether token80 (asset), 200 ether token20 (collateral)
+        // Asset is token80, Collateral is token20
+        // Rate = (reserve20 * 4) / reserve80 = (200 * 4) / 1000 = 0.8
+        uint256 exchangeRate = prolendPair.getExchangeRate();
+        assertEq(
+            exchangeRate,
+            0.8 ether,
+            "Exchange rate should be 0.8 (collateral per asset)"
+        );
+
+        // Test collateral value calculation
+        uint256 collateralAmount = 100 ether;
+        uint256 assetValue = prolendPair.getCollateralValue(collateralAmount);
+        assertEq(
+            assetValue,
+            80 ether,
+            "100 collateral should be worth 80 asset tokens"
+        );
+
+        // Test borrow value calculation
+        uint256 borrowAmount = 80 ether;
+        uint256 collateralValue = prolendPair.getBorrowValue(borrowAmount);
+        assertEq(
+            collateralValue,
+            100 ether,
+            "80 asset borrow should require 100 collateral"
+        );
+    }
+
+    function testOracleWithDifferentReserves() public {
+        // Change reserves to test different exchange rates
+        mockPair.setReserves(2000 ether, 100 ether); // More assets, less collateral
+
+        // Rate = (reserve20 * 4) / reserve80 = (100 * 4) / 2000 = 0.2
+        uint256 exchangeRate = prolendPair.getExchangeRate();
+        assertEq(
+            exchangeRate,
+            0.2 ether,
+            "Exchange rate should be 0.2 with new reserves"
+        );
+
+        // Test calculations with new rate
+        uint256 collateralAmount = 100 ether;
+        uint256 assetValue = prolendPair.getCollateralValue(collateralAmount);
+        assertEq(
+            assetValue,
+            20 ether,
+            "100 collateral should be worth 20 asset tokens"
+        );
+    }
+
+    function testOracleNoLiquidity() public {
+        // Test with no liquidity
+        mockPair.setReserves(0, 0);
+
+        uint256 exchangeRate = prolendPair.getExchangeRate();
+        assertEq(
+            exchangeRate,
+            1 ether,
+            "Should default to 1:1 with no liquidity"
+        );
+    }
+
     function testPlaceholderFunctions() public {
         // Remaining placeholder functions should revert with "Not implemented"
         vm.expectRevert("Not implemented");
@@ -358,7 +426,26 @@ contract ProlendPairTest is Test {
 
 // Mock Proswap pair for testing
 contract MockProswapPair {
+    address public token80;
+    address public token20;
+    uint112 private reserve80 = 1000 ether; // 80% token reserve
+    uint112 private reserve20 = 200 ether; // 20% token reserve
+
+    constructor() {
+        // Will be set by test setup
+    }
+
+    function setTokens(address _token80, address _token20) external {
+        token80 = _token80;
+        token20 = _token20;
+    }
+
+    function setReserves(uint112 _reserve80, uint112 _reserve20) external {
+        reserve80 = _reserve80;
+        reserve20 = _reserve20;
+    }
+
     function getReserves() external view returns (uint112, uint112, uint32) {
-        return (1000 ether, 200 ether, uint32(block.timestamp));
+        return (reserve80, reserve20, uint32(block.timestamp));
     }
 }
