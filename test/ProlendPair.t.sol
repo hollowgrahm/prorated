@@ -124,8 +124,215 @@ contract ProlendPairTest is Test {
         assertTrue(prolendPair.isSolvent(user1));
     }
 
+    function testDeposit() public {
+        uint256 depositAmount = 100 ether;
+
+        // Approve and deposit
+        vm.prank(user1);
+        assetToken.approve(address(prolendPair), depositAmount);
+
+        vm.prank(user1);
+        uint256 shares = prolendPair.deposit(depositAmount, user1);
+
+        // Check results
+        assertEq(
+            shares,
+            depositAmount,
+            "Should get 1:1 shares for first deposit"
+        );
+        assertEq(
+            prolendPair.balanceOf(user1),
+            depositAmount,
+            "User should have shares"
+        );
+        assertEq(
+            prolendPair.totalAssets(),
+            depositAmount,
+            "Total assets should match deposit"
+        );
+        assertEq(
+            prolendPair.totalAssetAmount(),
+            depositAmount,
+            "Vault amount should match"
+        );
+        assertEq(
+            prolendPair.totalAssetShares(),
+            depositAmount,
+            "Vault shares should match"
+        );
+        assertEq(
+            assetToken.balanceOf(address(prolendPair)),
+            depositAmount,
+            "Contract should hold tokens"
+        );
+    }
+
+    function testMint() public {
+        uint256 shares = 50 ether;
+
+        // Approve and mint
+        vm.prank(user1);
+        assetToken.approve(address(prolendPair), shares); // 1:1 ratio initially
+
+        vm.prank(user1);
+        uint256 assets = prolendPair.mint(shares, user1);
+
+        // Check results
+        assertEq(assets, shares, "Should need 1:1 assets for first mint");
+        assertEq(
+            prolendPair.balanceOf(user1),
+            shares,
+            "User should have shares"
+        );
+        assertEq(
+            prolendPair.totalAssets(),
+            assets,
+            "Total assets should match"
+        );
+    }
+
+    function testWithdraw() public {
+        // First deposit
+        uint256 depositAmount = 100 ether;
+        vm.prank(user1);
+        assetToken.approve(address(prolendPair), depositAmount);
+        vm.prank(user1);
+        prolendPair.deposit(depositAmount, user1);
+
+        // Then withdraw half
+        uint256 withdrawAmount = 50 ether;
+        vm.prank(user1);
+        uint256 shares = prolendPair.withdraw(withdrawAmount, user1, user1);
+
+        // Check results
+        assertEq(
+            shares,
+            withdrawAmount,
+            "Should burn 1:1 shares for withdrawal"
+        );
+        assertEq(
+            prolendPair.balanceOf(user1),
+            depositAmount - withdrawAmount,
+            "User should have remaining shares"
+        );
+        assertEq(
+            prolendPair.totalAssets(),
+            depositAmount - withdrawAmount,
+            "Total assets should be reduced"
+        );
+        assertEq(
+            assetToken.balanceOf(user1),
+            1000 ether - depositAmount + withdrawAmount,
+            "User should receive tokens"
+        );
+    }
+
+    function testRedeem() public {
+        // First deposit
+        uint256 depositAmount = 100 ether;
+        vm.prank(user1);
+        assetToken.approve(address(prolendPair), depositAmount);
+        vm.prank(user1);
+        prolendPair.deposit(depositAmount, user1);
+
+        // Then redeem half the shares
+        uint256 redeemShares = 30 ether;
+        vm.prank(user1);
+        uint256 assets = prolendPair.redeem(redeemShares, user1, user1);
+
+        // Check results
+        assertEq(assets, redeemShares, "Should get 1:1 assets for redemption");
+        assertEq(
+            prolendPair.balanceOf(user1),
+            depositAmount - redeemShares,
+            "User should have remaining shares"
+        );
+        assertEq(
+            prolendPair.totalAssets(),
+            depositAmount - redeemShares,
+            "Total assets should be reduced"
+        );
+    }
+
+    function testDepositWithdrawRatio() public {
+        // Multiple deposits to test share ratio
+        vm.prank(user1);
+        assetToken.approve(address(prolendPair), 200 ether);
+        vm.prank(user1);
+        prolendPair.deposit(100 ether, user1);
+
+        vm.prank(user2);
+        assetToken.approve(address(prolendPair), 200 ether);
+        vm.prank(user2);
+        prolendPair.deposit(50 ether, user2);
+
+        // Check total state
+        assertEq(
+            prolendPair.totalAssets(),
+            150 ether,
+            "Total assets should be sum of deposits"
+        );
+        assertEq(
+            prolendPair.balanceOf(user1),
+            100 ether,
+            "User1 should have 100 shares"
+        );
+        assertEq(
+            prolendPair.balanceOf(user2),
+            50 ether,
+            "User2 should have 50 shares"
+        );
+
+        // Test proportional withdrawal
+        vm.prank(user1);
+        prolendPair.withdraw(25 ether, user1, user1);
+
+        assertEq(
+            prolendPair.totalAssets(),
+            125 ether,
+            "Total assets reduced by withdrawal"
+        );
+        assertEq(
+            prolendPair.balanceOf(user1),
+            75 ether,
+            "User1 shares reduced"
+        );
+    }
+
+    function testInvalidDeposits() public {
+        // Test zero amount
+        vm.prank(user1);
+        vm.expectRevert(
+            abi.encodeWithSelector(ProlendPair.InvalidAmount.selector)
+        );
+        prolendPair.deposit(0, user1);
+
+        // Test zero address receiver
+        vm.prank(user1);
+        vm.expectRevert(
+            abi.encodeWithSelector(ProlendPair.InvalidAddress.selector)
+        );
+        prolendPair.deposit(100 ether, address(0));
+    }
+
+    function testInvalidWithdrawals() public {
+        // Test zero amount
+        vm.prank(user1);
+        vm.expectRevert(
+            abi.encodeWithSelector(ProlendPair.InvalidAmount.selector)
+        );
+        prolendPair.withdraw(0, user1, user1);
+
+        // Test zero address receiver
+        vm.prank(user1);
+        vm.expectRevert(
+            abi.encodeWithSelector(ProlendPair.InvalidAddress.selector)
+        );
+        prolendPair.withdraw(100 ether, address(0), user1);
+    }
+
     function testPlaceholderFunctions() public {
-        // All placeholder functions should revert with "Not implemented"
+        // Remaining placeholder functions should revert with "Not implemented"
         vm.expectRevert("Not implemented");
         prolendPair.addCollateral(100 ether, user1);
 

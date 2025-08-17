@@ -235,6 +235,136 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         return convertToAssets(shares);
     }
 
+    // ===== ERC4626 Deposit/Withdraw Implementation =====
+
+    /// @notice Deposit asset tokens and receive vault shares
+    /// @param assets Amount of asset tokens to deposit
+    /// @param receiver Address to receive the shares
+    /// @return shares Number of shares minted
+    function deposit(
+        uint256 assets,
+        address receiver
+    ) public override nonReentrant returns (uint256 shares) {
+        // Validate inputs
+        if (receiver == address(0)) revert InvalidAddress();
+        if (assets == 0) revert InvalidAmount();
+
+        // Calculate shares to mint
+        shares = convertToShares(assets);
+
+        // Effects: Update vault accounting
+        assetVault.addToVault(shares, assets);
+
+        // Effects: Mint shares to receiver
+        _mint(receiver, shares);
+
+        // Interactions: Transfer assets from sender
+        asset.safeTransferFrom(msg.sender, address(this), assets);
+
+        emit Deposit(msg.sender, receiver, assets, shares);
+    }
+
+    /// @notice Mint vault shares for a specific amount of assets
+    /// @param shares Number of shares to mint
+    /// @param receiver Address to receive the shares
+    /// @return assets Amount of assets deposited
+    function mint(
+        uint256 shares,
+        address receiver
+    ) public override nonReentrant returns (uint256 assets) {
+        // Validate inputs
+        if (receiver == address(0)) revert InvalidAddress();
+        if (shares == 0) revert InvalidAmount();
+
+        // Calculate assets needed
+        assets = convertToAssets(shares);
+
+        // Effects: Update vault accounting
+        assetVault.addToVault(shares, assets);
+
+        // Effects: Mint shares to receiver
+        _mint(receiver, shares);
+
+        // Interactions: Transfer assets from sender
+        asset.safeTransferFrom(msg.sender, address(this), assets);
+
+        emit Deposit(msg.sender, receiver, assets, shares);
+    }
+
+    /// @notice Withdraw asset tokens by burning vault shares
+    /// @param assets Amount of assets to withdraw
+    /// @param receiver Address to receive the assets
+    /// @param owner Address that owns the shares
+    /// @return shares Number of shares burned
+    function withdraw(
+        uint256 assets,
+        address receiver,
+        address owner
+    ) public override nonReentrant returns (uint256 shares) {
+        // Validate inputs
+        if (receiver == address(0)) revert InvalidAddress();
+        if (assets == 0) revert InvalidAmount();
+
+        // Calculate shares to burn
+        shares = convertToShares(assets);
+
+        // Check allowance if caller is not owner
+        if (msg.sender != owner) {
+            uint256 allowed = allowance[owner][msg.sender];
+            if (allowed != type(uint256).max) {
+                allowance[owner][msg.sender] = allowed - shares;
+            }
+        }
+
+        // Effects: Update vault accounting
+        assetVault.removeFromVault(shares, assets);
+
+        // Effects: Burn shares from owner
+        _burn(owner, shares);
+
+        // Interactions: Transfer assets to receiver
+        asset.safeTransfer(receiver, assets);
+
+        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+    }
+
+    /// @notice Redeem vault shares for asset tokens
+    /// @param shares Number of shares to redeem
+    /// @param receiver Address to receive the assets
+    /// @param owner Address that owns the shares
+    /// @return assets Amount of assets withdrawn
+    function redeem(
+        uint256 shares,
+        address receiver,
+        address owner
+    ) public override nonReentrant returns (uint256 assets) {
+        // Validate inputs
+        if (receiver == address(0)) revert InvalidAddress();
+        if (shares == 0) revert InvalidAmount();
+
+        // Calculate assets to withdraw
+        assets = convertToAssets(shares);
+
+        // Check allowance if caller is not owner
+        if (msg.sender != owner) {
+            uint256 allowed = allowance[owner][msg.sender];
+            if (allowed != type(uint256).max) {
+                allowance[owner][msg.sender] = allowed - shares;
+            }
+        }
+
+        // Effects: Update vault accounting
+        assetVault.removeFromVault(shares, assets);
+
+        // Effects: Burn shares from owner
+        _burn(owner, shares);
+
+        // Interactions: Transfer assets to receiver
+        asset.safeTransfer(receiver, assets);
+
+        emit Withdraw(msg.sender, receiver, owner, assets, shares);
+    }
+
     // ===== Placeholder Functions (to be implemented in subsequent tasks) =====
 
     /// @notice Placeholder for addCollateral function
