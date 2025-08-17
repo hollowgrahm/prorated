@@ -44,6 +44,10 @@ contract ProlendPairTest is Test {
         collateralToken.mint(1000 ether, user1);
         collateralToken.mint(1000 ether, user2);
         collateralToken.mint(1000 ether, liquidator);
+
+        // Give MockProswapPair tokens for swaps
+        assetToken.mint(10000 ether, address(mockPair));
+        collateralToken.mint(10000 ether, address(mockPair));
     }
 
     function testConstructor() public {
@@ -1532,10 +1536,156 @@ contract ProlendPairTest is Test {
         );
     }
 
-    function testPlaceholderFunctions() public {
-        // Remaining placeholder functions should revert with "Not implemented"
-        vm.expectRevert("Not implemented");
-        prolendPair.leveragedPosition(100 ether, 200 ether, 180 ether);
+    function testLeveragedPositionBasic() public {
+        uint256 depositAmount = 1000 ether;
+        uint256 initialCollateral = 100 ether;
+        uint256 borrowAmount = 50 ether; // More conservative borrowing
+        uint256 minCollateralOut = 8 ether; // Realistic expectation based on AMM math
+
+        // Setup: User2 deposits liquidity for borrowing
+        vm.prank(user2);
+        assetToken.approve(address(prolendPair), depositAmount);
+        vm.prank(user2);
+        prolendPair.deposit(depositAmount, user2);
+
+        // User1 opens leveraged position
+        vm.prank(user1);
+        collateralToken.approve(address(prolendPair), initialCollateral);
+        vm.prank(user1);
+        uint256 totalCollateralAdded = prolendPair.leveragedPosition(
+            borrowAmount,
+            initialCollateral,
+            minCollateralOut
+        );
+
+        // Verify results
+        assertTrue(
+            totalCollateralAdded > initialCollateral,
+            "Should add more collateral than initial"
+        );
+        assertEq(
+            prolendPair.userBorrowShares(user1),
+            borrowAmount,
+            "Should have borrowed the specified amount"
+        );
+        assertGt(
+            prolendPair.userCollateralBalance(user1),
+            initialCollateral,
+            "Should have more collateral after swap"
+        );
+        assertTrue(
+            prolendPair.isSolvent(user1),
+            "User should remain solvent after leveraged position"
+        );
+    }
+
+    function testLeveragedPositionInvalidInputs() public {
+        uint256 depositAmount = 1000 ether;
+
+        // Setup liquidity
+        vm.prank(user2);
+        assetToken.approve(address(prolendPair), depositAmount);
+        vm.prank(user2);
+        prolendPair.deposit(depositAmount, user2);
+
+        // Test zero borrow amount
+        vm.expectRevert(
+            abi.encodeWithSelector(ProlendPair.InvalidAmount.selector)
+        );
+        vm.prank(user1);
+        prolendPair.leveragedPosition(0, 100 ether, 50 ether);
+
+        // Test zero min collateral out
+        vm.expectRevert(
+            abi.encodeWithSelector(ProlendPair.InvalidAmount.selector)
+        );
+        vm.prank(user1);
+        prolendPair.leveragedPosition(100 ether, 100 ether, 0);
+    }
+
+    function testLeveragedPositionInsufficientLiquidity() public {
+        uint256 depositAmount = 100 ether;
+        uint256 borrowAmount = 200 ether; // More than available
+
+        // Setup insufficient liquidity
+        vm.prank(user2);
+        assetToken.approve(address(prolendPair), depositAmount);
+        vm.prank(user2);
+        prolendPair.deposit(depositAmount, user2);
+
+        // Try to borrow more than available
+        vm.expectRevert(
+            abi.encodeWithSelector(ProlendPair.InsufficientLiquidity.selector)
+        );
+        vm.prank(user1);
+        prolendPair.leveragedPosition(borrowAmount, 100 ether, 50 ether);
+    }
+
+    function testLeveragedPositionSlippageProtection() public {
+        uint256 depositAmount = 1000 ether;
+        uint256 initialCollateral = 100 ether;
+        uint256 borrowAmount = 50 ether;
+        uint256 minCollateralOut = 1000 ether; // Unrealistically high expectation
+
+        // Setup liquidity
+        vm.prank(user2);
+        assetToken.approve(address(prolendPair), depositAmount);
+        vm.prank(user2);
+        prolendPair.deposit(depositAmount, user2);
+
+        // Should revert due to slippage protection
+        vm.prank(user1);
+        collateralToken.approve(address(prolendPair), initialCollateral);
+        vm.expectRevert(); // Should revert with SlippageTooHigh
+        vm.prank(user1);
+        prolendPair.leveragedPosition(
+            borrowAmount,
+            initialCollateral,
+            minCollateralOut
+        );
+    }
+
+    function testLeveragedPositionWithoutInitialCollateralFails() public {
+        uint256 depositAmount = 1000 ether;
+        uint256 borrowAmount = 50 ether;
+        uint256 minCollateralOut = 1 ether;
+
+        // Setup liquidity
+        vm.prank(user2);
+        assetToken.approve(address(prolendPair), depositAmount);
+        vm.prank(user2);
+        prolendPair.deposit(depositAmount, user2);
+
+        // Try to open leveraged position without initial collateral
+        // This should fail because the swap won't provide enough collateral to stay solvent
+        vm.expectRevert(
+            abi.encodeWithSelector(ProlendPair.UserInsolvent.selector)
+        );
+        vm.prank(user1);
+        prolendPair.leveragedPosition(
+            borrowAmount,
+            0, // No initial collateral - risky!
+            minCollateralOut
+        );
+    }
+
+    function testLeveragedPositionSolvencyCheck() public {
+        uint256 depositAmount = 1000 ether;
+        uint256 borrowAmount = 800 ether; // Very high borrow amount
+        uint256 minCollateralOut = 1 ether; // Very low collateral expectation
+
+        // Setup liquidity
+        vm.prank(user2);
+        assetToken.approve(address(prolendPair), depositAmount);
+        vm.prank(user2);
+        prolendPair.deposit(depositAmount, user2);
+
+        // Try to open position that would make user insolvent
+        vm.expectRevert(
+            abi.encodeWithSelector(ProlendPair.UserInsolvent.selector)
+        );
+        vm.prank(user1);
+        prolendPair.leveragedPosition(borrowAmount, 0, minCollateralOut);
     }
 }
 
@@ -1562,5 +1712,23 @@ contract MockProswapPair {
 
     function getReserves() external view returns (uint112, uint112, uint32) {
         return (reserve80, reserve20, uint32(block.timestamp));
+    }
+
+    function swap(
+        uint256 amount0Out,
+        uint256 amount1Out,
+        address to,
+        bytes calldata /* data */
+    ) external {
+        // Simple mock swap - transfer the requested amounts
+        if (amount0Out > 0) {
+            ERC20Mintable(token80).transfer(to, amount0Out);
+        }
+        if (amount1Out > 0) {
+            ERC20Mintable(token20).transfer(to, amount1Out);
+        }
+
+        // In a real implementation, we would update reserves and check K=xy invariant
+        // For testing purposes, this simple transfer is sufficient
     }
 }

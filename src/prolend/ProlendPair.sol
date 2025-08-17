@@ -41,7 +41,7 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
     ERC20 public immutable collateralToken;
 
     /// @notice Proswap pair used for price oracle (80/20 pool)
-    IProswapPair public immutable priceOracle;
+    IProswapPair public immutable proswapPair;
 
     /// @notice Interest rate calculator contract
     ProlendInterestRate public immutable rateCalculator;
@@ -108,17 +108,18 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
     error InvalidAmount();
     error InvalidAddress();
     error LiquidationFailed();
+    error SlippageTooHigh(uint256 expected, uint256 actual);
 
     // ===== Constructor =====
 
     /// @notice Creates a new Prolend lending pair
     /// @param _assetToken The token that can be lent/borrowed
     /// @param _collateralToken The collateral token
-    /// @param _priceOracle The Proswap pair used for pricing (80/20 pool)
+    /// @param _proswapPair The Proswap pair used for pricing (80/20 pool)
     constructor(
         address _assetToken,
         address _collateralToken,
-        address _priceOracle
+        address _proswapPair
     )
         ERC4626(
             ERC20(_assetToken),
@@ -130,14 +131,14 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         if (
             _assetToken == address(0) ||
             _collateralToken == address(0) ||
-            _priceOracle == address(0)
+            _proswapPair == address(0)
         ) {
             revert InvalidAddress();
         }
 
         // Store immutable references
         collateralToken = ERC20(_collateralToken);
-        priceOracle = IProswapPair(_priceOracle);
+        proswapPair = IProswapPair(_proswapPair);
 
         // Deploy interest rate calculator
         rateCalculator = new ProlendInterestRate();
@@ -587,14 +588,126 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         emit Liquidate(borrower, collateralReceived, shares, debtToRepay);
     }
 
-    /// @notice Placeholder for leveragedPosition function
+    // ===== Leveraged Positions =====
+
+    /// @notice Open a leveraged position by borrowing and swapping for more collateral
+    /// @param borrowAmount Amount of asset tokens to borrow
+    /// @param initialCollateral Amount of initial collateral to add
+    /// @param minCollateralOut Minimum collateral tokens expected from swap (slippage protection)
+    /// @return totalCollateralAdded Total collateral tokens added to user's position
     function leveragedPosition(
         uint256 borrowAmount,
         uint256 initialCollateral,
         uint256 minCollateralOut
-    ) external returns (uint256) {
-        // TODO: Implement in leveraged positions task
-        revert("Not implemented");
+    ) external nonReentrant returns (uint256 totalCollateralAdded) {
+        // Accrue interest before any operation
+        _addInterest();
+
+        // Validate inputs
+        if (borrowAmount == 0) revert InvalidAmount();
+        if (minCollateralOut == 0) revert InvalidAmount();
+
+        // Check liquidity for borrow
+        if (borrowAmount > assetVault.amount) revert InsufficientLiquidity();
+
+        // Add initial collateral if provided
+        if (initialCollateral > 0) {
+            // Transfer initial collateral from user
+            collateralToken.safeTransferFrom(
+                msg.sender,
+                address(this),
+                initialCollateral
+            );
+
+            // Effects: Update user's collateral balance
+            userCollateralBalance[msg.sender] += initialCollateral;
+            totalCollateral += initialCollateral;
+
+            emit AddCollateral(msg.sender, initialCollateral);
+        }
+
+        // Borrow asset tokens (they stay in this contract for swapping)
+        uint256 borrowShares = borrowVault.toShares(borrowAmount, false);
+
+        // Effects: Update borrow accounting
+        borrowVault.addToVault(borrowShares, borrowAmount);
+        userBorrowShares[msg.sender] += borrowShares;
+
+        // Effects: Update asset vault (remove borrowed assets)
+        assetVault.removeFromVault(0, borrowAmount);
+
+        // Interactions: Swap borrowed assets for collateral via Proswap
+        uint256 collateralReceived = _swapAssetForCollateral(
+            borrowAmount,
+            minCollateralOut
+        );
+
+        // Effects: Add swapped collateral to user's position
+        userCollateralBalance[msg.sender] += collateralReceived;
+        totalCollateral += collateralReceived;
+
+        // Check that user remains solvent after leveraged position
+        if (!_isSolvent(msg.sender)) revert UserInsolvent();
+
+        totalCollateralAdded = initialCollateral + collateralReceived;
+
+        emit LeveragedPosition(msg.sender, borrowAmount, totalCollateralAdded);
+    }
+
+    /// @notice Internal function to swap asset tokens for collateral via Proswap
+    /// @param assetAmount Amount of asset tokens to swap
+    /// @param minCollateralOut Minimum collateral expected (slippage protection)
+    /// @return collateralReceived Amount of collateral tokens received
+    function _swapAssetForCollateral(
+        uint256 assetAmount,
+        uint256 minCollateralOut
+    ) internal returns (uint256 collateralReceived) {
+        // Get initial balances for verification
+        uint256 initialCollateralBalance = collateralToken.balanceOf(
+            address(this)
+        );
+
+        // Get current reserves to determine which token gets which amount
+        (uint112 reserve80, uint112 reserve20, ) = proswapPair.getReserves();
+        address token80 = proswapPair.token80();
+        address token20 = proswapPair.token20();
+
+        // Determine swap direction and amounts
+        uint256 amount0Out;
+        uint256 amount1Out;
+
+        if (address(asset) == token80) {
+            // Asset is token80, collateral is token20
+            // We're swapping asset (token80) for collateral (token20)
+            amount0Out = 0; // No token80 out
+            amount1Out =
+                (assetAmount * uint256(reserve20)) /
+                (uint256(reserve80) + assetAmount); // token20 out
+        } else {
+            // Asset is token20, collateral is token80
+            // We're swapping asset (token20) for collateral (token80)
+            amount0Out =
+                (assetAmount * uint256(reserve80)) /
+                (uint256(reserve20) + assetAmount); // token80 out
+            amount1Out = 0; // No token20 out
+        }
+
+        // Transfer asset tokens to the pair
+        asset.safeTransfer(address(proswapPair), assetAmount);
+
+        // Perform the swap
+        proswapPair.swap(amount0Out, amount1Out, address(this), "");
+
+        // Verify collateral received
+        uint256 finalCollateralBalance = collateralToken.balanceOf(
+            address(this)
+        );
+        collateralReceived = finalCollateralBalance - initialCollateralBalance;
+
+        // Check slippage protection
+        if (collateralReceived < minCollateralOut) {
+            revert SlippageTooHigh(minCollateralOut, collateralReceived);
+        }
     }
 
     // ===== Interest Accrual =====
@@ -711,7 +824,7 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
     }
 
     function getPriceOracle() external view returns (address) {
-        return address(priceOracle);
+        return address(proswapPair);
     }
 
     function maxLTV() external pure returns (uint256) {
@@ -769,7 +882,7 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
     /// @return rate Price of collateral token in terms of asset token (scaled by 1e18)
     /// @dev Uses the weighted pool reserves to calculate spot price
     function getExchangeRate() public view returns (uint256 rate) {
-        (uint112 reserve80, uint112 reserve20, ) = priceOracle.getReserves();
+        (uint112 reserve80, uint112 reserve20, ) = proswapPair.getReserves();
 
         // Handle case where no liquidity exists
         if (reserve80 == 0 || reserve20 == 0) {
@@ -777,8 +890,8 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         }
 
         // Determine which token is asset vs collateral based on pair structure
-        address token80 = priceOracle.token80();
-        address token20 = priceOracle.token20();
+        address token80 = proswapPair.token80();
+        address token20 = proswapPair.token20();
 
         if (address(asset) == token80 && address(collateralToken) == token20) {
             // Asset is token80 (80% weight), Collateral is token20 (20% weight)
