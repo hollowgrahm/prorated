@@ -367,16 +367,55 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
 
     // ===== Placeholder Functions (to be implemented in subsequent tasks) =====
 
-    /// @notice Placeholder for addCollateral function
-    function addCollateral(uint256 amount, address borrower) external {
-        // TODO: Implement in collateral management task
-        revert("Not implemented");
+    // ===== Collateral Management =====
+
+    /// @notice Add collateral to a borrower's position
+    /// @param amount Amount of collateral tokens to add
+    /// @param borrower Address of the borrower to credit the collateral
+    function addCollateral(
+        uint256 amount,
+        address borrower
+    ) external nonReentrant {
+        // Validate inputs
+        if (borrower == address(0)) revert InvalidAddress();
+        if (amount == 0) revert InvalidAmount();
+
+        // Effects: Update state
+        userCollateralBalance[borrower] += amount;
+        totalCollateral += amount;
+
+        // Interactions: Transfer collateral from sender
+        collateralToken.safeTransferFrom(msg.sender, address(this), amount);
+
+        emit AddCollateral(borrower, amount);
     }
 
-    /// @notice Placeholder for removeCollateral function
-    function removeCollateral(uint256 amount, address receiver) external {
-        // TODO: Implement in collateral management task
-        revert("Not implemented");
+    /// @notice Remove collateral from caller's position
+    /// @param amount Amount of collateral tokens to remove
+    /// @param receiver Address to receive the collateral tokens
+    function removeCollateral(
+        uint256 amount,
+        address receiver
+    ) external nonReentrant {
+        // Validate inputs
+        if (receiver == address(0)) revert InvalidAddress();
+        if (amount == 0) revert InvalidAmount();
+        if (userCollateralBalance[msg.sender] < amount)
+            revert InsufficientCollateralBalance();
+
+        // Effects: Update state
+        userCollateralBalance[msg.sender] -= amount;
+        totalCollateral -= amount;
+
+        // Check solvency after collateral removal (if user has borrows)
+        if (userBorrowShares[msg.sender] > 0) {
+            if (!_isSolvent(msg.sender)) revert UserInsolvent();
+        }
+
+        // Interactions: Transfer collateral to receiver
+        collateralToken.safeTransfer(receiver, amount);
+
+        emit RemoveCollateral(msg.sender, amount);
     }
 
     /// @notice Placeholder for borrowAsset function
@@ -437,8 +476,35 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
     }
 
     function isSolvent(address borrower) external view returns (bool) {
-        // TODO: Implement in solvency task
-        return true; // Placeholder
+        return _isSolvent(borrower);
+    }
+
+    /// @notice Internal solvency check function
+    /// @param borrower Address of the borrower to check
+    /// @return solvent True if the borrower is solvent (LTV below threshold)
+    function _isSolvent(address borrower) internal view returns (bool solvent) {
+        // If no borrow shares, always solvent
+        if (userBorrowShares[borrower] == 0) return true;
+
+        // Get current borrow amount in asset tokens
+        uint256 borrowAmount = borrowVault.toAmount(
+            userBorrowShares[borrower],
+            false
+        );
+        if (borrowAmount == 0) return true;
+
+        // Get collateral value in asset tokens
+        uint256 collateralValue = getCollateralValue(
+            userCollateralBalance[borrower]
+        );
+
+        // Check if LTV is below threshold
+        // LTV = (borrowAmount * PRECISION) / collateralValue
+        // Solvent if LTV <= LIQUIDATION_THRESHOLD
+        if (collateralValue == 0) return false; // No collateral but has debt
+
+        uint256 ltv = (borrowAmount * PRECISION) / collateralValue;
+        solvent = ltv <= LIQUIDATION_THRESHOLD;
     }
 
     // ===== Interface Implementation Getters =====

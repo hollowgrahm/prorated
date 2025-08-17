@@ -122,11 +122,6 @@ contract ProlendPairTest is Test {
         assertEq(prolendPair.getCurrentRate(), prolendPair.minRate());
     }
 
-    function testSolvencyCheck() public {
-        // Default placeholder should return true
-        assertTrue(prolendPair.isSolvent(user1));
-    }
-
     function testDeposit() public {
         uint256 depositAmount = 100 ether;
 
@@ -399,14 +394,185 @@ contract ProlendPairTest is Test {
         );
     }
 
+    function testAddCollateral() public {
+        uint256 collateralAmount = 200 ether;
+
+        // Approve and add collateral
+        vm.prank(user1);
+        collateralToken.approve(address(prolendPair), collateralAmount);
+
+        vm.prank(user1);
+        prolendPair.addCollateral(collateralAmount, user1);
+
+        // Check results
+        assertEq(
+            prolendPair.userCollateralBalance(user1),
+            collateralAmount,
+            "User should have collateral balance"
+        );
+        assertEq(
+            prolendPair.totalCollateral(),
+            collateralAmount,
+            "Total collateral should match"
+        );
+        assertEq(
+            collateralToken.balanceOf(address(prolendPair)),
+            collateralAmount,
+            "Contract should hold collateral"
+        );
+        assertEq(
+            collateralToken.balanceOf(user1),
+            1000 ether - collateralAmount,
+            "User balance should be reduced"
+        );
+    }
+
+    function testAddCollateralForOtherUser() public {
+        uint256 collateralAmount = 150 ether;
+
+        // User1 adds collateral for user2
+        vm.prank(user1);
+        collateralToken.approve(address(prolendPair), collateralAmount);
+
+        vm.prank(user1);
+        prolendPair.addCollateral(collateralAmount, user2);
+
+        // Check results
+        assertEq(
+            prolendPair.userCollateralBalance(user2),
+            collateralAmount,
+            "User2 should have collateral balance"
+        );
+        assertEq(
+            prolendPair.userCollateralBalance(user1),
+            0,
+            "User1 should have no collateral balance"
+        );
+        assertEq(
+            collateralToken.balanceOf(user1),
+            1000 ether - collateralAmount,
+            "User1 balance should be reduced"
+        );
+    }
+
+    function testRemoveCollateral() public {
+        uint256 collateralAmount = 200 ether;
+        uint256 removeAmount = 50 ether;
+
+        // First add collateral
+        vm.prank(user1);
+        collateralToken.approve(address(prolendPair), collateralAmount);
+        vm.prank(user1);
+        prolendPair.addCollateral(collateralAmount, user1);
+
+        // Then remove some collateral
+        vm.prank(user1);
+        prolendPair.removeCollateral(removeAmount, user1);
+
+        // Check results
+        assertEq(
+            prolendPair.userCollateralBalance(user1),
+            collateralAmount - removeAmount,
+            "User collateral should be reduced"
+        );
+        assertEq(
+            prolendPair.totalCollateral(),
+            collateralAmount - removeAmount,
+            "Total collateral should be reduced"
+        );
+        assertEq(
+            collateralToken.balanceOf(user1),
+            1000 ether - collateralAmount + removeAmount,
+            "User should receive collateral"
+        );
+    }
+
+    function testRemoveCollateralToOtherUser() public {
+        uint256 collateralAmount = 200 ether;
+        uint256 removeAmount = 75 ether;
+
+        // Add collateral
+        vm.prank(user1);
+        collateralToken.approve(address(prolendPair), collateralAmount);
+        vm.prank(user1);
+        prolendPair.addCollateral(collateralAmount, user1);
+
+        // Remove collateral to user2
+        vm.prank(user1);
+        prolendPair.removeCollateral(removeAmount, user2);
+
+        // Check results
+        assertEq(
+            prolendPair.userCollateralBalance(user1),
+            collateralAmount - removeAmount,
+            "User1 collateral should be reduced"
+        );
+        assertEq(
+            collateralToken.balanceOf(user2),
+            1000 ether + removeAmount,
+            "User2 should receive collateral"
+        );
+        assertEq(
+            collateralToken.balanceOf(user1),
+            1000 ether - collateralAmount,
+            "User1 balance unchanged"
+        );
+    }
+
+    function testInvalidCollateralOperations() public {
+        // Test zero amount add
+        vm.prank(user1);
+        vm.expectRevert(
+            abi.encodeWithSelector(ProlendPair.InvalidAmount.selector)
+        );
+        prolendPair.addCollateral(0, user1);
+
+        // Test zero address add
+        vm.prank(user1);
+        vm.expectRevert(
+            abi.encodeWithSelector(ProlendPair.InvalidAddress.selector)
+        );
+        prolendPair.addCollateral(100 ether, address(0));
+
+        // Test zero amount remove
+        vm.prank(user1);
+        vm.expectRevert(
+            abi.encodeWithSelector(ProlendPair.InvalidAmount.selector)
+        );
+        prolendPair.removeCollateral(0, user1);
+
+        // Test zero address remove
+        vm.prank(user1);
+        vm.expectRevert(
+            abi.encodeWithSelector(ProlendPair.InvalidAddress.selector)
+        );
+        prolendPair.removeCollateral(100 ether, address(0));
+
+        // Test insufficient collateral balance
+        vm.prank(user1);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ProlendPair.InsufficientCollateralBalance.selector
+            )
+        );
+        prolendPair.removeCollateral(100 ether, user1);
+    }
+
+    function testCollateralSolvencyCheck() public {
+        // Test basic solvency (no borrows = always solvent)
+        assertTrue(prolendPair.isSolvent(user1));
+
+        // Test with collateral but no borrows
+        vm.prank(user1);
+        collateralToken.approve(address(prolendPair), 200 ether);
+        vm.prank(user1);
+        prolendPair.addCollateral(200 ether, user1);
+
+        assertTrue(prolendPair.isSolvent(user1));
+    }
+
     function testPlaceholderFunctions() public {
         // Remaining placeholder functions should revert with "Not implemented"
-        vm.expectRevert("Not implemented");
-        prolendPair.addCollateral(100 ether, user1);
-
-        vm.expectRevert("Not implemented");
-        prolendPair.removeCollateral(100 ether, user1);
-
         vm.expectRevert("Not implemented");
         prolendPair.borrowAsset(100 ether, 200 ether, user1);
 
