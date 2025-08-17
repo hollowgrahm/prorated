@@ -5,7 +5,6 @@ import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
 import {ERC4626} from "lib/solmate/src/tokens/ERC4626.sol";
 import {SafeTransferLib} from "lib/solmate/src/utils/SafeTransferLib.sol";
 import {ReentrancyGuard} from "lib/solmate/src/utils/ReentrancyGuard.sol";
-import {Owned} from "lib/solmate/src/auth/Owned.sol";
 
 import {VaultAccount, ProlendVault} from "./ProlendVault.sol";
 import {ProlendInterestRate} from "./ProlendInterestRate.sol";
@@ -18,7 +17,7 @@ import {IERC20} from "../interfaces/IERC20.sol";
 /// @notice A lending pair contract that enables borrowing and lending with collateral
 /// @dev Implements ERC4626 vault standard for the asset token, with additional borrowing functionality
 /// @author Prorated Protocol, inspired by Frax Finance
-contract ProlendPair is ERC4626, ReentrancyGuard, Owned, IProlendPair {
+contract ProlendPair is ERC4626, ReentrancyGuard {
     using SafeTransferLib for ERC20;
     using ProlendVault for VaultAccount;
 
@@ -49,11 +48,11 @@ contract ProlendPair is ERC4626, ReentrancyGuard, Owned, IProlendPair {
 
     // ===== Vault Accounting =====
 
-    /// @notice Total asset vault account (shares and amounts)
-    VaultAccount public totalAssetVault;
+    /// @notice Asset vault account (shares and amounts for lending)
+    VaultAccount public assetVault;
 
-    /// @notice Total borrow vault account (shares and amounts)
-    VaultAccount public totalBorrowVault;
+    /// @notice Borrow vault account (shares and amounts for borrowing)
+    VaultAccount public borrowVault;
 
     /// @notice Total collateral deposited across all users
     uint256 public totalCollateral;
@@ -114,26 +113,22 @@ contract ProlendPair is ERC4626, ReentrancyGuard, Owned, IProlendPair {
     /// @param _assetToken The token that can be lent/borrowed
     /// @param _collateralToken The collateral token
     /// @param _priceOracle The Proswap pair used for pricing (80/20 pool)
-    /// @param _admin The admin address (typically ProratedPool developer)
     constructor(
         address _assetToken,
         address _collateralToken,
-        address _priceOracle,
-        address _admin
+        address _priceOracle
     )
         ERC4626(
             ERC20(_assetToken),
             string(abi.encodePacked("Prolend ", ERC20(_assetToken).name())),
             string(abi.encodePacked("p", ERC20(_assetToken).symbol()))
         )
-        Owned(_admin)
     {
         // Validate inputs
         if (
             _assetToken == address(0) ||
             _collateralToken == address(0) ||
-            _priceOracle == address(0) ||
-            _admin == address(0)
+            _priceOracle == address(0)
         ) {
             revert InvalidAddress();
         }
@@ -155,7 +150,89 @@ contract ProlendPair is ERC4626, ReentrancyGuard, Owned, IProlendPair {
     /// @notice Returns the total assets managed by the vault
     /// @return Total amount of asset tokens
     function totalAssets() public view override returns (uint256) {
-        return totalAssetVault.amount;
+        return assetVault.amount;
+    }
+
+    /// @notice Convert asset amount to vault shares
+    /// @param assets Amount of assets to convert
+    /// @return shares Number of shares for the asset amount
+    function convertToShares(
+        uint256 assets
+    ) public view override returns (uint256 shares) {
+        return assetVault.toShares(assets, false);
+    }
+
+    /// @notice Convert vault shares to asset amount
+    /// @param shares Number of shares to convert
+    /// @return assets Amount of assets for the shares
+    function convertToAssets(
+        uint256 shares
+    ) public view override returns (uint256 assets) {
+        return assetVault.toAmount(shares, false);
+    }
+
+    /// @notice Maximum amount of assets that can be deposited
+    /// @return Maximum deposit amount (no limit for now)
+    function maxDeposit(address) public pure override returns (uint256) {
+        return type(uint256).max;
+    }
+
+    /// @notice Maximum number of shares that can be minted
+    /// @return Maximum mint amount (no limit for now)
+    function maxMint(address) public pure override returns (uint256) {
+        return type(uint256).max;
+    }
+
+    /// @notice Maximum amount of assets that can be withdrawn
+    /// @param account Address of the account
+    /// @return Maximum withdrawal amount (their balance)
+    function maxWithdraw(
+        address account
+    ) public view override returns (uint256) {
+        return convertToAssets(balanceOf[account]);
+    }
+
+    /// @notice Maximum number of shares that can be redeemed
+    /// @param account Address of the account
+    /// @return Maximum redeem amount (their balance)
+    function maxRedeem(address account) public view override returns (uint256) {
+        return balanceOf[account];
+    }
+
+    /// @notice Preview deposit to calculate shares
+    /// @param assets Amount of assets to deposit
+    /// @return shares Number of shares that would be minted
+    function previewDeposit(
+        uint256 assets
+    ) public view override returns (uint256 shares) {
+        return convertToShares(assets);
+    }
+
+    /// @notice Preview mint to calculate assets needed
+    /// @param shares Number of shares to mint
+    /// @return assets Amount of assets needed
+    function previewMint(
+        uint256 shares
+    ) public view override returns (uint256 assets) {
+        return convertToAssets(shares);
+    }
+
+    /// @notice Preview withdraw to calculate shares needed
+    /// @param assets Amount of assets to withdraw
+    /// @return shares Number of shares needed
+    function previewWithdraw(
+        uint256 assets
+    ) public view override returns (uint256 shares) {
+        return convertToShares(assets);
+    }
+
+    /// @notice Preview redeem to calculate assets received
+    /// @param shares Number of shares to redeem
+    /// @return assets Amount of assets that would be received
+    function previewRedeem(
+        uint256 shares
+    ) public view override returns (uint256 assets) {
+        return convertToAssets(shares);
     }
 
     // ===== Placeholder Functions (to be implemented in subsequent tasks) =====
@@ -224,8 +301,8 @@ contract ProlendPair is ERC4626, ReentrancyGuard, Owned, IProlendPair {
     function getUtilization() external view returns (uint256) {
         return
             rateCalculator.calculateUtilization(
-                totalBorrowVault.amount,
-                totalAssetVault.amount
+                borrowVault.amount,
+                assetVault.amount
             );
     }
 
@@ -246,10 +323,6 @@ contract ProlendPair is ERC4626, ReentrancyGuard, Owned, IProlendPair {
 
     function getPriceOracle() external view returns (address) {
         return address(priceOracle);
-    }
-
-    function admin() external view returns (address) {
-        return owner;
     }
 
     function maxLTV() external pure returns (uint256) {
@@ -281,24 +354,24 @@ contract ProlendPair is ERC4626, ReentrancyGuard, Owned, IProlendPair {
     }
 
     function totalAssetShares() external view returns (uint256) {
-        return totalAssetVault.shares;
+        return assetVault.shares;
     }
 
     function totalAssetAmount() external view returns (uint256) {
-        return totalAssetVault.amount;
+        return assetVault.amount;
     }
 
     function totalBorrowShares() external view returns (uint256) {
-        return totalBorrowVault.shares;
+        return borrowVault.shares;
     }
 
     function totalBorrowAmount() external view returns (uint256) {
-        return totalBorrowVault.amount;
+        return borrowVault.amount;
     }
 
     function getUserBorrowAmount(address user) external view returns (uint256) {
         if (userBorrowShares[user] == 0) return 0;
-        return totalBorrowVault.toAmount(userBorrowShares[user], false);
+        return borrowVault.toAmount(userBorrowShares[user], false);
     }
 
     function getCollateralValue(

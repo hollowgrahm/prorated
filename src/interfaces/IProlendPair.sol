@@ -123,7 +123,6 @@ interface IProlendPair {
     function assetToken() external view returns (address);
     function getCollateralToken() external view returns (address);
     function getPriceOracle() external view returns (address);
-    function admin() external view returns (address);
 
     // Risk parameters
     function maxLTV() external view returns (uint256);
