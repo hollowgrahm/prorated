@@ -3,7 +3,6 @@ pragma solidity ^0.8.10;
 
 import {Test} from "lib/forge-std/src/Test.sol";
 import {ProlendFactory} from "../src/prolend/ProlendFactory.sol";
-import {ProlendPairBytecode} from "../src/prolend/ProlendPairBytecode.sol";
 import {ProlendPair} from "../src/prolend/ProlendPair.sol";
 import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
 
@@ -62,15 +61,13 @@ contract MockProswapPair {
 
 contract ProlendFactoryTest is Test {
     ProlendFactory factory;
-    ProlendPairBytecode bytecodeHolder;
     MockERC20 token80;
     MockERC20 token20;
     MockProswapPair proswapPair;
     address admin = address(0x1234);
 
     function setUp() public {
-        bytecodeHolder = new ProlendPairBytecode();
-        factory = new ProlendFactory(address(bytecodeHolder));
+        factory = new ProlendFactory();
         token80 = new MockERC20("Token80", "T80");
         token20 = new MockERC20("Token20", "T20");
         proswapPair = new MockProswapPair(address(token80), address(token20));

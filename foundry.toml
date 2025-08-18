@@ -9,5 +9,6 @@ solc = "0.8.10"
 remappings = [
     "forge-std/=lib/forge-std/src/",
     "solmate/=lib/solmate/src",
+    "solady/=lib/solady/src/",
     "velodrome/=lib/contracts/",
 ]

@@ -15,7 +15,6 @@ import "../src/deployers/GovernorDeployer.sol";
 import "../src/deployers/TreasuryDeployer.sol";
 import "../src/deployers/ProlendDeployer.sol";
 import "../src/prolend/ProlendFactory.sol";
-import "../src/prolend/ProlendPairBytecode.sol";
 import "./mocks/ERC20Mintable.sol";
 import "../src/interfaces/IProratedToken.sol";
 import "../src/interfaces/IProswapFactory.sol";
@@ -34,7 +33,6 @@ contract ProratedPoolTest is Test {
     TreasuryDeployer treasuryDeployer;
     ProlendDeployer prolendDeployer;
     ProlendFactory prolendFactory;
-    ProlendPairBytecode prolendPairBytecode;
     ERC20Mintable fundingToken;
     ProratedToken proratedToken;
     ProratedVeNFT venftContract;
@@ -68,8 +66,7 @@ contract ProratedPoolTest is Test {
         veNFTDeployer = new VeNFTDeployer();
         governorDeployer = new GovernorDeployer();
         treasuryDeployer = new TreasuryDeployer();
-        prolendPairBytecode = new ProlendPairBytecode();
-        prolendFactory = new ProlendFactory(address(prolendPairBytecode));
+        prolendFactory = new ProlendFactory();
         prolendDeployer = new ProlendDeployer(address(prolendFactory));
 
         // Deploy ProratedPool
@@ -1270,7 +1267,6 @@ contract ModifierTests is Test {
     TreasuryDeployer treasuryDeployer;
     ProlendDeployer prolendDeployer;
     ProlendFactory prolendFactory;
-    ProlendPairBytecode prolendPairBytecode;
 
     address public owner = address(this);
     address public user1 = address(0x1);
@@ -1297,8 +1293,7 @@ contract ModifierTests is Test {
         veNFTDeployer = new VeNFTDeployer();
         governorDeployer = new GovernorDeployer();
         treasuryDeployer = new TreasuryDeployer();
-        prolendPairBytecode = new ProlendPairBytecode();
-        prolendFactory = new ProlendFactory(address(prolendPairBytecode));
+        prolendFactory = new ProlendFactory();
         prolendDeployer = new ProlendDeployer(address(prolendFactory));
 
         // Deploy ProratedPool

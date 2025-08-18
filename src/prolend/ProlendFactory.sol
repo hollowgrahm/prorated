@@ -4,7 +4,8 @@ pragma solidity ^0.8.10;
 import {IProlendFactory} from "../interfaces/IProlendFactory.sol";
 import {IProratedPool} from "../interfaces/IProratedPool.sol";
 import {IProswapPair} from "../interfaces/IProswapPair.sol";
-import {ProlendPairBytecode} from "./ProlendPairBytecode.sol";
+import {ProlendPair} from "./ProlendPair.sol";
+import {SSTORE2} from "solady/utils/SSTORE2.sol";
 
 /// @title ProlendFactory
 /// @notice Factory for deploying Prolend lending pairs for Proswap 80/20 pools
@@ -12,8 +13,8 @@ import {ProlendPairBytecode} from "./ProlendPairBytecode.sol";
 contract ProlendFactory is IProlendFactory {
     // ===== Storage =====
 
-    /// @notice Bytecode holder for ProlendPair deployment
-    ProlendPairBytecode public immutable bytecodeHolder;
+    /// @notice SSTORE2 pointer for ProlendPair bytecode
+    address public immutable pairBytecodePointer;
 
     /// @notice Mapping from Proswap pair to deployed Prolend pairs
     mapping(address => PairAddresses) public prolendPairs;
@@ -35,11 +36,10 @@ contract ProlendFactory is IProlendFactory {
 
     // ===== Constructor =====
 
-    /// @notice Initialize the factory with the bytecode holder
-    /// @param _bytecodeHolder The ProlendPairBytecode contract
-    constructor(address _bytecodeHolder) {
-        require(_bytecodeHolder != address(0), "Invalid bytecode holder");
-        bytecodeHolder = ProlendPairBytecode(_bytecodeHolder);
+    /// @notice Initialize the factory and store ProlendPair bytecode using SSTORE2
+    constructor() {
+        // Store ProlendPair bytecode using SSTORE2
+        pairBytecodePointer = SSTORE2.write(type(ProlendPair).creationCode);
     }
 
     // ===== Core Deployment Function =====
@@ -247,7 +247,7 @@ contract ProlendFactory is IProlendFactory {
 
     // ===== Internal Functions =====
 
-    /// @notice Deploy a ProlendPair using CREATE2
+    /// @notice Deploy a ProlendPair using CREATE2 and SSTORE2
     /// @param assetToken The asset token address
     /// @param collateralToken The collateral token address
     /// @param proswapPair The Proswap pair address for pricing
@@ -259,8 +259,8 @@ contract ProlendFactory is IProlendFactory {
         address proswapPair,
         bytes32 salt
     ) internal returns (address pair) {
-        // Get bytecode from holder
-        bytes memory pairCreationCode = bytecodeHolder.PAIR_CREATION_CODE();
+        // Get bytecode from SSTORE2
+        bytes memory pairCreationCode = SSTORE2.read(pairBytecodePointer);
 
         // Build constructor arguments
         bytes memory constructorArgs = abi.encode(
