@@ -120,26 +120,8 @@ interface IProlendPair {
     function getUtilization() external view returns (uint256);
 
     // ===== View Functions =====
-    function assetToken() external view returns (address);
-    function getCollateralToken() external view returns (address);
-    function getPriceOracle() external view returns (address);
-
-    // Risk parameters
-    function maxLTV() external view returns (uint256);
-    function liquidationThreshold() external view returns (uint256);
-    function liquidationFee() external view returns (uint256);
-
-    // Interest rate parameters
-    function minRate() external view returns (uint256);
-    function vertexRate() external view returns (uint256);
-    function maxRate() external view returns (uint256);
-    function vertexUtilization() external view returns (uint256);
 
     // Accounting
-    function totalAssetShares() external view returns (uint256);
-    function totalAssetAmount() external view returns (uint256);
-    function totalBorrowShares() external view returns (uint256);
-    function totalBorrowAmount() external view returns (uint256);
     function totalCollateral() external view returns (uint256);
 
     // User balances

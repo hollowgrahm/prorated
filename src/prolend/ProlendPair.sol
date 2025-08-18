@@ -252,8 +252,8 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         _addInterest();
 
         // Validate inputs
-        if (receiver == address(0)) revert InvalidAddress();
-        if (assets == 0) revert InvalidAmount();
+        _validateAddress(receiver);
+        _validateAmount(assets);
 
         // Calculate shares to mint
         shares = convertToShares(assets);
@@ -282,8 +282,8 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         _addInterest();
 
         // Validate inputs
-        if (receiver == address(0)) revert InvalidAddress();
-        if (shares == 0) revert InvalidAmount();
+        _validateAddress(receiver);
+        _validateAmount(shares);
 
         // Calculate assets needed
         assets = convertToAssets(shares);
@@ -314,8 +314,8 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         _addInterest();
 
         // Validate inputs
-        if (receiver == address(0)) revert InvalidAddress();
-        if (assets == 0) revert InvalidAmount();
+        _validateAddress(receiver);
+        _validateAmount(assets);
 
         // Calculate shares to burn
         shares = convertToShares(assets);
@@ -354,8 +354,8 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         _addInterest();
 
         // Validate inputs
-        if (receiver == address(0)) revert InvalidAddress();
-        if (shares == 0) revert InvalidAmount();
+        _validateAddress(receiver);
+        _validateAmount(shares);
 
         // Calculate assets to withdraw
         assets = convertToAssets(shares);
@@ -395,8 +395,8 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         _addInterest();
 
         // Validate inputs
-        if (borrower == address(0)) revert InvalidAddress();
-        if (amount == 0) revert InvalidAmount();
+        _validateAddress(borrower);
+        _validateAmount(amount);
 
         // Effects: Update state
         userCollateralBalance[borrower] += amount;
@@ -419,8 +419,8 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         _addInterest();
 
         // Validate inputs
-        if (receiver == address(0)) revert InvalidAddress();
-        if (amount == 0) revert InvalidAmount();
+        _validateAddress(receiver);
+        _validateAmount(amount);
         if (userCollateralBalance[msg.sender] < amount)
             revert InsufficientCollateralBalance();
 
@@ -429,9 +429,7 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         totalCollateral -= amount;
 
         // Check solvency after collateral removal (if user has borrows)
-        if (userBorrowShares[msg.sender] > 0) {
-            if (!_isSolvent(msg.sender)) revert UserInsolvent();
-        }
+        _validateSolvencyIfBorrowing(msg.sender);
 
         // Interactions: Transfer collateral to receiver
         collateralToken.safeTransfer(receiver, amount);
@@ -455,8 +453,8 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         _addInterest();
 
         // Validate inputs
-        if (receiver == address(0)) revert InvalidAddress();
-        if (borrowAmount == 0) revert InvalidAmount();
+        _validateAddress(receiver);
+        _validateAmount(borrowAmount);
 
         // Add collateral if specified
         if (collateralAmount > 0) {
@@ -472,8 +470,7 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         }
 
         // Check available liquidity
-        uint256 availableAssets = assetVault.amount;
-        if (availableAssets < borrowAmount) revert InsufficientLiquidity();
+        if (assetVault.amount < borrowAmount) revert InsufficientLiquidity();
 
         // Calculate borrow shares to issue
         shares = borrowVault.toShares(borrowAmount, true); // Round up for borrows
@@ -508,8 +505,8 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         _addInterest();
 
         // Validate inputs
-        if (borrower == address(0)) revert InvalidAddress();
-        if (shares == 0) revert InvalidAmount();
+        _validateAddress(borrower);
+        _validateAmount(shares);
         if (userBorrowShares[borrower] < shares)
             revert InsufficientBorrowBalance();
 
@@ -545,8 +542,8 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         _addInterest();
 
         // Validate inputs
-        if (borrower == address(0)) revert InvalidAddress();
-        if (shares == 0) revert InvalidAmount();
+        _validateAddress(borrower);
+        _validateAmount(shares);
         if (userBorrowShares[borrower] < shares)
             revert InsufficientBorrowBalance();
 
@@ -562,8 +559,9 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
             (1e5 + LIQUIDATION_FEE)) / 1e5;
 
         // Convert collateral value back to collateral token amount using exchange rate
-        uint256 exchangeRate = getExchangeRate();
-        collateralReceived = (collateralValueToSeize * 1e18) / exchangeRate;
+        collateralReceived =
+            (collateralValueToSeize * 1e18) /
+            getExchangeRate();
 
         // Ensure we don't seize more collateral than borrower has
         if (collateralReceived > userCollateralBalance[borrower]) {
@@ -604,8 +602,8 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         _addInterest();
 
         // Validate inputs
-        if (borrowAmount == 0) revert InvalidAmount();
-        if (minCollateralOut == 0) revert InvalidAmount();
+        _validateAmount(borrowAmount);
+        _validateAmount(minCollateralOut);
 
         // Check liquidity for borrow
         if (borrowAmount > assetVault.amount) revert InsufficientLiquidity();
@@ -668,28 +666,22 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         );
 
         // Get current reserves to determine which token gets which amount
-        (uint112 reserve80, uint112 reserve20, ) = proswapPair.getReserves();
-        address token80 = proswapPair.token80();
-        address token20 = proswapPair.token20();
+        OracleData memory oracle = _getOracleData();
 
         // Determine swap direction and amounts
         uint256 amount0Out;
         uint256 amount1Out;
 
-        if (address(asset) == token80) {
-            // Asset is token80, collateral is token20
-            // We're swapping asset (token80) for collateral (token20)
-            amount0Out = 0; // No token80 out
+        if (address(asset) == oracle.token80) {
+            amount0Out = 0;
             amount1Out =
-                (assetAmount * uint256(reserve20)) /
-                (uint256(reserve80) + assetAmount); // token20 out
+                (assetAmount * uint256(oracle.reserve20)) /
+                (uint256(oracle.reserve80) + assetAmount);
         } else {
-            // Asset is token20, collateral is token80
-            // We're swapping asset (token20) for collateral (token80)
             amount0Out =
-                (assetAmount * uint256(reserve80)) /
-                (uint256(reserve20) + assetAmount); // token80 out
-            amount1Out = 0; // No token20 out
+                (assetAmount * uint256(oracle.reserve80)) /
+                (uint256(oracle.reserve20) + assetAmount);
+            amount1Out = 0;
         }
 
         // Transfer asset tokens to the pair
@@ -815,65 +807,47 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
 
     // ===== Interface Implementation Getters =====
 
-    function assetToken() external view returns (address) {
-        return address(asset);
-    }
-
-    function getCollateralToken() external view returns (address) {
-        return address(collateralToken);
-    }
-
-    function getPriceOracle() external view returns (address) {
-        return address(proswapPair);
-    }
-
-    function maxLTV() external pure returns (uint256) {
-        return MAX_LTV;
-    }
-
-    function liquidationThreshold() external pure returns (uint256) {
-        return LIQUIDATION_THRESHOLD;
-    }
-
-    function liquidationFee() external pure returns (uint256) {
-        return LIQUIDATION_FEE;
-    }
-
-    function minRate() external view returns (uint256) {
-        return rateCalculator.MIN_RATE();
-    }
-
-    function vertexRate() external view returns (uint256) {
-        return rateCalculator.VERTEX_RATE();
-    }
-
-    function maxRate() external view returns (uint256) {
-        return rateCalculator.MAX_RATE();
-    }
-
-    function vertexUtilization() external view returns (uint256) {
-        return rateCalculator.VERTEX_UTILIZATION();
-    }
-
-    function totalAssetShares() external view returns (uint256) {
-        return assetVault.shares;
-    }
-
-    function totalAssetAmount() external view returns (uint256) {
-        return assetVault.amount;
-    }
-
-    function totalBorrowShares() external view returns (uint256) {
-        return borrowVault.shares;
-    }
-
-    function totalBorrowAmount() external view returns (uint256) {
-        return borrowVault.amount;
-    }
-
     function getUserBorrowAmount(address user) external view returns (uint256) {
         if (userBorrowShares[user] == 0) return 0;
         return borrowVault.toAmount(userBorrowShares[user], false);
+    }
+
+    // ===== Internal Helpers =====
+
+    /// @notice Oracle data from Proswap pair
+    struct OracleData {
+        uint112 reserve80;
+        uint112 reserve20;
+        address token80;
+        address token20;
+    }
+
+    /// @notice Gets all oracle data in one call
+    /// @return data Oracle data struct with reserves and token addresses
+    function _getOracleData() internal view returns (OracleData memory data) {
+        (data.reserve80, data.reserve20, ) = proswapPair.getReserves();
+        data.token80 = proswapPair.token80();
+        data.token20 = proswapPair.token20();
+    }
+
+    /// @notice Validates that an amount is not zero
+    /// @param amount The amount to validate
+    function _validateAmount(uint256 amount) internal pure {
+        if (amount == 0) revert InvalidAmount();
+    }
+
+    /// @notice Validates that an address is not zero
+    /// @param addr The address to validate
+    function _validateAddress(address addr) internal pure {
+        if (addr == address(0)) revert InvalidAddress();
+    }
+
+    /// @notice Validates solvency if user has borrows
+    /// @param user The user to check
+    function _validateSolvencyIfBorrowing(address user) internal view {
+        if (userBorrowShares[user] > 0) {
+            if (!_isSolvent(user)) revert UserInsolvent();
+        }
     }
 
     // ===== Proswap Oracle Integration =====
@@ -882,32 +856,28 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
     /// @return rate Price of collateral token in terms of asset token (scaled by 1e18)
     /// @dev Uses the weighted pool reserves to calculate spot price
     function getExchangeRate() public view returns (uint256 rate) {
-        (uint112 reserve80, uint112 reserve20, ) = proswapPair.getReserves();
+        OracleData memory oracle = _getOracleData();
 
         // Handle case where no liquidity exists
-        if (reserve80 == 0 || reserve20 == 0) {
+        if (oracle.reserve80 == 0 || oracle.reserve20 == 0) {
             return 1e18; // Default to 1:1 if no liquidity
         }
 
-        // Determine which token is asset vs collateral based on pair structure
-        address token80 = proswapPair.token80();
-        address token20 = proswapPair.token20();
-
-        if (address(asset) == token80 && address(collateralToken) == token20) {
-            // Asset is token80 (80% weight), Collateral is token20 (20% weight)
-            // Price = how much asset (token80) per unit of collateral (token20)
-            // For weighted pools: Price = (Reserve_collateral/Weight_collateral) / (Reserve_asset/Weight_asset)
-            // Price = (reserve20/0.2) / (reserve80/0.8) = (reserve20 * 0.8) / (reserve80 * 0.2) = (reserve20 * 4) / reserve80
-            rate = (uint256(reserve20) * 4 * 1e18) / uint256(reserve80);
-        } else if (
-            address(asset) == token20 && address(collateralToken) == token80
+        if (
+            address(asset) == oracle.token80 &&
+            address(collateralToken) == oracle.token20
         ) {
-            // Asset is token20 (20% weight), Collateral is token80 (80% weight)
-            // Price = how much asset (token20) per unit of collateral (token80)
-            // Price = (reserve80/0.8) / (reserve20/0.2) = (reserve80 * 0.2) / (reserve20 * 0.8) = reserve80 / (reserve20 * 4)
-            rate = (uint256(reserve80) * 1e18) / (uint256(reserve20) * 4);
+            rate =
+                (uint256(oracle.reserve20) * 4 * 1e18) /
+                uint256(oracle.reserve80);
+        } else if (
+            address(asset) == oracle.token20 &&
+            address(collateralToken) == oracle.token80
+        ) {
+            rate =
+                (uint256(oracle.reserve80) * 1e18) /
+                (uint256(oracle.reserve20) * 4);
         } else {
-            // This shouldn't happen if the pair is set up correctly, but fallback to 1:1
             rate = 1e18;
         }
     }

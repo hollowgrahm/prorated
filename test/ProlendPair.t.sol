@@ -51,14 +51,17 @@ contract ProlendPairTest is Test {
     }
 
     function testConstructor() public {
-        assertEq(prolendPair.assetToken(), address(assetToken));
-        assertEq(prolendPair.getCollateralToken(), address(collateralToken));
-        assertEq(prolendPair.getPriceOracle(), address(mockPair));
+        assertEq(address(prolendPair.asset()), address(assetToken));
+        assertEq(
+            address(prolendPair.collateralToken()),
+            address(collateralToken)
+        );
+        assertEq(address(prolendPair.proswapPair()), address(mockPair));
 
-        // Check constants
-        assertEq(prolendPair.maxLTV(), 75000);
-        assertEq(prolendPair.liquidationThreshold(), 75000);
-        assertEq(prolendPair.liquidationFee(), 10000);
+        // Check constants (now accessed directly)
+        assertEq(prolendPair.MAX_LTV(), 75000);
+        assertEq(prolendPair.LIQUIDATION_THRESHOLD(), 75000);
+        assertEq(prolendPair.LIQUIDATION_FEE(), 10000);
     }
 
     function testTotalAssets() public {
@@ -66,8 +69,9 @@ contract ProlendPairTest is Test {
         assertEq(prolendPair.totalAssets(), 0);
 
         // Total assets should match vault amount
-        assertEq(prolendPair.totalAssetAmount(), 0);
-        assertEq(prolendPair.totalAssetShares(), 0);
+        (uint128 assetAmount, uint128 assetShares) = prolendPair.assetVault();
+        assertEq(assetAmount, 0);
+        assertEq(assetShares, 0);
     }
 
     function testConvertToShares() public {
@@ -115,11 +119,17 @@ contract ProlendPairTest is Test {
     }
 
     function testInterestRateParameters() public {
-        // Check that interest rate parameters are accessible
-        assertTrue(prolendPair.minRate() > 0);
-        assertTrue(prolendPair.vertexRate() > prolendPair.minRate());
-        assertTrue(prolendPair.maxRate() > prolendPair.vertexRate());
-        assertEq(prolendPair.vertexUtilization(), 80000); // 80%
+        // Check that interest rate parameters are accessible via rate calculator
+        assertTrue(prolendPair.rateCalculator().MIN_RATE() > 0);
+        assertTrue(
+            prolendPair.rateCalculator().VERTEX_RATE() >
+                prolendPair.rateCalculator().MIN_RATE()
+        );
+        assertTrue(
+            prolendPair.rateCalculator().MAX_RATE() >
+                prolendPair.rateCalculator().VERTEX_RATE()
+        );
+        assertEq(prolendPair.rateCalculator().VERTEX_UTILIZATION(), 80000); // 80%
     }
 
     function testUtilizationCalculation() public {
@@ -127,7 +137,10 @@ contract ProlendPairTest is Test {
         assertEq(prolendPair.getUtilization(), 0);
 
         // Current rate should be minimum rate
-        assertEq(prolendPair.getCurrentRate(), prolendPair.minRate());
+        assertEq(
+            prolendPair.getCurrentRate(),
+            prolendPair.rateCalculator().MIN_RATE()
+        );
     }
 
     function testDeposit() public {
@@ -156,16 +169,9 @@ contract ProlendPairTest is Test {
             depositAmount,
             "Total assets should match deposit"
         );
-        assertEq(
-            prolendPair.totalAssetAmount(),
-            depositAmount,
-            "Vault amount should match"
-        );
-        assertEq(
-            prolendPair.totalAssetShares(),
-            depositAmount,
-            "Vault shares should match"
-        );
+        (uint128 vaultAmount, uint128 vaultShares) = prolendPair.assetVault();
+        assertEq(vaultAmount, depositAmount, "Vault amount should match");
+        assertEq(vaultShares, depositAmount, "Vault shares should match");
         assertEq(
             assetToken.balanceOf(address(prolendPair)),
             depositAmount,
@@ -617,16 +623,14 @@ contract ProlendPairTest is Test {
             collateralAmount,
             "User should have collateral balance"
         );
+        (uint128 borrowAmount_, uint128 borrowShares_) = prolendPair
+            .borrowVault();
         assertEq(
-            prolendPair.totalBorrowAmount(),
+            borrowAmount_,
             borrowAmount,
             "Total borrow amount should match"
         );
-        assertEq(
-            prolendPair.totalBorrowShares(),
-            shares,
-            "Total borrow shares should match"
-        );
+        assertEq(borrowShares_, shares, "Total borrow shares should match");
         assertEq(
             assetToken.balanceOf(user1),
             1000 ether + borrowAmount,
@@ -859,13 +863,15 @@ contract ProlendPairTest is Test {
             borrowShares - repayShares,
             "User borrow shares should be reduced"
         );
+        (uint128 borrowAmountAfter_, uint128 borrowSharesAfter_) = prolendPair
+            .borrowVault();
         assertEq(
-            prolendPair.totalBorrowAmount(),
+            borrowAmountAfter_,
             borrowAmount - amountRepaid,
             "Total borrow amount should be reduced"
         );
         assertEq(
-            prolendPair.totalBorrowShares(),
+            borrowSharesAfter_,
             borrowShares - repayShares,
             "Total borrow shares should be reduced"
         );
@@ -910,16 +916,10 @@ contract ProlendPairTest is Test {
             0,
             "User should have no remaining borrow shares"
         );
-        assertEq(
-            prolendPair.totalBorrowAmount(),
-            0,
-            "No remaining total borrow amount"
-        );
-        assertEq(
-            prolendPair.totalBorrowShares(),
-            0,
-            "No remaining total borrow shares"
-        );
+        (uint128 finalBorrowAmount_, uint128 finalBorrowShares_) = prolendPair
+            .borrowVault();
+        assertEq(finalBorrowAmount_, 0, "No remaining total borrow amount");
+        assertEq(finalBorrowShares_, 0, "No remaining total borrow shares");
         assertEq(
             assetToken.balanceOf(user1),
             1000 ether,
@@ -1054,8 +1054,8 @@ contract ProlendPairTest is Test {
         prolendPair.borrowAsset(borrowAmount, collateralAmount, user1);
 
         // Check state before repayment
-        uint256 assetVaultBefore = prolendPair.totalAssetAmount();
-        uint256 borrowVaultBefore = prolendPair.totalBorrowAmount();
+        (uint128 assetVaultBefore, ) = prolendPair.assetVault();
+        (uint128 borrowVaultBefore, ) = prolendPair.borrowVault();
 
         // Partial repayment
         vm.prank(user1);
@@ -1064,13 +1064,15 @@ contract ProlendPairTest is Test {
         uint256 amountRepaid = prolendPair.repayAsset(repayShares, user1);
 
         // Check vault accounting after repayment
+        (uint128 assetVaultAfter_, ) = prolendPair.assetVault();
+        (uint128 borrowVaultAfter_, ) = prolendPair.borrowVault();
         assertEq(
-            prolendPair.totalAssetAmount(),
+            assetVaultAfter_,
             assetVaultBefore + amountRepaid,
             "Asset vault should increase by repayment"
         );
         assertEq(
-            prolendPair.totalBorrowAmount(),
+            borrowVaultAfter_,
             borrowVaultBefore - amountRepaid,
             "Borrow vault should decrease by repayment"
         );
@@ -1134,8 +1136,8 @@ contract ProlendPairTest is Test {
         prolendPair.borrowAsset(borrowAmount, collateralAmount, user1);
 
         // Get initial state
-        uint256 initialBorrowAmount = prolendPair.totalBorrowAmount();
-        uint256 initialAssetAmount = prolendPair.totalAssetAmount();
+        (uint128 initialBorrowAmount, ) = prolendPair.borrowVault();
+        (uint128 initialAssetAmount, ) = prolendPair.assetVault();
 
         // Fast forward time by 1 year (365 days)
         vm.warp(block.timestamp + 365 days);
@@ -1145,21 +1147,23 @@ contract ProlendPairTest is Test {
 
         // Check that interest was accrued
         assertTrue(interestEarned > 0, "Interest should be earned over time");
+        (uint128 finalBorrowAmount_, ) = prolendPair.borrowVault();
+        (uint128 finalAssetAmount_, ) = prolendPair.assetVault();
         assertGt(
-            prolendPair.totalBorrowAmount(),
+            finalBorrowAmount_,
             initialBorrowAmount,
             "Borrow amount should increase with interest"
         );
         assertGt(
-            prolendPair.totalAssetAmount(),
+            finalAssetAmount_,
             initialAssetAmount,
             "Asset amount should increase (lender yield)"
         );
 
         // Interest should be added to both vaults
         assertEq(
-            prolendPair.totalBorrowAmount() - initialBorrowAmount,
-            prolendPair.totalAssetAmount() - initialAssetAmount,
+            finalBorrowAmount_ - initialBorrowAmount,
+            finalAssetAmount_ - initialAssetAmount,
             "Interest added to both vaults should be equal"
         );
     }
@@ -1234,9 +1238,9 @@ contract ProlendPairTest is Test {
         vm.warp(block.timestamp + 1 days);
 
         // Just test that addInterest works and accrues some interest
-        uint256 borrowAmountBefore = prolendPair.totalBorrowAmount();
+        (uint128 borrowAmountBefore, ) = prolendPair.borrowVault();
         uint256 interestEarned = prolendPair.addInterest();
-        uint256 borrowAmountAfter = prolendPair.totalBorrowAmount();
+        (uint128 borrowAmountAfter, ) = prolendPair.borrowVault();
 
         // Check that interest was accrued
         assertTrue(interestEarned > 0, "Interest should be earned over 1 day");

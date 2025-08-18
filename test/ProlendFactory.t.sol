@@ -166,12 +166,12 @@ contract ProlendFactoryTest is Test {
             "Pair80 asset should be token80"
         );
         assertEq(
-            prolendPair80.getCollateralToken(),
+            address(prolendPair80.collateralToken()),
             address(token20),
             "Pair80 collateral should be token20"
         );
         assertEq(
-            prolendPair80.getPriceOracle(),
+            address(prolendPair80.proswapPair()),
             address(proswapPair),
             "Pair80 oracle should be proswap pair"
         );
@@ -183,12 +183,12 @@ contract ProlendFactoryTest is Test {
             "Pair20 asset should be token20"
         );
         assertEq(
-            prolendPair20.getCollateralToken(),
+            address(prolendPair20.collateralToken()),
             address(token80),
             "Pair20 collateral should be token80"
         );
         assertEq(
-            prolendPair20.getPriceOracle(),
+            address(prolendPair20.proswapPair()),
             address(proswapPair),
             "Pair20 oracle should be proswap pair"
         );
