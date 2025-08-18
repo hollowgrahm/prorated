@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import {Owned} from "lib/solmate/src/auth/Owned.sol";
 import {ProratedPool} from "./ProratedPool.sol";
-import {ProratedPoolBytecode} from "./ProratedPoolBytecode.sol";
+import {SSTORE2} from "solady/utils/SSTORE2.sol";
 
 /// @title ProratedFactory
 /// @notice Factory to deploy ProratedPool instances using CREATE2
@@ -28,7 +28,7 @@ contract ProratedFactory is Owned {
     // ============ STORAGE ============
     mapping(address => bool) public poolExists;
     address[] public allPools;
-    ProratedPoolBytecode public immutable bytecodeHolder;
+    address public immutable poolBytecodePointer;
     address public immutable proswapFactory;
     address public immutable proswapRouter;
     address public immutable tokenDeployer;
@@ -42,7 +42,6 @@ contract ProratedFactory is Owned {
     // ============ CONSTRUCTOR ============
     /// @notice Initializes the factory with an owner and fixed Proswap endpoints
     /// @param _owner The owner address
-    /// @param _bytecodeHolder The PoolBytecodeHolder contract storing ProratedPool bytecode
     /// @param _proswapFactory The Proswap factory address
     /// @param _proswapRouter The Proswap router address
     /// @param _tokenDeployer Token deployer
@@ -54,7 +53,6 @@ contract ProratedFactory is Owned {
     /// @param _prolendDeployer Prolend deployer
     constructor(
         address _owner,
-        address _bytecodeHolder,
         address _proswapFactory,
         address _proswapRouter,
         address _tokenDeployer,
@@ -65,7 +63,9 @@ contract ProratedFactory is Owned {
         address _treasuryDeployer,
         address _prolendDeployer
     ) Owned(_owner) {
-        bytecodeHolder = ProratedPoolBytecode(_bytecodeHolder);
+        // Store ProratedPool bytecode using SSTORE2
+        poolBytecodePointer = SSTORE2.write(type(ProratedPool).creationCode);
+
         proswapFactory = _proswapFactory;
         proswapRouter = _proswapRouter;
         tokenDeployer = _tokenDeployer;
@@ -89,8 +89,8 @@ contract ProratedFactory is Owned {
         // Step 1: Validate configuration parameters (moved from pool constructor)
         _validatePoolConfig(config);
 
-        // Step 2: Get bytecode from trusted holder (automatically stays in sync)
-        bytes memory poolCreationCode = bytecodeHolder.POOL_CREATION_CODE();
+        // Step 2: Get bytecode from SSTORE2 (automatically stays in sync)
+        bytes memory poolCreationCode = SSTORE2.read(poolBytecodePointer);
 
         // Step 3: Build constructor args
         bytes memory constructorArgs = abi.encode(
