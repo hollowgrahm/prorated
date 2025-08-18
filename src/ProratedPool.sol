@@ -18,7 +18,7 @@ import {ILiquidityDeployer} from "./interfaces/ILiquidityDeployer.sol";
 import {IVeNFTDeployer} from "./interfaces/IVeNFTDeployer.sol";
 import {IGovernorDeployer} from "./interfaces/IGovernorDeployer.sol";
 import {ITreasuryDeployer} from "./interfaces/ITreasuryDeployer.sol";
-import {IProlendFactory} from "./interfaces/IProlendFactory.sol";
+import {IProlendDeployer} from "./interfaces/IProlendDeployer.sol";
 import {ProratedToken} from "./ProratedToken.sol";
 import {ProratedVeNFT} from "./ProratedVeNFT.sol";
 import {ProratedGovernor} from "./ProratedGovernor.sol";
@@ -199,7 +199,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
         veNFTDeployer = IVeNFTDeployer(_veNFTDeployer);
         governorDeployer = IGovernorDeployer(_governorDeployer);
         treasuryDeployer = ITreasuryDeployer(_treasuryDeployer);
-        prolendDeployer = IProlendFactory(_prolendDeployer);
+        prolendDeployer = IProlendDeployer(_prolendDeployer);
 
         // Step 6: Set allocation percentages for developer, treasury, and dao
         developerPercent = config.developerPercent;
@@ -405,7 +405,7 @@ contract ProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     function deployProlend() external {
         if (prolendPair80 != address(0)) revert ProlendAlreadyDeployed();
         if (proswapPair == address(0)) revert PairNotDeployed();
-        prolendDeployer.deployProlendPairs(address(this));
+        prolendDeployer.deployProlend(address(this));
     }
 
     // ============ ONLY-DEPLOYER HOOKS ============

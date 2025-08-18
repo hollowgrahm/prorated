@@ -15,9 +15,13 @@ interface IProlendFactory {
     );
 
     // ===== Deployment Functions =====
-    /// @notice Deploys two lending pairs for a Proswap 80/20 pool (called by ProratedPool)
+    /// @notice Deploys two lending pairs for a Proswap 80/20 pool (called by ProlendDeployer)
     /// @param pool The ProratedPool address (for admin identification)
-    function deployProlendPairs(address pool) external;
+    /// @return prolendPair80 Address of the lending pair with token80 as asset
+    /// @return prolendPair20 Address of the lending pair with token20 as asset
+    function deployProlendPairs(
+        address pool
+    ) external returns (address prolendPair80, address prolendPair20);
 
     /// @notice Deploys two lending pairs for a Proswap 80/20 pool (public interface)
     /// @param proswapPair The address of the Proswap pair (80/20 pool)

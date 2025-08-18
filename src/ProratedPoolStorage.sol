@@ -14,7 +14,7 @@ import {ILiquidityDeployer} from "./interfaces/ILiquidityDeployer.sol";
 import {IVeNFTDeployer} from "./interfaces/IVeNFTDeployer.sol";
 import {IGovernorDeployer} from "./interfaces/IGovernorDeployer.sol";
 import {ITreasuryDeployer} from "./interfaces/ITreasuryDeployer.sol";
-import {IProlendFactory} from "./interfaces/IProlendFactory.sol";
+import {IProlendDeployer} from "./interfaces/IProlendDeployer.sol";
 
 contract ProratedPoolStorage {
     string public tokenName;
@@ -44,7 +44,7 @@ contract ProratedPoolStorage {
     IVeNFTDeployer public veNFTDeployer;
     IGovernorDeployer public governorDeployer;
     ITreasuryDeployer public treasuryDeployer;
-    IProlendFactory public prolendDeployer;
+    IProlendDeployer public prolendDeployer;
 
     address public developer;
     uint256 public totalContributions;

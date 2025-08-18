@@ -34,8 +34,12 @@ contract ProlendFactory is IProlendFactory {
 
     /// @notice Deploys two lending pairs for a Proswap 80/20 pool
     /// @param pool The ProratedPool address (for admin identification)
-    /// @dev Called by ProratedPool after successful fundraising
-    function deployProlendPairs(address pool) external {
+    /// @dev Called by ProlendDeployer after successful fundraising
+    /// @return prolendPair80 Address of the lending pair with token80 as asset
+    /// @return prolendPair20 Address of the lending pair with token20 as asset
+    function deployProlendPairs(
+        address pool
+    ) external returns (address prolendPair80, address prolendPair20) {
         IProratedPool p = IProratedPool(pool);
 
         // Get the Proswap pair from the pool
@@ -54,14 +58,14 @@ contract ProlendFactory is IProlendFactory {
         address token20 = pair.token20();
 
         // Deploy first lending pair: Token80 as asset, Token20 as collateral
-        ProlendPair prolendPair80 = new ProlendPair(
+        ProlendPair pair80Contract = new ProlendPair(
             token80, // asset token
             token20, // collateral token
             proswapPair // price oracle (Proswap pair)
         );
 
         // Deploy second lending pair: Token20 as asset, Token80 as collateral
-        ProlendPair prolendPair20 = new ProlendPair(
+        ProlendPair pair20Contract = new ProlendPair(
             token20, // asset token
             token80, // collateral token
             proswapPair // price oracle (Proswap pair)
@@ -69,33 +73,34 @@ contract ProlendFactory is IProlendFactory {
 
         // Store the addresses
         prolendPairs[proswapPair] = PairAddresses({
-            prolendPair80: address(prolendPair80),
-            prolendPair20: address(prolendPair20)
+            prolendPair80: address(pair80Contract),
+            prolendPair20: address(pair20Contract)
         });
 
         // Store reverse mappings
-        proswapForProlend[address(prolendPair80)] = proswapPair;
-        proswapForProlend[address(prolendPair20)] = proswapPair;
+        proswapForProlend[address(pair80Contract)] = proswapPair;
+        proswapForProlend[address(pair20Contract)] = proswapPair;
 
         // Store admin (pool developer)
         address admin = p.developer();
-        pairAdmins[address(prolendPair80)] = admin;
-        pairAdmins[address(prolendPair20)] = admin;
+        pairAdmins[address(pair80Contract)] = admin;
+        pairAdmins[address(pair20Contract)] = admin;
 
         // Add to global tracking
-        allPairs.push(address(prolendPair80));
-        allPairs.push(address(prolendPair20));
+        allPairs.push(address(pair80Contract));
+        allPairs.push(address(pair20Contract));
 
-        // Notify the pool about deployment
-        p.setProlendPairs(address(prolendPair80), address(prolendPair20));
+        // Return the addresses for the deployer to use
+        prolendPair80 = address(pair80Contract);
+        prolendPair20 = address(pair20Contract);
 
         // Emit deployment event
         emit ProlendPairDeployed(
             proswapPair,
             token80,
             token20,
-            address(prolendPair80),
-            address(prolendPair20),
+            prolendPair80,
+            prolendPair20,
             admin
         );
     }

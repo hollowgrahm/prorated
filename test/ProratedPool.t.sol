@@ -13,6 +13,8 @@ import "../src/deployers/LiquidityDeployer.sol";
 import "../src/deployers/VeNFTDeployer.sol";
 import "../src/deployers/GovernorDeployer.sol";
 import "../src/deployers/TreasuryDeployer.sol";
+import "../src/deployers/ProlendDeployer.sol";
+import "../src/prolend/ProlendFactory.sol";
 import "./mocks/ERC20Mintable.sol";
 import "../src/interfaces/IProratedToken.sol";
 import "../src/interfaces/IProswapFactory.sol";
@@ -29,6 +31,8 @@ contract ProratedPoolTest is Test {
     VeNFTDeployer veNFTDeployer;
     GovernorDeployer governorDeployer;
     TreasuryDeployer treasuryDeployer;
+    ProlendDeployer prolendDeployer;
+    ProlendFactory prolendFactory;
     ERC20Mintable fundingToken;
     ProratedToken proratedToken;
     ProratedVeNFT venftContract;
@@ -62,6 +66,8 @@ contract ProratedPoolTest is Test {
         veNFTDeployer = new VeNFTDeployer();
         governorDeployer = new GovernorDeployer();
         treasuryDeployer = new TreasuryDeployer();
+        prolendFactory = new ProlendFactory();
+        prolendDeployer = new ProlendDeployer(address(prolendFactory));
 
         // Deploy ProratedPool
         ProratedPool.PoolConfig memory config = ProratedPool.PoolConfig({
@@ -87,7 +93,8 @@ contract ProratedPoolTest is Test {
             address(liquidityDeployer),
             address(veNFTDeployer),
             address(governorDeployer),
-            address(treasuryDeployer)
+            address(treasuryDeployer),
+            address(prolendDeployer)
         );
 
         // Mint tokens to users
@@ -1258,6 +1265,8 @@ contract ModifierTests is Test {
     VeNFTDeployer veNFTDeployer;
     GovernorDeployer governorDeployer;
     TreasuryDeployer treasuryDeployer;
+    ProlendDeployer prolendDeployer;
+    ProlendFactory prolendFactory;
 
     address public owner = address(this);
     address public user1 = address(0x1);
@@ -1284,6 +1293,8 @@ contract ModifierTests is Test {
         veNFTDeployer = new VeNFTDeployer();
         governorDeployer = new GovernorDeployer();
         treasuryDeployer = new TreasuryDeployer();
+        prolendFactory = new ProlendFactory();
+        prolendDeployer = new ProlendDeployer(address(prolendFactory));
 
         // Deploy ProratedPool
         ProratedPool.PoolConfig memory config = ProratedPool.PoolConfig({
@@ -1309,7 +1320,8 @@ contract ModifierTests is Test {
             address(liquidityDeployer),
             address(veNFTDeployer),
             address(governorDeployer),
-            address(treasuryDeployer)
+            address(treasuryDeployer),
+            address(prolendDeployer)
         );
 
         // Mint tokens to users
