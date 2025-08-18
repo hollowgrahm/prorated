@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 import {Test} from "lib/forge-std/src/Test.sol";
 import {ProlendDeployer} from "../src/deployers/ProlendDeployer.sol";
 import {ProlendFactory} from "../src/prolend/ProlendFactory.sol";
+import {ProlendPairBytecode} from "../src/prolend/ProlendPairBytecode.sol";
 import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
 
 // Mock contracts for testing
@@ -76,6 +77,7 @@ contract MockProratedPool {
 contract ProlendDeployerTest is Test {
     ProlendDeployer deployer;
     ProlendFactory factory;
+    ProlendPairBytecode bytecodeHolder;
     MockERC20 token80;
     MockERC20 token20;
     MockProswapPair proswapPair;
@@ -89,7 +91,8 @@ contract ProlendDeployerTest is Test {
         proswapPair = new MockProswapPair(address(token80), address(token20));
 
         // Deploy factory and deployer
-        factory = new ProlendFactory();
+        bytecodeHolder = new ProlendPairBytecode();
+        factory = new ProlendFactory(address(bytecodeHolder));
         deployer = new ProlendDeployer(address(factory));
 
         // Deploy mock pool

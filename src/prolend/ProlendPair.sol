@@ -10,7 +10,8 @@ import {VaultAccount, ProlendVault} from "./ProlendVault.sol";
 import {ProlendInterestRate} from "./ProlendInterestRate.sol";
 import {IProlendPair} from "../interfaces/IProlendPair.sol";
 import {IProswapPair} from "../interfaces/IProswapPair.sol";
-import {IProswapRouter} from "../interfaces/IProswapRouter.sol";
+// COMMENTED OUT: Leverage mechanics disabled for contract size optimization
+// import {IProswapRouter} from "../interfaces/IProswapRouter.sol";
 import {IERC20} from "../interfaces/IERC20.sol";
 
 /// @title ProlendPair
@@ -90,11 +91,12 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         uint256 debtRepaid
     );
     event InterestAccrued(uint256 interestEarned, uint256 newRate);
-    event LeveragedPosition(
-        address indexed user,
-        uint256 borrowAmount,
-        uint256 finalCollateral
-    );
+    // COMMENTED OUT: Leverage mechanics disabled for contract size optimization
+    // event LeveragedPosition(
+    //     address indexed user,
+    //     uint256 borrowAmount,
+    //     uint256 finalCollateral
+    // );
 
     // ===== Errors =====
 
@@ -108,7 +110,8 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
     error InvalidAmount();
     error InvalidAddress();
     error LiquidationFailed();
-    error SlippageTooHigh(uint256 expected, uint256 actual);
+    // COMMENTED OUT: Leverage mechanics disabled for contract size optimization
+    // error SlippageTooHigh(uint256 expected, uint256 actual);
 
     // ===== Constructor =====
 
@@ -320,13 +323,8 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         // Calculate shares to burn
         shares = convertToShares(assets);
 
-        // Check allowance if caller is not owner
-        if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender];
-            if (allowed != type(uint256).max) {
-                allowance[owner][msg.sender] = allowed - shares;
-            }
-        }
+        // Check and update allowance if needed
+        _checkAndUpdateAllowance(owner, shares);
 
         // Effects: Update vault accounting
         assetVault.removeFromVault(shares, assets);
@@ -360,13 +358,8 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
         // Calculate assets to withdraw
         assets = convertToAssets(shares);
 
-        // Check allowance if caller is not owner
-        if (msg.sender != owner) {
-            uint256 allowed = allowance[owner][msg.sender];
-            if (allowed != type(uint256).max) {
-                allowance[owner][msg.sender] = allowed - shares;
-            }
-        }
+        // Check and update allowance if needed
+        _checkAndUpdateAllowance(owner, shares);
 
         // Effects: Update vault accounting
         assetVault.removeFromVault(shares, assets);
@@ -587,120 +580,121 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
     }
 
     // ===== Leveraged Positions =====
+    // COMMENTED OUT: Leverage mechanics disabled for contract size optimization
 
-    /// @notice Open a leveraged position by borrowing and swapping for more collateral
-    /// @param borrowAmount Amount of asset tokens to borrow
-    /// @param initialCollateral Amount of initial collateral to add
-    /// @param minCollateralOut Minimum collateral tokens expected from swap (slippage protection)
-    /// @return totalCollateralAdded Total collateral tokens added to user's position
-    function leveragedPosition(
-        uint256 borrowAmount,
-        uint256 initialCollateral,
-        uint256 minCollateralOut
-    ) external nonReentrant returns (uint256 totalCollateralAdded) {
-        // Accrue interest before any operation
-        _addInterest();
+    // /// @notice Open a leveraged position by borrowing and swapping for more collateral
+    // /// @param borrowAmount Amount of asset tokens to borrow
+    // /// @param initialCollateral Amount of initial collateral to add
+    // /// @param minCollateralOut Minimum collateral tokens expected from swap (slippage protection)
+    // /// @return totalCollateralAdded Total collateral tokens added to user's position
+    // function leveragedPosition(
+    //     uint256 borrowAmount,
+    //     uint256 initialCollateral,
+    //     uint256 minCollateralOut
+    // ) external nonReentrant returns (uint256 totalCollateralAdded) {
+    //     // Accrue interest before any operation
+    //     _addInterest();
 
-        // Validate inputs
-        _validateAmount(borrowAmount);
-        _validateAmount(minCollateralOut);
+    //     // Validate inputs
+    //     _validateAmount(borrowAmount);
+    //     _validateAmount(minCollateralOut);
 
-        // Check liquidity for borrow
-        if (borrowAmount > assetVault.amount) revert InsufficientLiquidity();
+    //     // Check liquidity for borrow
+    //     if (borrowAmount > assetVault.amount) revert InsufficientLiquidity();
 
-        // Add initial collateral if provided
-        if (initialCollateral > 0) {
-            // Transfer initial collateral from user
-            collateralToken.safeTransferFrom(
-                msg.sender,
-                address(this),
-                initialCollateral
-            );
+    //     // Add initial collateral if provided
+    //     if (initialCollateral > 0) {
+    //         // Transfer initial collateral from user
+    //         collateralToken.safeTransferFrom(
+    //             msg.sender,
+    //             address(this),
+    //             initialCollateral
+    //         );
 
-            // Effects: Update user's collateral balance
-            userCollateralBalance[msg.sender] += initialCollateral;
-            totalCollateral += initialCollateral;
+    //         // Effects: Update user's collateral balance
+    //         userCollateralBalance[msg.sender] += initialCollateral;
+    //         totalCollateral += initialCollateral;
 
-            emit AddCollateral(msg.sender, initialCollateral);
-        }
+    //         emit AddCollateral(msg.sender, initialCollateral);
+    //     }
 
-        // Borrow asset tokens (they stay in this contract for swapping)
-        uint256 borrowShares = borrowVault.toShares(borrowAmount, false);
+    //     // Borrow asset tokens (they stay in this contract for swapping)
+    //     uint256 borrowShares = borrowVault.toShares(borrowAmount, false);
 
-        // Effects: Update borrow accounting
-        borrowVault.addToVault(borrowShares, borrowAmount);
-        userBorrowShares[msg.sender] += borrowShares;
+    //     // Effects: Update borrow accounting
+    //     borrowVault.addToVault(borrowShares, borrowAmount);
+    //     userBorrowShares[msg.sender] += borrowShares;
 
-        // Effects: Update asset vault (remove borrowed assets)
-        assetVault.removeFromVault(0, borrowAmount);
+    //     // Effects: Update asset vault (remove borrowed assets)
+    //     assetVault.removeFromVault(0, borrowAmount);
 
-        // Interactions: Swap borrowed assets for collateral via Proswap
-        uint256 collateralReceived = _swapAssetForCollateral(
-            borrowAmount,
-            minCollateralOut
-        );
+    //     // Interactions: Swap borrowed assets for collateral via Proswap
+    //     uint256 collateralReceived = _swapAssetForCollateral(
+    //         borrowAmount,
+    //         minCollateralOut
+    //     );
 
-        // Effects: Add swapped collateral to user's position
-        userCollateralBalance[msg.sender] += collateralReceived;
-        totalCollateral += collateralReceived;
+    //     // Effects: Add swapped collateral to user's position
+    //     userCollateralBalance[msg.sender] += collateralReceived;
+    //     totalCollateral += collateralReceived;
 
-        // Check that user remains solvent after leveraged position
-        if (!_isSolvent(msg.sender)) revert UserInsolvent();
+    //     // Check that user remains solvent after leveraged position
+    //     if (!_isSolvent(msg.sender)) revert UserInsolvent();
 
-        totalCollateralAdded = initialCollateral + collateralReceived;
+    //     totalCollateralAdded = initialCollateral + collateralReceived;
 
-        emit LeveragedPosition(msg.sender, borrowAmount, totalCollateralAdded);
-    }
+    //     emit LeveragedPosition(msg.sender, borrowAmount, totalCollateralAdded);
+    // }
 
-    /// @notice Internal function to swap asset tokens for collateral via Proswap
-    /// @param assetAmount Amount of asset tokens to swap
-    /// @param minCollateralOut Minimum collateral expected (slippage protection)
-    /// @return collateralReceived Amount of collateral tokens received
-    function _swapAssetForCollateral(
-        uint256 assetAmount,
-        uint256 minCollateralOut
-    ) internal returns (uint256 collateralReceived) {
-        // Get initial balances for verification
-        uint256 initialCollateralBalance = collateralToken.balanceOf(
-            address(this)
-        );
+    // /// @notice Internal function to swap asset tokens for collateral via Proswap
+    // /// @param assetAmount Amount of asset tokens to swap
+    // /// @param minCollateralOut Minimum collateral expected (slippage protection)
+    // /// @return collateralReceived Amount of collateral tokens received
+    // function _swapAssetForCollateral(
+    //     uint256 assetAmount,
+    //     uint256 minCollateralOut
+    // ) internal returns (uint256 collateralReceived) {
+    //     // Get initial balances for verification
+    //     uint256 initialCollateralBalance = collateralToken.balanceOf(
+    //         address(this)
+    //     );
 
-        // Get current reserves to determine which token gets which amount
-        OracleData memory oracle = _getOracleData();
+    //     // Get current reserves to determine which token gets which amount
+    //     OracleData memory oracle = _getOracleData();
 
-        // Determine swap direction and amounts
-        uint256 amount0Out;
-        uint256 amount1Out;
+    //     // Determine swap direction and amounts
+    //     uint256 amount0Out;
+    //     uint256 amount1Out;
 
-        if (address(asset) == oracle.token80) {
-            amount0Out = 0;
-            amount1Out =
-                (assetAmount * uint256(oracle.reserve20)) /
-                (uint256(oracle.reserve80) + assetAmount);
-        } else {
-            amount0Out =
-                (assetAmount * uint256(oracle.reserve80)) /
-                (uint256(oracle.reserve20) + assetAmount);
-            amount1Out = 0;
-        }
+    //     if (address(asset) == oracle.token80) {
+    //         amount0Out = 0;
+    //         amount1Out =
+    //             (assetAmount * uint256(oracle.reserve20)) /
+    //             (uint256(oracle.reserve80) + assetAmount);
+    //     } else {
+    //         amount0Out =
+    //             (assetAmount * uint256(oracle.reserve80)) /
+    //             (uint256(oracle.reserve20) + assetAmount);
+    //         amount1Out = 0;
+    //     }
 
-        // Transfer asset tokens to the pair
-        asset.safeTransfer(address(proswapPair), assetAmount);
+    //     // Transfer asset tokens to the pair
+    //     asset.safeTransfer(address(proswapPair), assetAmount);
 
-        // Perform the swap
-        proswapPair.swap(amount0Out, amount1Out, address(this), "");
+    //     // Perform the swap
+    //     proswapPair.swap(amount0Out, amount1Out, address(this), "");
 
-        // Verify collateral received
-        uint256 finalCollateralBalance = collateralToken.balanceOf(
-            address(this)
-        );
-        collateralReceived = finalCollateralBalance - initialCollateralBalance;
+    //     // Verify collateral received
+    //     uint256 finalCollateralBalance = collateralToken.balanceOf(
+    //         address(this)
+    //     );
+    //     collateralReceived = finalCollateralBalance - initialCollateralBalance;
 
-        // Check slippage protection
-        if (collateralReceived < minCollateralOut) {
-            revert SlippageTooHigh(minCollateralOut, collateralReceived);
-        }
-    }
+    //     // Check slippage protection
+    //     if (collateralReceived < minCollateralOut) {
+    //         revert SlippageTooHigh(minCollateralOut, collateralReceived);
+    //     }
+    // }
 
     // ===== Interest Accrual =====
 
@@ -847,6 +841,18 @@ contract ProlendPair is ERC4626, ReentrancyGuard {
     function _validateSolvencyIfBorrowing(address user) internal view {
         if (userBorrowShares[user] > 0) {
             if (!_isSolvent(user)) revert UserInsolvent();
+        }
+    }
+
+    /// @notice Checks and updates allowance for ERC4626 operations
+    /// @param owner The owner of the shares
+    /// @param shares The number of shares being spent
+    function _checkAndUpdateAllowance(address owner, uint256 shares) internal {
+        if (msg.sender != owner) {
+            uint256 allowed = allowance[owner][msg.sender];
+            if (allowed != type(uint256).max) {
+                allowance[owner][msg.sender] = allowed - shares;
+            }
         }
     }
 

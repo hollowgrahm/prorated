@@ -4,13 +4,16 @@ pragma solidity ^0.8.10;
 import {IProlendFactory} from "../interfaces/IProlendFactory.sol";
 import {IProratedPool} from "../interfaces/IProratedPool.sol";
 import {IProswapPair} from "../interfaces/IProswapPair.sol";
-import {ProlendPair} from "./ProlendPair.sol";
+import {ProlendPairBytecode} from "./ProlendPairBytecode.sol";
 
 /// @title ProlendFactory
 /// @notice Factory for deploying Prolend lending pairs for Proswap 80/20 pools
 /// @dev Creates two lending markets: Token80/Token20 and Token20/Token80
 contract ProlendFactory is IProlendFactory {
     // ===== Storage =====
+
+    /// @notice Bytecode holder for ProlendPair deployment
+    ProlendPairBytecode public immutable bytecodeHolder;
 
     /// @notice Mapping from Proswap pair to deployed Prolend pairs
     mapping(address => PairAddresses) public prolendPairs;
@@ -28,6 +31,15 @@ contract ProlendFactory is IProlendFactory {
     struct PairAddresses {
         address prolendPair80; // Token80 as asset, Token20 as collateral
         address prolendPair20; // Token20 as asset, Token80 as collateral
+    }
+
+    // ===== Constructor =====
+
+    /// @notice Initialize the factory with the bytecode holder
+    /// @param _bytecodeHolder The ProlendPairBytecode contract
+    constructor(address _bytecodeHolder) {
+        require(_bytecodeHolder != address(0), "Invalid bytecode holder");
+        bytecodeHolder = ProlendPairBytecode(_bytecodeHolder);
     }
 
     // ===== Core Deployment Function =====
@@ -58,41 +70,43 @@ contract ProlendFactory is IProlendFactory {
         address token20 = pair.token20();
 
         // Deploy first lending pair: Token80 as asset, Token20 as collateral
-        ProlendPair pair80Contract = new ProlendPair(
+        address pair80Contract = _deployProlendPair(
             token80, // asset token
             token20, // collateral token
-            proswapPair // price oracle (Proswap pair)
+            proswapPair, // price oracle (Proswap pair)
+            keccak256(abi.encodePacked(proswapPair, "80")) // salt
         );
 
         // Deploy second lending pair: Token20 as asset, Token80 as collateral
-        ProlendPair pair20Contract = new ProlendPair(
+        address pair20Contract = _deployProlendPair(
             token20, // asset token
             token80, // collateral token
-            proswapPair // price oracle (Proswap pair)
+            proswapPair, // price oracle (Proswap pair)
+            keccak256(abi.encodePacked(proswapPair, "20")) // salt
         );
 
         // Store the addresses
         prolendPairs[proswapPair] = PairAddresses({
-            prolendPair80: address(pair80Contract),
-            prolendPair20: address(pair20Contract)
+            prolendPair80: pair80Contract,
+            prolendPair20: pair20Contract
         });
 
         // Store reverse mappings
-        proswapForProlend[address(pair80Contract)] = proswapPair;
-        proswapForProlend[address(pair20Contract)] = proswapPair;
+        proswapForProlend[pair80Contract] = proswapPair;
+        proswapForProlend[pair20Contract] = proswapPair;
 
         // Store admin (pool developer)
         address admin = p.developer();
-        pairAdmins[address(pair80Contract)] = admin;
-        pairAdmins[address(pair20Contract)] = admin;
+        pairAdmins[pair80Contract] = admin;
+        pairAdmins[pair20Contract] = admin;
 
         // Add to global tracking
-        allPairs.push(address(pair80Contract));
-        allPairs.push(address(pair20Contract));
+        allPairs.push(pair80Contract);
+        allPairs.push(pair20Contract);
 
         // Return the addresses for the deployer to use
-        prolendPair80 = address(pair80Contract);
-        prolendPair20 = address(pair20Contract);
+        prolendPair80 = pair80Contract;
+        prolendPair20 = pair20Contract;
 
         // Emit deployment event
         emit ProlendPairDeployed(
@@ -131,20 +145,20 @@ contract ProlendFactory is IProlendFactory {
         address token20 = pair.token20();
 
         // Deploy first lending pair: Token80 as asset, Token20 as collateral
-        ProlendPair prolendPair80Contract = new ProlendPair(
+        prolendPair80 = _deployProlendPair(
             token80, // asset token
             token20, // collateral token
-            proswapPair // price oracle (Proswap pair)
+            proswapPair, // price oracle (Proswap pair)
+            keccak256(abi.encodePacked(proswapPair, admin, "80")) // salt
         );
-        prolendPair80 = address(prolendPair80Contract);
 
         // Deploy second lending pair: Token20 as asset, Token80 as collateral
-        ProlendPair prolendPair20Contract = new ProlendPair(
+        prolendPair20 = _deployProlendPair(
             token20, // asset token
             token80, // collateral token
-            proswapPair // price oracle (Proswap pair)
+            proswapPair, // price oracle (Proswap pair)
+            keccak256(abi.encodePacked(proswapPair, admin, "20")) // salt
         );
-        prolendPair20 = address(prolendPair20Contract);
 
         // Store the addresses
         prolendPairs[proswapPair] = PairAddresses({
@@ -229,5 +243,42 @@ contract ProlendFactory is IProlendFactory {
         address prolendPair
     ) external view returns (address admin) {
         return pairAdmins[prolendPair];
+    }
+
+    // ===== Internal Functions =====
+
+    /// @notice Deploy a ProlendPair using CREATE2
+    /// @param assetToken The asset token address
+    /// @param collateralToken The collateral token address
+    /// @param proswapPair The Proswap pair address for pricing
+    /// @param salt The salt for CREATE2 deployment
+    /// @return pair The deployed pair address
+    function _deployProlendPair(
+        address assetToken,
+        address collateralToken,
+        address proswapPair,
+        bytes32 salt
+    ) internal returns (address pair) {
+        // Get bytecode from holder
+        bytes memory pairCreationCode = bytecodeHolder.PAIR_CREATION_CODE();
+
+        // Build constructor arguments
+        bytes memory constructorArgs = abi.encode(
+            assetToken,
+            collateralToken,
+            proswapPair
+        );
+
+        // Combine creation code with constructor arguments
+        bytes memory initcode = abi.encodePacked(
+            pairCreationCode,
+            constructorArgs
+        );
+
+        // Deploy using CREATE2
+        assembly {
+            pair := create2(0, add(initcode, 32), mload(initcode), salt)
+        }
+        require(pair != address(0), "CREATE2_FAILED");
     }
 }

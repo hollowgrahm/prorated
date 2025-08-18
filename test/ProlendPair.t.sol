@@ -1543,157 +1543,158 @@ contract ProlendPairTest is Test {
     //     );
     // }
 
-    function testLeveragedPositionBasic() public {
-        uint256 depositAmount = 1000 ether;
-        uint256 initialCollateral = 100 ether;
-        uint256 borrowAmount = 50 ether; // More conservative borrowing
-        uint256 minCollateralOut = 8 ether; // Realistic expectation based on AMM math
+    // COMMENTED OUT: Leverage mechanics disabled for contract size optimization
+    // function testLeveragedPositionBasic() public {
+    //     uint256 depositAmount = 1000 ether;
+    //     uint256 initialCollateral = 100 ether;
+    //     uint256 borrowAmount = 50 ether; // More conservative borrowing
+    //     uint256 minCollateralOut = 8 ether; // Realistic expectation based on AMM math
 
-        // Setup: User2 deposits liquidity for borrowing
-        vm.prank(user2);
-        assetToken.approve(address(prolendPair), depositAmount);
-        vm.prank(user2);
-        prolendPair.deposit(depositAmount, user2);
+    //     // Setup: User2 deposits liquidity for borrowing
+    //     vm.prank(user2);
+    //     assetToken.approve(address(prolendPair), depositAmount);
+    //     vm.prank(user2);
+    //     prolendPair.deposit(depositAmount, user2);
 
-        // User1 opens leveraged position
-        vm.prank(user1);
-        collateralToken.approve(address(prolendPair), initialCollateral);
-        vm.prank(user1);
-        uint256 totalCollateralAdded = prolendPair.leveragedPosition(
-            borrowAmount,
-            initialCollateral,
-            minCollateralOut
-        );
+    //     // User1 opens leveraged position
+    //     vm.prank(user1);
+    //     collateralToken.approve(address(prolendPair), initialCollateral);
+    //     vm.prank(user1);
+    //     uint256 totalCollateralAdded = prolendPair.leveragedPosition(
+    //         borrowAmount,
+    //         initialCollateral,
+    //         minCollateralOut
+    //     );
 
-        // Verify results
-        assertTrue(
-            totalCollateralAdded > initialCollateral,
-            "Should add more collateral than initial"
-        );
-        assertEq(
-            prolendPair.userBorrowShares(user1),
-            borrowAmount,
-            "Should have borrowed the specified amount"
-        );
-        assertGt(
-            prolendPair.userCollateralBalance(user1),
-            initialCollateral,
-            "Should have more collateral after swap"
-        );
-        assertTrue(
-            prolendPair.isSolvent(user1),
-            "User should remain solvent after leveraged position"
-        );
-    }
+    //     // Verify results
+    //     assertTrue(
+    //         totalCollateralAdded > initialCollateral,
+    //         "Should add more collateral than initial"
+    //     );
+    //     assertEq(
+    //         prolendPair.userBorrowShares(user1),
+    //         borrowAmount,
+    //         "Should have borrowed the specified amount"
+    //     );
+    //     assertGt(
+    //         prolendPair.userCollateralBalance(user1),
+    //         initialCollateral,
+    //         "Should have more collateral after swap"
+    //     );
+    //     assertTrue(
+    //         prolendPair.isSolvent(user1),
+    //         "User should remain solvent after leveraged position"
+    //     );
+    // }
 
-    function testLeveragedPositionInvalidInputs() public {
-        uint256 depositAmount = 1000 ether;
+    // function testLeveragedPositionInvalidInputs() public {
+    //     uint256 depositAmount = 1000 ether;
 
-        // Setup liquidity
-        vm.prank(user2);
-        assetToken.approve(address(prolendPair), depositAmount);
-        vm.prank(user2);
-        prolendPair.deposit(depositAmount, user2);
+    //     // Setup liquidity
+    //     vm.prank(user2);
+    //     assetToken.approve(address(prolendPair), depositAmount);
+    //     vm.prank(user2);
+    //     prolendPair.deposit(depositAmount, user2);
 
-        // Test zero borrow amount
-        vm.expectRevert(
-            abi.encodeWithSelector(ProlendPair.InvalidAmount.selector)
-        );
-        vm.prank(user1);
-        prolendPair.leveragedPosition(0, 100 ether, 50 ether);
+    //     // Test zero borrow amount
+    //     vm.expectRevert(
+    //         abi.encodeWithSelector(ProlendPair.InvalidAmount.selector)
+    //     );
+    //     vm.prank(user1);
+    //     prolendPair.leveragedPosition(0, 100 ether, 50 ether);
 
-        // Test zero min collateral out
-        vm.expectRevert(
-            abi.encodeWithSelector(ProlendPair.InvalidAmount.selector)
-        );
-        vm.prank(user1);
-        prolendPair.leveragedPosition(100 ether, 100 ether, 0);
-    }
+    //     // Test zero min collateral out
+    //     vm.expectRevert(
+    //         abi.encodeWithSelector(ProlendPair.InvalidAmount.selector)
+    //     );
+    //     vm.prank(user1);
+    //     prolendPair.leveragedPosition(100 ether, 100 ether, 0);
+    // }
 
-    function testLeveragedPositionInsufficientLiquidity() public {
-        uint256 depositAmount = 100 ether;
-        uint256 borrowAmount = 200 ether; // More than available
+    // function testLeveragedPositionInsufficientLiquidity() public {
+    //     uint256 depositAmount = 100 ether;
+    //     uint256 borrowAmount = 200 ether; // More than available
 
-        // Setup insufficient liquidity
-        vm.prank(user2);
-        assetToken.approve(address(prolendPair), depositAmount);
-        vm.prank(user2);
-        prolendPair.deposit(depositAmount, user2);
+    //     // Setup insufficient liquidity
+    //     vm.prank(user2);
+    //     assetToken.approve(address(prolendPair), depositAmount);
+    //     vm.prank(user2);
+    //     prolendPair.deposit(depositAmount, user2);
 
-        // Try to borrow more than available
-        vm.expectRevert(
-            abi.encodeWithSelector(ProlendPair.InsufficientLiquidity.selector)
-        );
-        vm.prank(user1);
-        prolendPair.leveragedPosition(borrowAmount, 100 ether, 50 ether);
-    }
+    //     // Try to borrow more than available
+    //     vm.expectRevert(
+    //         abi.encodeWithSelector(ProlendPair.InsufficientLiquidity.selector)
+    //     );
+    //     vm.prank(user1);
+    //     prolendPair.leveragedPosition(borrowAmount, 100 ether, 50 ether);
+    // }
 
-    function testLeveragedPositionSlippageProtection() public {
-        uint256 depositAmount = 1000 ether;
-        uint256 initialCollateral = 100 ether;
-        uint256 borrowAmount = 50 ether;
-        uint256 minCollateralOut = 1000 ether; // Unrealistically high expectation
+    // function testLeveragedPositionSlippageProtection() public {
+    //     uint256 depositAmount = 1000 ether;
+    //     uint256 initialCollateral = 100 ether;
+    //     uint256 borrowAmount = 50 ether;
+    //     uint256 minCollateralOut = 1000 ether; // Unrealistically high expectation
 
-        // Setup liquidity
-        vm.prank(user2);
-        assetToken.approve(address(prolendPair), depositAmount);
-        vm.prank(user2);
-        prolendPair.deposit(depositAmount, user2);
+    //     // Setup liquidity
+    //     vm.prank(user2);
+    //     assetToken.approve(address(prolendPair), depositAmount);
+    //     vm.prank(user2);
+    //     prolendPair.deposit(depositAmount, user2);
 
-        // Should revert due to slippage protection
-        vm.prank(user1);
-        collateralToken.approve(address(prolendPair), initialCollateral);
-        vm.expectRevert(); // Should revert with SlippageTooHigh
-        vm.prank(user1);
-        prolendPair.leveragedPosition(
-            borrowAmount,
-            initialCollateral,
-            minCollateralOut
-        );
-    }
+    //     // Should revert due to slippage protection
+    //     vm.prank(user1);
+    //     collateralToken.approve(address(prolendPair), initialCollateral);
+    //     vm.expectRevert(); // Should revert with SlippageTooHigh
+    //     vm.prank(user1);
+    //     prolendPair.leveragedPosition(
+    //         borrowAmount,
+    //         initialCollateral,
+    //         minCollateralOut
+    //     );
+    // }
 
-    function testLeveragedPositionWithoutInitialCollateralFails() public {
-        uint256 depositAmount = 1000 ether;
-        uint256 borrowAmount = 50 ether;
-        uint256 minCollateralOut = 1 ether;
+    // function testLeveragedPositionWithoutInitialCollateralFails() public {
+    //     uint256 depositAmount = 1000 ether;
+    //     uint256 borrowAmount = 50 ether;
+    //     uint256 minCollateralOut = 1 ether;
 
-        // Setup liquidity
-        vm.prank(user2);
-        assetToken.approve(address(prolendPair), depositAmount);
-        vm.prank(user2);
-        prolendPair.deposit(depositAmount, user2);
+    //     // Setup liquidity
+    //     vm.prank(user2);
+    //     assetToken.approve(address(prolendPair), depositAmount);
+    //     vm.prank(user2);
+    //     prolendPair.deposit(depositAmount, user2);
 
-        // Try to open leveraged position without initial collateral
-        // This should fail because the swap won't provide enough collateral to stay solvent
-        vm.expectRevert(
-            abi.encodeWithSelector(ProlendPair.UserInsolvent.selector)
-        );
-        vm.prank(user1);
-        prolendPair.leveragedPosition(
-            borrowAmount,
-            0, // No initial collateral - risky!
-            minCollateralOut
-        );
-    }
+    //     // Try to open leveraged position without initial collateral
+    //     // This should fail because the swap won't provide enough collateral to stay solvent
+    //     vm.expectRevert(
+    //         abi.encodeWithSelector(ProlendPair.UserInsolvent.selector)
+    //     );
+    //     vm.prank(user1);
+    //     prolendPair.leveragedPosition(
+    //         borrowAmount,
+    //         0, // No initial collateral - risky!
+    //         minCollateralOut
+    //     );
+    // }
 
-    function testLeveragedPositionSolvencyCheck() public {
-        uint256 depositAmount = 1000 ether;
-        uint256 borrowAmount = 800 ether; // Very high borrow amount
-        uint256 minCollateralOut = 1 ether; // Very low collateral expectation
+    // function testLeveragedPositionSolvencyCheck() public {
+    //     uint256 depositAmount = 1000 ether;
+    //     uint256 borrowAmount = 800 ether; // Very high borrow amount
+    //     uint256 minCollateralOut = 1 ether; // Very low collateral expectation
 
-        // Setup liquidity
-        vm.prank(user2);
-        assetToken.approve(address(prolendPair), depositAmount);
-        vm.prank(user2);
-        prolendPair.deposit(depositAmount, user2);
+    //     // Setup liquidity
+    //     vm.prank(user2);
+    //     assetToken.approve(address(prolendPair), depositAmount);
+    //     vm.prank(user2);
+    //     prolendPair.deposit(depositAmount, user2);
 
-        // Try to open position that would make user insolvent
-        vm.expectRevert(
-            abi.encodeWithSelector(ProlendPair.UserInsolvent.selector)
-        );
-        vm.prank(user1);
-        prolendPair.leveragedPosition(borrowAmount, 0, minCollateralOut);
-    }
+    //     // Try to open position that would make user insolvent
+    //     vm.expectRevert(
+    //         abi.encodeWithSelector(ProlendPair.UserInsolvent.selector)
+    //     );
+    //     vm.prank(user1);
+    //     prolendPair.leveragedPosition(borrowAmount, 0, minCollateralOut);
+    // }
 }
 
 // Mock Proswap pair for testing

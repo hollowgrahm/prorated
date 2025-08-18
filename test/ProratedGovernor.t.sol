@@ -17,6 +17,7 @@ import {GovernorDeployer} from "../src/deployers/GovernorDeployer.sol";
 import {TreasuryDeployer} from "../src/deployers/TreasuryDeployer.sol";
 import {ProlendDeployer} from "../src/deployers/ProlendDeployer.sol";
 import {ProlendFactory} from "../src/prolend/ProlendFactory.sol";
+import {ProlendPairBytecode} from "../src/prolend/ProlendPairBytecode.sol";
 import {ERC20} from "lib/solmate/src/tokens/ERC20.sol";
 
 contract ProratedGovernorTest is Test {
@@ -36,6 +37,7 @@ contract ProratedGovernorTest is Test {
     TreasuryDeployer public treasuryDeployer;
     ProlendDeployer public prolendDeployer;
     ProlendFactory public prolendFactory;
+    ProlendPairBytecode public prolendPairBytecode;
 
     address public user1 = address(0x1);
     address public user2 = address(0x2);
@@ -59,7 +61,8 @@ contract ProratedGovernorTest is Test {
         veNFTDeployer = new VeNFTDeployer();
         governorDeployer = new GovernorDeployer();
         treasuryDeployer = new TreasuryDeployer();
-        prolendFactory = new ProlendFactory();
+        prolendPairBytecode = new ProlendPairBytecode();
+        prolendFactory = new ProlendFactory(address(prolendPairBytecode));
         prolendDeployer = new ProlendDeployer(address(prolendFactory));
 
         // Deploy ProratedToken
