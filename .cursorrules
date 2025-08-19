@@ -1,0 +1,150 @@
+# Cursor Rules for Solidity/Foundry Project
+
+## Code Quality & Documentation
+
+- Always use NatSpec comments for functions
+- Implement proper access controls and ownership patterns
+- Add events for all state-changing operations
+- Use SafeTransferLib for all token transfers
+- Add reentrancy guards where appropriate
+- Add error handling with custom errors instead of require statements
+- Follow the project's existing import structure and remappings
+- **Do NOT add inline comments unless explicitly requested by the user**
+
+## Import Patterns
+
+- **Hybrid Import Pattern**: Use direct imports for CREATE2 bytecode and interface imports for function calls
+- **CREATE2 Requirements**: Always import concrete contracts when using `type(Contract).creationCode`
+- **Function Calls**: Use interfaces for all function calls to enable flexibility and upgradeability
+- **State Variables**: Declare state variables using interfaces when possible
+- **Example Pattern**:
+
+  ```solidity
+  // Direct import for CREATE2
+  import {ProratedToken} from "./ProratedToken.sol";
+  type(ProratedToken).creationCode
+
+  // Interface import for function calls
+  import {IProratedVENFT} from "./interfaces/IProratedVENFT.sol";
+  IProratedVENFT public venftContract;
+  ```
+
+## Development Workflow
+
+- When asked a question, answer the question but don't start making changes until we've agreed on the correct course of action
+- Always explain the reasoning behind suggested changes before implementing them
+- Ask for clarification if the requirements are unclear
+- Provide multiple options when there are different approaches to consider
+
+## Code Style
+
+- Use 4-space indentation for Solidity files
+- Follow camelCase for functions and variables, PascalCase for contracts
+- Use descriptive variable names and avoid magic numbers
+
+## Security Best Practices
+
+- Always validate inputs and check preconditions
+- Use SafeTransferLib for all external token transfers
+- Implement proper access controls with Owned pattern
+- Add events for all state-changing operations to enable off-chain tracking
+- Use custom errors instead of require statements for better gas efficiency
+- Consider reentrancy protection for functions that make external calls
+
+## Editor & Git Hygiene
+
+- Enable auto-save in Cursor: set to "onFocusChange" or "afterDelay" (~1000ms)
+- After large refactors or case-only renames: close stale tabs and run "Developer: Reload Window"
+- Always perform git-safe renames (especially on macOS case-insensitive filesystems):
+
+  ```bash
+  git mv <old-path> __tmp__ && git mv __tmp__ <New-Path>
+  ```
+
+  Commit renames before further edits.
+
+- Verify no legacy files remain (example for VeNFT migration):
+
+  ```bash
+  git ls-files | grep -i venft || true
+  rg -n --hidden --no-ignore -S "VENFT" .
+  ```
+
+- Edit discipline: re-read files immediately before and after edits; avoid parallel edits on the same file
+- Ensure only `VeNFT` files exist; remove any `VENFT`-named leftovers
+
+## Contract Auditing Process
+
+### Function-by-Function Audit Strategy
+
+1. **Logic Documentation**: Add detailed inline comments to each function describing:
+
+   - Input validation steps
+   - State checks and preconditions
+   - Core business logic calculations
+   - State updates and side effects
+   - Event emissions
+   - Error conditions and edge cases
+
+2. **Logic Verification**: For each function:
+
+   - Present the documented logic to the user for verification
+   - Ask specific questions about business rules and edge cases
+   - Confirm all calculations and state transitions are correct
+   - Verify access control and security measures
+
+3. **Test Coverage Analysis**: For each verified function:
+
+   - List all test scenarios needed to validate the logic
+   - Check existing tests against the verified logic
+   - Identify missing test cases
+   - Ensure tests are consistent with the correct logic
+
+4. **Test Implementation**:
+
+   - Add missing test cases to cover all identified scenarios
+   - Update existing tests to match verified logic
+   - Ensure comprehensive edge case coverage
+   - Test both success and failure conditions
+
+5. **Debugging & Validation**:
+
+   - Run all tests for the contract
+   - Debug any failures and fix logic inconsistencies
+   - Verify all tests pass with the correct implementation
+
+6. **Function Completion Rule**:
+
+   - **MUST** complete all test validation and ensure all tests pass for the current function before moving to the next function
+   - This includes updating existing tests, adding missing tests, and debugging any failures
+   - Only proceed to the next function after the current function's test suite is fully validated and passing
+
+7. **Git Commit Rule**:
+
+   - **MUST** commit all changes to git before moving to the next function
+   - This ensures we have a clean checkpoint of our audit progress
+   - Use descriptive commit messages that reference the function being audited
+
+### Audit Checklist for Each Function
+
+- [ ] Input validation (amounts, addresses, timestamps)
+- [ ] State preconditions (pool status, user permissions)
+- [ ] Business logic calculations (shares, allocations, transfers)
+- [ ] State updates (mappings, counters, flags)
+- [ ] Event emissions for all state changes
+- [ ] Error handling for all failure conditions
+- [ ] Access control enforcement
+- [ ] Reentrancy protection where needed
+- [ ] Gas optimization considerations
+- [ ] Edge case handling (zero amounts, max values, etc.)
+
+### Test Coverage Requirements
+
+- **Happy Path**: Normal successful execution
+- **Input Validation**: Invalid inputs, zero values, out-of-range values
+- **State Validation**: Wrong pool state, unauthorized access
+- **Edge Cases**: Boundary conditions, maximum values
+- **Failure Scenarios**: Insufficient balances, failed transfers
+- **Integration**: Interaction with other contracts and functions
+- **Gas Optimization**: Verify no unnecessary operations
+- **Security**: Access control, reentrancy, overflow protection
