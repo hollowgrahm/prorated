@@ -4,18 +4,18 @@ import { env } from './env'
 
 // Contract Addresses from Environment
 export const CONTRACTS = {
-  mockUSDC: env.contractAddresses.mockUSDC,
-  proratedFactory: env.contractAddresses.proratedFactory,
-  proswapFactory: env.contractAddresses.proswapFactory,
-  proswapRouter: env.contractAddresses.proswapRouter,
+  mockUSDC: env.contractAddresses.mockUSDC as Address,
+  proratedFactory: env.contractAddresses.proratedFactory as Address,
+  proswapFactory: env.contractAddresses.proswapFactory as Address,
+  proswapRouter: env.contractAddresses.proswapRouter as Address,
 } as const
 
 // Example Pool Addresses
 export const EXAMPLE_POOLS = {
-  activePool: env.examplePools.activePool,
-  upcomingPool: env.examplePools.upcomingPool,
-  successfulPool: env.examplePools.successfulPool,
-  endedSuccessfulPool: env.examplePools.endedSuccessfulPool,
+  activePool: env.examplePools.activePool as Address,
+  upcomingPool: env.examplePools.upcomingPool as Address,
+  successfulPool: env.examplePools.successfulPool as Address,
+  endedSuccessfulPool: env.examplePools.endedSuccessfulPool as Address,
 } as const
 
 // Core Contract ABIs

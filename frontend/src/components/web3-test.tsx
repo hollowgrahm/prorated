@@ -8,12 +8,17 @@ import { Separator } from '@/components/ui/separator'
 import { env } from '@/lib/env'
 import { CONTRACTS } from '@/lib/contracts'
 import { formatTokenAmount, truncateAddress } from '@/lib/utils'
+import { useAllPoolsLength, useUSDCBalance } from '@/hooks'
 
 export function Web3Test() {
   const { address, isConnected, chain } = useAccount()
   const { data: balance } = useBalance({
     address,
   })
+  
+  // Test our custom hooks
+  const { data: poolsLength } = useAllPoolsLength()
+  const { data: usdcBalance } = useUSDCBalance(address)
 
   return (
     <Card className="w-full max-w-md">
@@ -68,6 +73,24 @@ export function Web3Test() {
                   {env.rpcUrl}
                 </code>
               </div>
+              
+              {usdcBalance !== undefined && (
+                <div>
+                  <span className="text-muted-foreground">USDC Balance:</span>
+                  <br />
+                  <span className="font-mono">
+                    {formatTokenAmount(usdcBalance, 6, 2)} USDC
+                  </span>
+                </div>
+              )}
+              
+              {poolsLength !== undefined && (
+                <div>
+                  <span className="text-muted-foreground">Total Pools:</span>
+                  <br />
+                  <span className="font-mono">{poolsLength.toString()}</span>
+                </div>
+              )}
             </div>
           </div>
         )}
