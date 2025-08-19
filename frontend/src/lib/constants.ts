@@ -1,6 +1,7 @@
 // Prorated Protocol Constants
 
-import { LockDurationOption, ContractAddresses, NetworkConfig } from '@/types'
+import { LockDurationOption, NetworkConfig } from '@/types'
+import { env } from './env'
 
 // Lock Duration Options (1-208 weeks with multipliers)
 export const LOCK_DURATION_OPTIONS: LockDurationOption[] = [
@@ -14,21 +15,8 @@ export const LOCK_DURATION_OPTIONS: LockDurationOption[] = [
   { weeks: 208, multiplier: 208, label: '4 Years', description: '208x multiplier (MAX)' },
 ]
 
-// Contract Addresses for Local Development (Anvil)
-export const CONTRACT_ADDRESSES: ContractAddresses = {
-  mockUSDC: '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0',
-  proratedFactory: '0x9A676e781A523b5d0C0e43731313A708CB607508',
-  proswapFactory: '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9',
-  proswapRouter: '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707',
-  prolendFactory: '0x0165878A594ca255338adfa4d48449f69242Eb8F',
-  tokenDeployer: '0xa513E6E4b8f2a923D98304ec87F64353C4D5C853',
-  pairDeployer: '0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6',
-  liquidityDeployer: '0x8A791620dd6260079BF849Dc5567aDC3F2FdC318',
-  veNFTDeployer: '0x610178dA211FEF7D417bC0e6FeD39F05609AD788',
-  governorDeployer: '0xB7f8BC63BbcaD18155201308C8f3540b07f84F5e',
-  treasuryDeployer: '0xA51c1fc2f0D1a1b8494Ed1FE312d7C3a78Ed91C0',
-  prolendDeployer: '0x0DCd1Bf9A1b36cE34237eEaFef220932846BCD82',
-}
+// Contract Addresses from Environment Configuration
+export const CONTRACT_ADDRESSES = env.contractAddresses
 
 // Network Configuration for Local Development
 export const ANVIL_NETWORK: NetworkConfig = {
@@ -42,13 +30,8 @@ export const ANVIL_NETWORK: NetworkConfig = {
   },
 }
 
-// Example Pool Addresses (from deployment)
-export const EXAMPLE_POOLS = {
-  activePool: '0xfafAcEDF7f87058Ed51a075E66Df97e0e7B5780D',
-  upcomingPool: '0x98a7A480a3b078f5DeB5B4dd2ee1873ECf9bF2b6',
-  successfulPool: '0x52be44C75fB09cBceF6dD0044Ed08f60a9af90fc',
-  endedSuccessfulPool: '0xe93066d51126d444Ca451521c3a127f521E15eD3',
-}
+// Example Pool Addresses from Environment Configuration
+export const EXAMPLE_POOLS = env.examplePools
 
 // Deployment Steps Configuration
 export const DEPLOYMENT_STEPS = [
