@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
 import { ArrowLeft, Users, Clock, Target, TrendingUp } from 'lucide-react'
 import { Pool } from '@/types/pool'
+import { ContributionInterface } from './contribution-interface'
 
 // Mock data - will be replaced with real contract data
 const mockPools: Pool[] = [
@@ -16,13 +17,22 @@ const mockPools: Pool[] = [
     address: '0x1234...5678',
     tokenName: 'DeFiDAO Token',
     tokenSymbol: 'DEFI',
-    developer: '0xdeveloper...1234',
-    status: 'active',
+    tokenTotalSupply: 1000000,
+    developmentFund: 60000,
+    liquidityFund: 40000,
+    minTotalContributions: 100000,
+    fundingToken: '0xA0b86a33E6411c88f7f3A3c4D79F85B8b52E8e',
+    fundingTokenSymbol: 'USDC',
     startTime: (Date.now() - 86400000) / 1000,
     endTime: (Date.now() + 86400000 * 6) / 1000,
+    developerPercent: 15,
+    treasuryPercent: 25,
+    daoPercent: 60,
     totalContributions: 75000,
-    minTotalContributions: 100000,
+    totalShares: 3750000, // Average ~50 weeks lock
     contributors: 42,
+    status: 'active',
+    developer: '0xdeveloper...1234',
     description: 'Building the next generation DeFi infrastructure with community governance. Our protocol aims to revolutionize how decentralized finance operates by providing seamless integration between traditional financial systems and blockchain technology.'
   },
   {
@@ -30,13 +40,22 @@ const mockPools: Pool[] = [
     address: '0x5678...9012',
     tokenName: 'GameFi Protocol',
     tokenSymbol: 'GAME',
-    developer: '0xdeveloper...5678',
-    status: 'upcoming',
+    tokenTotalSupply: 500000,
+    developmentFund: 30000,
+    liquidityFund: 20000,
+    minTotalContributions: 50000,
+    fundingToken: '0xA0b86a33E6411c88f7f3A3c4D79F85B8b52E8e',
+    fundingTokenSymbol: 'USDC',
     startTime: (Date.now() + 86400000) / 1000,
     endTime: (Date.now() + 86400000 * 15) / 1000,
+    developerPercent: 20,
+    treasuryPercent: 20,
+    daoPercent: 60,
     totalContributions: 0,
-    minTotalContributions: 50000,
+    totalShares: 0,
     contributors: 0,
+    status: 'upcoming',
+    developer: '0xdeveloper...5678',
     description: 'Decentralized gaming platform with play-to-earn mechanics and NFT integration.'
   },
   {
@@ -44,13 +63,22 @@ const mockPools: Pool[] = [
     address: '0x9012...3456',
     tokenName: 'SocialDAO',
     tokenSymbol: 'SOCIAL',
-    developer: '0xdeveloper...9012',
-    status: 'launched',
+    tokenTotalSupply: 2000000,
+    developmentFund: 50000,
+    liquidityFund: 30000,
+    minTotalContributions: 80000,
+    fundingToken: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
+    fundingTokenSymbol: 'USDT',
     startTime: (Date.now() - 86400000 * 10) / 1000,
     endTime: (Date.now() - 86400000) / 1000,
+    developerPercent: 10,
+    treasuryPercent: 30,
+    daoPercent: 60,
     totalContributions: 125000,
-    minTotalContributions: 80000,
+    totalShares: 8750000, // Average ~70 weeks lock
     contributors: 89,
+    status: 'launched',
+    developer: '0xdeveloper...9012',
     description: 'Community-driven social media platform with decentralized content moderation.'
   }
 ]
@@ -215,75 +243,118 @@ export function PoolPage({ address }: PoolPageProps) {
             </Card>
 
             {/* Pool Status Content */}
-            <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
-              <CardHeader>
-                <CardTitle>
-                  {pool.status === 'active' ? 'Participate in Funding' :
-                   pool.status === 'upcoming' ? 'Funding Starts Soon' :
-                   pool.status === 'success-pending' ? 'Ready for Deployment' :
-                   pool.status === 'deploying' ? 'Deployment in Progress' :
-                   pool.status === 'failed' ? 'Funding Failed' :
-                   'Pool Status'
-                  }
-                </CardTitle>
-              </CardHeader>
-              
-              <CardContent>
-                {pool.status === 'active' && (
-                  <div className="text-center py-8">
-                    <p className="text-lg mb-6">
-                      This pool is actively raising funds. Contribution interface will be available here.
-                    </p>
-                    <Button size="lg" className="btn-primary-custom">
-                      Contribute Now
-                    </Button>
-                  </div>
-                )}
+            {pool.status === 'active' ? (
+              <ContributionInterface pool={pool} />
+            ) : (
+              <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
+                <CardHeader>
+                  <CardTitle>
+                    {pool.status === 'upcoming' ? 'Funding Starts Soon' :
+                     pool.status === 'success-pending' ? 'Ready for Deployment' :
+                     pool.status === 'deploying' ? 'Deployment in Progress' :
+                     pool.status === 'failed' ? 'Funding Failed' :
+                     'Pool Status'
+                    }
+                  </CardTitle>
+                </CardHeader>
                 
-                {pool.status === 'upcoming' && (
-                  <div className="text-center py-8">
-                    <p className="text-lg mb-4">
-                      Funding will begin soon. You can bookmark this pool to get notified.
-                    </p>
-                    <p className="text-muted-foreground mb-6">
-                      Starts: {new Date(pool.startTime * 1000).toLocaleDateString()}
-                    </p>
-                    <Button variant="outline" className="btn-outline-custom">
-                      Notify Me
-                    </Button>
-                  </div>
-                )}
-                
-                {pool.status === 'success-pending' && (
-                  <div className="text-center py-8">
-                    <p className="text-lg mb-6">
-                      Funding successful! The deployment wizard will be available here.
-                    </p>
-                    <Button size="lg" className="btn-primary-custom">
-                      Start Deployment
-                    </Button>
-                  </div>
-                )}
-                
-                {pool.status === 'failed' && (
-                  <div className="text-center py-8">
-                    <p className="text-lg mb-4">
-                      This funding round did not reach its minimum target.
-                    </p>
-                    <p className="text-muted-foreground mb-6">
-                      Raised ${pool.totalContributions.toLocaleString()} of ${pool.minTotalContributions.toLocaleString()} goal
-                    </p>
-                    <Button variant="outline" className="btn-outline-custom">
-                      View Details
-                    </Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                <CardContent>
+                  {pool.status === 'upcoming' && (
+                    <div className="text-center py-8">
+                      <p className="text-lg mb-4">
+                        Funding will begin soon. You can bookmark this pool to get notified.
+                      </p>
+                      <p className="text-muted-foreground mb-6">
+                        Starts: {new Date(pool.startTime * 1000).toLocaleDateString()}
+                      </p>
+                      <Button variant="outline" className="btn-outline-custom">
+                        Notify Me
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {pool.status === 'success-pending' && (
+                    <div className="text-center py-8">
+                      <p className="text-lg mb-6">
+                        Funding successful! The deployment wizard will be available here.
+                      </p>
+                      <Button size="lg" className="btn-primary-custom">
+                        Start Deployment
+                      </Button>
+                    </div>
+                  )}
+                  
+                  {pool.status === 'failed' && (
+                    <div className="text-center py-8">
+                      <p className="text-lg mb-4">
+                        This funding round did not reach its minimum target.
+                      </p>
+                      <p className="text-muted-foreground mb-6">
+                        Raised ${pool.totalContributions.toLocaleString()} of ${pool.minTotalContributions.toLocaleString()} goal
+                      </p>
+                      <Button variant="outline" className="btn-outline-custom">
+                        View Details
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
           </div>
 
           {/* Sidebar */}
           <div className="space-y-6">
+            {/* Pool Configuration */}
+            <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  <span>Pool Configuration</span>
+                </CardTitle>
+              </CardHeader>
+              
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-muted-foreground">Token Supply</span>
+                    <p className="font-medium">{pool.tokenTotalSupply.toLocaleString()} {pool.tokenSymbol}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Funding Token</span>
+                    <p className="font-medium">{pool.fundingTokenSymbol}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Development Fund</span>
+                    <p className="font-medium">{pool.developmentFund.toLocaleString()} {pool.fundingTokenSymbol}</p>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground">Liquidity Fund</span>
+                    <p className="font-medium">{pool.liquidityFund.toLocaleString()} {pool.fundingTokenSymbol}</p>
+                  </div>
+                </div>
+                
+                <Separator />
+                
+                <div>
+                  <span className="text-muted-foreground text-sm">Allocation Percentages</span>
+                  <div className="grid grid-cols-3 gap-2 mt-2">
+                    <div className="text-center p-2 bg-secondary/20 rounded">
+                      <div className="text-sm font-medium">{pool.developerPercent}%</div>
+                      <div className="text-xs text-muted-foreground">Developer</div>
+                    </div>
+                    <div className="text-center p-2 bg-secondary/20 rounded">
+                      <div className="text-sm font-medium">{pool.treasuryPercent}%</div>
+                      <div className="text-xs text-muted-foreground">Treasury</div>
+                    </div>
+                    <div className="text-center p-2 bg-secondary/20 rounded">
+                      <div className="text-sm font-medium">{pool.daoPercent}%</div>
+                      <div className="text-xs text-muted-foreground">DAO</div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {/* Pool Stats */}
             <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
               <CardHeader>
@@ -316,11 +387,21 @@ export function PoolPage({ address }: PoolPageProps) {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Raised</span>
-                    <span className="font-medium">${pool.totalContributions.toLocaleString()}</span>
+                    <span className="font-medium">{pool.totalContributions.toLocaleString()} {pool.fundingTokenSymbol}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Goal</span>
-                    <span className="font-medium">${pool.minTotalContributions.toLocaleString()}</span>
+                    <span className="font-medium">{pool.minTotalContributions.toLocaleString()} {pool.fundingTokenSymbol}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Total Shares</span>
+                    <span className="font-medium">{pool.totalShares.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Avg Lock Duration</span>
+                    <span className="font-medium">
+                      {pool.totalShares > 0 ? (pool.totalShares / pool.totalContributions).toFixed(1) : '0'} weeks
+                    </span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Contributors</span>
