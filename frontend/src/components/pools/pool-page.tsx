@@ -1,0 +1,359 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Separator } from '@/components/ui/separator'
+import { ArrowLeft, Users, Clock, Target, TrendingUp } from 'lucide-react'
+import { Pool } from '@/types/pool'
+
+// Mock data - will be replaced with real contract data
+const mockPools: Pool[] = [
+  {
+    id: '1',
+    address: '0x1234...5678',
+    tokenName: 'DeFiDAO Token',
+    tokenSymbol: 'DEFI',
+    developer: '0xdeveloper...1234',
+    status: 'active',
+    startTime: (Date.now() - 86400000) / 1000,
+    endTime: (Date.now() + 86400000 * 6) / 1000,
+    totalContributions: 75000,
+    minTotalContributions: 100000,
+    contributors: 42,
+    description: 'Building the next generation DeFi infrastructure with community governance. Our protocol aims to revolutionize how decentralized finance operates by providing seamless integration between traditional financial systems and blockchain technology.'
+  },
+  {
+    id: '2',
+    address: '0x5678...9012',
+    tokenName: 'GameFi Protocol',
+    tokenSymbol: 'GAME',
+    developer: '0xdeveloper...5678',
+    status: 'upcoming',
+    startTime: (Date.now() + 86400000) / 1000,
+    endTime: (Date.now() + 86400000 * 15) / 1000,
+    totalContributions: 0,
+    minTotalContributions: 50000,
+    contributors: 0,
+    description: 'Decentralized gaming platform with play-to-earn mechanics and NFT integration.'
+  },
+  {
+    id: '3',
+    address: '0x9012...3456',
+    tokenName: 'SocialDAO',
+    tokenSymbol: 'SOCIAL',
+    developer: '0xdeveloper...9012',
+    status: 'launched',
+    startTime: (Date.now() - 86400000 * 10) / 1000,
+    endTime: (Date.now() - 86400000) / 1000,
+    totalContributions: 125000,
+    minTotalContributions: 80000,
+    contributors: 89,
+    description: 'Community-driven social media platform with decentralized content moderation.'
+  }
+]
+
+interface PoolPageProps {
+  address: string
+}
+
+function formatTimeRemaining(endTime: number): string {
+  const now = Date.now() / 1000
+  const timeLeft = endTime - now
+  
+  if (timeLeft <= 0) return 'Ended'
+  
+  const days = Math.floor(timeLeft / (24 * 60 * 60))
+  const hours = Math.floor((timeLeft % (24 * 60 * 60)) / (60 * 60))
+  
+  if (days > 0) return `${days} day${days !== 1 ? 's' : ''} left`
+  return `${hours} hour${hours !== 1 ? 's' : ''} left`
+}
+
+function getStatusColor(status: Pool['status']): string {
+  switch (status) {
+    case 'upcoming':
+      return 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+    case 'active':
+      return 'bg-green-500/20 text-green-300 border-green-500/30'
+    case 'failed':
+      return 'bg-red-500/20 text-red-300 border-red-500/30'
+    case 'success-pending':
+      return 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30'
+    case 'deploying':
+      return 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+    case 'launched':
+      return 'bg-primary/20 text-primary border-primary/30'
+    default:
+      return 'bg-muted-foreground/20 text-muted-foreground border-muted-foreground/30'
+  }
+}
+
+export function PoolPage({ address }: PoolPageProps) {
+  const router = useRouter()
+  const [pool, setPool] = useState<Pool | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    // Simulate loading and finding pool by address
+    const foundPool = mockPools.find(p => p.address === address)
+    
+    // Simulate API delay
+    setTimeout(() => {
+      setPool(foundPool || null)
+      setLoading(false)
+    }, 500)
+  }, [address])
+
+  // Redirect to project page if launched
+  useEffect(() => {
+    if (pool?.status === 'launched') {
+      router.push(`/projects/${address}`)
+    }
+  }, [pool, address, router])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <div className="animate-pulse">
+            <div className="h-8 bg-muted rounded w-1/4 mb-6"></div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 space-y-6">
+                <div className="h-64 bg-muted rounded"></div>
+                <div className="h-48 bg-muted rounded"></div>
+              </div>
+              <div className="h-96 bg-muted rounded"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!pool) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="container mx-auto px-4 py-8">
+          <Button
+            variant="ghost"
+            onClick={() => router.back()}
+            className="mb-6"
+          >
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            Back
+          </Button>
+          
+          <Card className="text-center py-12">
+            <CardContent>
+              <h1 className="text-2xl font-bold mb-4">Pool Not Found</h1>
+              <p className="text-muted-foreground mb-6">
+                The pool at address {address} could not be found.
+              </p>
+              <Button onClick={() => router.push('/pools')}>
+                Browse All Pools
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    )
+  }
+
+  const progressPercentage = Math.min(
+    (pool.totalContributions / pool.minTotalContributions) * 100,
+    100
+  )
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-4 py-8">
+        {/* Back Button */}
+        <Button
+          variant="ghost"
+          onClick={() => router.back()}
+          className="mb-6"
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Back to Pools
+        </Button>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Pool Header */}
+            <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
+              <CardHeader>
+                <div className="flex items-start justify-between">
+                  <div>
+                    <CardTitle className="text-3xl mb-2">{pool.tokenName}</CardTitle>
+                    <div className="flex items-center space-x-3">
+                      <Badge variant="outline" className="text-sm border-primary/30 bg-primary/5">
+                        {pool.tokenSymbol}
+                      </Badge>
+                      <Badge 
+                        variant="outline" 
+                        className={`text-sm ${getStatusColor(pool.status)}`}
+                      >
+                        {pool.status === 'success-pending' ? 'Success - Pending Deploy' : pool.status}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground mt-2">
+                      {pool.address}
+                    </p>
+                  </div>
+                </div>
+              </CardHeader>
+              
+              <CardContent>
+                <p className="text-foreground leading-relaxed">
+                  {pool.description}
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* Pool Status Content */}
+            <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
+              <CardHeader>
+                <CardTitle>
+                  {pool.status === 'active' ? 'Participate in Funding' :
+                   pool.status === 'upcoming' ? 'Funding Starts Soon' :
+                   pool.status === 'success-pending' ? 'Ready for Deployment' :
+                   pool.status === 'deploying' ? 'Deployment in Progress' :
+                   pool.status === 'failed' ? 'Funding Failed' :
+                   'Pool Status'
+                  }
+                </CardTitle>
+              </CardHeader>
+              
+              <CardContent>
+                {pool.status === 'active' && (
+                  <div className="text-center py-8">
+                    <p className="text-lg mb-6">
+                      This pool is actively raising funds. Contribution interface will be available here.
+                    </p>
+                    <Button size="lg" className="btn-primary-custom">
+                      Contribute Now
+                    </Button>
+                  </div>
+                )}
+                
+                {pool.status === 'upcoming' && (
+                  <div className="text-center py-8">
+                    <p className="text-lg mb-4">
+                      Funding will begin soon. You can bookmark this pool to get notified.
+                    </p>
+                    <p className="text-muted-foreground mb-6">
+                      Starts: {new Date(pool.startTime * 1000).toLocaleDateString()}
+                    </p>
+                    <Button variant="outline" className="btn-outline-custom">
+                      Notify Me
+                    </Button>
+                  </div>
+                )}
+                
+                {pool.status === 'success-pending' && (
+                  <div className="text-center py-8">
+                    <p className="text-lg mb-6">
+                      Funding successful! The deployment wizard will be available here.
+                    </p>
+                    <Button size="lg" className="btn-primary-custom">
+                      Start Deployment
+                    </Button>
+                  </div>
+                )}
+                
+                {pool.status === 'failed' && (
+                  <div className="text-center py-8">
+                    <p className="text-lg mb-4">
+                      This funding round did not reach its minimum target.
+                    </p>
+                    <p className="text-muted-foreground mb-6">
+                      Raised ${pool.totalContributions.toLocaleString()} of ${pool.minTotalContributions.toLocaleString()} goal
+                    </p>
+                    <Button variant="outline" className="btn-outline-custom">
+                      View Details
+                    </Button>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Sidebar */}
+          <div className="space-y-6">
+            {/* Pool Stats */}
+            <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Target className="h-5 w-5 text-primary" />
+                  <span>Funding Progress</span>
+                </CardTitle>
+              </CardHeader>
+              
+              <CardContent className="space-y-4">
+                {/* Progress Bar */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Progress</span>
+                    <span className="font-medium">{Math.round(progressPercentage)}%</span>
+                  </div>
+                  <div className="w-full bg-muted h-3 rounded-full overflow-hidden border border-border/60 shadow-inner">
+                    <div 
+                      className={`h-full bg-gradient-to-r from-primary to-accent transition-all duration-300 ${
+                        pool.status === 'active' ? 'animate-pulse-slow shadow-sm shadow-primary/50' : ''
+                      }`}
+                      style={{ width: `${progressPercentage}%` }}
+                    />
+                  </div>
+                </div>
+                
+                <Separator />
+                
+                {/* Stats Grid */}
+                <div className="space-y-3">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Raised</span>
+                    <span className="font-medium">${pool.totalContributions.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Goal</span>
+                    <span className="font-medium">${pool.minTotalContributions.toLocaleString()}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Contributors</span>
+                    <span className="font-medium flex items-center">
+                      <Users className="h-4 w-4 mr-1" />
+                      {pool.contributors}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Time Remaining</span>
+                    <span className="font-medium flex items-center">
+                      <Clock className="h-4 w-4 mr-1" />
+                      {formatTimeRemaining(pool.endTime)}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Developer Info */}
+            <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
+              <CardHeader>
+                <CardTitle className="text-lg">Developer</CardTitle>
+              </CardHeader>
+              
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-2">Address</p>
+                <p className="font-mono text-sm break-all">{pool.developer}</p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
