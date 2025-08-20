@@ -10,6 +10,8 @@ import { ArrowLeft, Users, Clock, Target, TrendingUp } from 'lucide-react'
 import { Pool } from '@/types/pool'
 import { ContributionInterface } from './contribution-interface'
 import { DeploymentWizard } from './deployment-wizard'
+import { PoolTimeline } from './pool-timeline'
+import { ContributorList } from './contributor-list'
 
 // Mock data - will be replaced with real contract data
 const mockPools: Pool[] = [
@@ -373,6 +375,10 @@ export function PoolPage({ address }: PoolPageProps) {
                     <span className="text-muted-foreground">Liquidity Fund</span>
                     <p className="font-medium">{pool.liquidityFund.toLocaleString()} {pool.fundingTokenSymbol}</p>
                   </div>
+                  <div className="col-span-2">
+                    <span className="text-muted-foreground">Developer</span>
+                    <p className="font-mono text-sm break-all">{pool.developer}</p>
+                  </div>
                 </div>
                 
                 <Separator />
@@ -463,18 +469,14 @@ export function PoolPage({ address }: PoolPageProps) {
               </CardContent>
             </Card>
 
-            {/* Developer Info */}
-            <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
-              <CardHeader>
-                <CardTitle className="text-lg">Developer</CardTitle>
-              </CardHeader>
-              
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-2">Address</p>
-                <p className="font-mono text-sm break-all">{pool.developer}</p>
-              </CardContent>
-            </Card>
+            {/* Pool Timeline */}
+            <PoolTimeline pool={pool} />
           </div>
+        </div>
+
+        {/* Full Width Contributor List */}
+        <div className="mt-8">
+          <ContributorList pool={pool} />
         </div>
       </div>
     </div>
