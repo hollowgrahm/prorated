@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, Filter, Rocket } from 'lucide-react'
+import { Search, Filter, Rocket, ArrowUpDown } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -138,12 +138,26 @@ export function PoolDiscovery() {
       // Sort logic
       switch (sortBy) {
         case 'ending-soon':
+          // Active pools first, then by end time (soonest first)
+          if (a.status === 'active' && b.status !== 'active') return -1
+          if (b.status === 'active' && a.status !== 'active') return 1
           return a.endTime - b.endTime
 
         case 'most-funded':
           return b.totalContributions - a.totalContributions
+          
         case 'least-funded':
           return a.totalContributions - b.totalContributions
+          
+        case 'most-contributors':
+          return b.contributors - a.contributors
+          
+        case 'funding-progress':
+          // Sort by funding percentage completion
+          const aProgress = (a.totalContributions / a.minTotalContributions) * 100
+          const bProgress = (b.totalContributions / b.minTotalContributions) * 100
+          return bProgress - aProgress
+          
         case 'recent':
         default:
           return b.startTime - a.startTime
@@ -200,8 +214,10 @@ export function PoolDiscovery() {
           <SelectContent>
             <SelectItem value="recent">Most Recent</SelectItem>
             <SelectItem value="ending-soon">Ending Soon</SelectItem>
-            <SelectItem value="most-funded">Most Funded</SelectItem>
-            <SelectItem value="least-funded">Least Funded</SelectItem>
+            <SelectItem value="funding-progress">Funding Progress</SelectItem>
+            <SelectItem value="most-funded">Most Funded ($)</SelectItem>
+            <SelectItem value="least-funded">Least Funded ($)</SelectItem>
+            <SelectItem value="most-contributors">Most Contributors</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -340,6 +356,50 @@ export function PoolDiscovery() {
 
           {/* Pool Grid */}
           <div className="lg:col-span-3">
+            {/* Results Header with Quick Sort */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-1 text-sm text-muted-foreground">
+                <ArrowUpDown className="h-3 w-3" />
+                <span>Sorted by:</span>
+                <span className="text-accent font-medium">
+                  {sortBy === 'ending-soon' ? 'Ending Soon' :
+                   sortBy === 'most-funded' ? 'Most Funded' :
+                   sortBy === 'least-funded' ? 'Least Funded' :
+                   sortBy === 'most-contributors' ? 'Most Contributors' :
+                   sortBy === 'funding-progress' ? 'Funding Progress' :
+                   'Most Recent'
+                  }
+                </span>
+              </div>
+              <div className="hidden md:flex items-center space-x-2">
+                <span className="text-xs text-muted-foreground">Quick sort:</span>
+                <Button
+                  variant={sortBy === 'recent' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSortBy('recent')}
+                  className={`text-xs h-7 ${sortBy === 'recent' ? 'btn-primary-custom' : 'btn-outline-custom'}`}
+                >
+                  Recent
+                </Button>
+                <Button
+                  variant={sortBy === 'ending-soon' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSortBy('ending-soon')}
+                  className={`text-xs h-7 ${sortBy === 'ending-soon' ? 'btn-primary-custom' : 'btn-outline-custom'}`}
+                >
+                  Ending Soon
+                </Button>
+                <Button
+                  variant={sortBy === 'funding-progress' ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSortBy('funding-progress')}
+                  className={`text-xs h-7 ${sortBy === 'funding-progress' ? 'btn-primary-custom' : 'btn-outline-custom'}`}
+                >
+                  Progress
+                </Button>
+              </div>
+            </div>
+            
             {/* Pool Cards Grid */}
             {filteredPools.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">

@@ -31,5 +31,5 @@ export interface PoolCardProps {
 export interface PoolFilters {
   search: string
   status: PoolStatus | 'all'
-  sortBy: 'recent' | 'ending-soon' | 'most-funded' | 'least-funded'
+  sortBy: 'recent' | 'ending-soon' | 'most-funded' | 'least-funded' | 'most-contributors' | 'funding-progress'
 }
