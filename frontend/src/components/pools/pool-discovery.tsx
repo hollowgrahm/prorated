@@ -1,31 +1,32 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, Filter, Clock, Users, Rocket } from 'lucide-react'
+import { Search, Filter, Rocket } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { PoolCard } from './pool-card'
+import { Pool, PoolFilters } from '@/types/pool'
 
 // Mock data for now - will be replaced with real contract data
-const mockPools = [
+const mockPools: Pool[] = [
   {
     id: '1',
     address: '0x1234...5678',
     tokenName: 'DeFiDAO Token',
     tokenSymbol: 'DEFI',
     developer: '0xdeveloper...1234',
-    status: 'active' as const,
-    startTime: Date.now() - 86400000, // 1 day ago
-    endTime: Date.now() + 86400000 * 6, // 6 days from now
+    status: 'active',
+    startTime: (Date.now() - 86400000) / 1000, // 1 day ago (in seconds)
+    endTime: (Date.now() + 86400000 * 6) / 1000, // 6 days from now (in seconds)
     totalContributions: 75000,
     minTotalContributions: 100000,
-    contributorCount: 42,
+    contributors: 42,
     description: 'Building the next generation DeFi infrastructure with community governance.'
   },
   {
@@ -34,12 +35,12 @@ const mockPools = [
     tokenName: 'GameFi Protocol',
     tokenSymbol: 'GAME',
     developer: '0xdeveloper...5678',
-    status: 'upcoming' as const,
-    startTime: Date.now() + 86400000, // 1 day from now
-    endTime: Date.now() + 86400000 * 15, // 15 days from now
+    status: 'upcoming',
+    startTime: (Date.now() + 86400000) / 1000, // 1 day from now (in seconds)
+    endTime: (Date.now() + 86400000 * 15) / 1000, // 15 days from now (in seconds)
     totalContributions: 0,
     minTotalContributions: 50000,
-    contributorCount: 0,
+    contributors: 0,
     description: 'Decentralized gaming platform with play-to-earn mechanics and NFT integration.'
   },
   {
@@ -48,53 +49,101 @@ const mockPools = [
     tokenName: 'SocialDAO',
     tokenSymbol: 'SOCIAL',
     developer: '0xdeveloper...9012',
-    status: 'success-pending' as const,
-    startTime: Date.now() - 86400000 * 10, // 10 days ago
-    endTime: Date.now() - 86400000, // 1 day ago
+    status: 'launched',
+    startTime: (Date.now() - 86400000 * 10) / 1000, // 10 days ago (in seconds)
+    endTime: (Date.now() - 86400000) / 1000, // 1 day ago (in seconds)
     totalContributions: 125000,
     minTotalContributions: 80000,
-    contributorCount: 89,
+    contributors: 89,
     description: 'Community-driven social media platform with decentralized content moderation.'
+  },
+  {
+    id: '4',
+    address: '0xabcd...efgh',
+    tokenName: 'MetaVerse Protocol',
+    tokenSymbol: 'META',
+    developer: '0xdeveloper...abcd',
+    status: 'failed',
+    startTime: (Date.now() - 86400000 * 30) / 1000, // 30 days ago (in seconds)
+    endTime: (Date.now() - 86400000 * 5) / 1000, // 5 days ago (in seconds)
+    totalContributions: 15000,
+    minTotalContributions: 100000,
+    contributors: 8,
+    description: 'Virtual reality metaverse platform with NFT integration and digital land ownership.'
+  },
+  {
+    id: '5',
+    address: '0x1111...2222',
+    tokenName: 'AI Trading Bot',
+    tokenSymbol: 'AITRADE',
+    developer: '0xdeveloper...1111',
+    status: 'success-pending',
+    startTime: (Date.now() - 86400000 * 20) / 1000, // 20 days ago (in seconds)
+    endTime: (Date.now() - 86400000 * 2) / 1000, // 2 days ago (in seconds)
+    totalContributions: 250000,
+    minTotalContributions: 200000,
+    contributors: 156,
+    description: 'Autonomous AI-powered trading bot with machine learning capabilities for DeFi.'
+  },
+  {
+    id: '6',
+    address: '0x3333...4444',
+    tokenName: 'Green Energy DAO',
+    tokenSymbol: 'GREEN',
+    developer: '0xdeveloper...3333',
+    status: 'deploying',
+    startTime: (Date.now() - 86400000 * 15) / 1000, // 15 days ago (in seconds)
+    endTime: (Date.now() - 86400000 * 3) / 1000, // 3 days ago (in seconds)
+    totalContributions: 180000,
+    minTotalContributions: 150000,
+    contributors: 92,
+    description: 'Sustainable energy projects funding through blockchain technology and carbon credits.'
   }
 ]
 
-type PoolStatus = 'all' | 'active' | 'upcoming' | 'success-pending' | 'failed' | 'launched'
-type SortOption = 'recent' | 'ending-soon' | 'funding-progress' | 'contributor-count'
+
 
 export function PoolDiscovery() {
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedStatus, setSelectedStatus] = useState<PoolStatus>('all')
-  const [sortBy, setSortBy] = useState<SortOption>('recent')
+  const [selectedStatus, setSelectedStatus] = useState<PoolFilters['status']>('all')
+  const [sortBy, setSortBy] = useState<PoolFilters['sortBy']>('recent')
   const [showMobileFilters, setShowMobileFilters] = useState(false)
 
   // Filter and sort pools based on current selections
   const filteredPools = mockPools
     .filter(pool => {
+      // Apply all filters simultaneously
+      let matchesSearch = true
+      let matchesStatus = true
+
       // Search filter
       if (searchQuery) {
         const query = searchQuery.toLowerCase()
-        return (
+        matchesSearch = (
           pool.tokenName.toLowerCase().includes(query) ||
           pool.tokenSymbol.toLowerCase().includes(query) ||
-          pool.description.toLowerCase().includes(query)
+          pool.description.toLowerCase().includes(query) ||
+          pool.developer.toLowerCase().includes(query)
         )
       }
-      return true
-    })
-    .filter(pool => {
+
       // Status filter
-      if (selectedStatus === 'all') return true
-      return pool.status === selectedStatus
+      if (selectedStatus !== 'all') {
+        matchesStatus = pool.status === selectedStatus
+      }
+
+      return matchesSearch && matchesStatus
     })
     .sort((a, b) => {
       // Sort logic
       switch (sortBy) {
         case 'ending-soon':
           return a.endTime - b.endTime
-        case 'funding-progress':
-          return (b.totalContributions / b.minTotalContributions) - (a.totalContributions / a.minTotalContributions)
-        case 'contributor-count':
-          return b.contributorCount - a.contributorCount
+
+        case 'most-funded':
+          return b.totalContributions - a.totalContributions
+        case 'least-funded':
+          return a.totalContributions - b.totalContributions
         case 'recent':
         default:
           return b.startTime - a.startTime
@@ -123,7 +172,7 @@ export function PoolDiscovery() {
       {/* Status Filter */}
       <div className="space-y-3">
         <Label>Pool Status</Label>
-        <Select value={selectedStatus} onValueChange={(value: PoolStatus) => setSelectedStatus(value)}>
+        <Select value={selectedStatus} onValueChange={(value: PoolFilters['status']) => setSelectedStatus(value)}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
@@ -132,6 +181,7 @@ export function PoolDiscovery() {
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="upcoming">Upcoming</SelectItem>
             <SelectItem value="success-pending">Success - Pending Deploy</SelectItem>
+            <SelectItem value="deploying">Deploying</SelectItem>
             <SelectItem value="failed">Failed</SelectItem>
             <SelectItem value="launched">Launched</SelectItem>
           </SelectContent>
@@ -143,15 +193,15 @@ export function PoolDiscovery() {
       {/* Sort Options */}
       <div className="space-y-3">
         <Label>Sort By</Label>
-        <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
+        <Select value={sortBy} onValueChange={(value: PoolFilters['sortBy']) => setSortBy(value)}>
           <SelectTrigger>
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="recent">Most Recent</SelectItem>
             <SelectItem value="ending-soon">Ending Soon</SelectItem>
-            <SelectItem value="funding-progress">Funding Progress</SelectItem>
-            <SelectItem value="contributor-count">Most Contributors</SelectItem>
+            <SelectItem value="most-funded">Most Funded</SelectItem>
+            <SelectItem value="least-funded">Least Funded</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -162,15 +212,53 @@ export function PoolDiscovery() {
       <div className="space-y-3">
         <Label>Quick Stats</Label>
         <div className="grid grid-cols-2 gap-2 text-sm">
-          <div className="text-center p-2 bg-gradient-to-br from-primary/10 to-accent/10 rounded hover:from-primary/20 hover:to-accent/20 transition-all duration-300 group cursor-pointer">
+          <div 
+            className="text-center p-2 bg-gradient-to-br from-primary/10 to-accent/10 rounded hover:from-primary/20 hover:to-accent/20 transition-all duration-300 group cursor-pointer border border-border/30 hover:border-primary/40"
+            onClick={() => setSelectedStatus('active')}
+          >
             <div className="font-semibold text-accent group-hover:scale-110 transition-transform duration-300">{mockPools.filter(p => p.status === 'active').length}</div>
             <div className="text-muted-foreground">Active</div>
           </div>
-          <div className="text-center p-2 bg-gradient-to-br from-accent/10 to-primary/10 rounded hover:from-accent/20 hover:to-primary/20 transition-all duration-300 group cursor-pointer">
+          <div 
+            className="text-center p-2 bg-gradient-to-br from-accent/10 to-primary/10 rounded hover:from-accent/20 hover:to-primary/20 transition-all duration-300 group cursor-pointer border border-border/30 hover:border-accent/40"
+            onClick={() => setSelectedStatus('upcoming')}
+          >
             <div className="font-semibold text-accent group-hover:scale-110 transition-transform duration-300">{mockPools.filter(p => p.status === 'upcoming').length}</div>
             <div className="text-muted-foreground">Upcoming</div>
           </div>
+          <div 
+            className="text-center p-2 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded hover:from-green-500/20 hover:to-emerald-500/20 transition-all duration-300 group cursor-pointer border border-border/30 hover:border-green-500/40"
+            onClick={() => setSelectedStatus('launched')}
+          >
+            <div className="font-semibold text-green-400 group-hover:scale-110 transition-transform duration-300">{mockPools.filter(p => p.status === 'launched').length}</div>
+            <div className="text-muted-foreground">Launched</div>
+          </div>
+          <div 
+            className="text-center p-2 bg-gradient-to-br from-red-500/10 to-orange-500/10 rounded hover:from-red-500/20 hover:to-orange-500/20 transition-all duration-300 group cursor-pointer border border-border/30 hover:border-red-500/40"
+            onClick={() => setSelectedStatus('failed')}
+          >
+            <div className="font-semibold text-red-400 group-hover:scale-110 transition-transform duration-300">{mockPools.filter(p => p.status === 'failed').length}</div>
+            <div className="text-muted-foreground">Failed</div>
+          </div>
         </div>
+      </div>
+      
+      <Separator />
+      
+      {/* Clear Filters */}
+      <div className="pt-2">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => {
+            setSearchQuery('')
+            setSelectedStatus('all')
+            setSortBy('recent')
+          }}
+          className="w-full"
+        >
+          Clear All Filters
+        </Button>
       </div>
     </div>
   )
@@ -238,8 +326,13 @@ export function PoolDiscovery() {
               {/* Pool Count - moved from main content */}
               <div className="mt-6">
                 <div className="text-sm text-muted-foreground">
-                  Showing {filteredPools.length} pool{filteredPools.length !== 1 ? 's' : ''}
-                  {selectedStatus !== 'all' && ` (${selectedStatus})`}
+                  Showing {filteredPools.length} of {mockPools.length} pool{filteredPools.length !== 1 ? 's' : ''}
+                  {selectedStatus !== 'all' && (
+                    <span className="text-accent font-medium"> ({selectedStatus})</span>
+                  )}
+                  {searchQuery && (
+                    <span className="text-primary font-medium"> matching &ldquo;{searchQuery}&rdquo;</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -251,87 +344,7 @@ export function PoolDiscovery() {
             {filteredPools.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
                 {filteredPools.map((pool) => (
-                  <Card key={pool.id} className="group hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 cursor-pointer hover:-translate-y-1 border-border border-2 hover:border-primary/60 relative overflow-hidden bg-card backdrop-blur-sm shadow-lg">
-                    {/* Static gradient background */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/12 via-transparent to-accent/12" />
-                    {/* Animated background gradient on hover */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-accent/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-accent transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
-                    
-                    <CardHeader className="pb-3 relative z-10">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <CardTitle className="text-lg">{pool.tokenName}</CardTitle>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <Badge variant="outline" className="text-xs border-primary/30 bg-primary/5">
-                              {pool.tokenSymbol}
-                            </Badge>
-                            <Badge 
-                              variant={pool.status === 'active' ? 'default' : 'secondary'} 
-                              className={`text-xs ${
-                                pool.status === 'active' 
-                                  ? 'bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-sm shadow-primary/50' 
-                                  : ''
-                              }`}
-                            >
-                              {pool.status === 'success-pending' ? 'Success' : pool.status}
-                            </Badge>
-                          </div>
-                        </div>
-                        <div className="text-right text-xs text-muted-foreground">
-                          <div>{pool.address.slice(0, 6)}...{pool.address.slice(-4)}</div>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    
-                    <CardContent className="space-y-4 relative z-10">
-                      {/* Description */}
-                      <p className="text-sm text-foreground line-clamp-2">{pool.description}</p>
-                      
-                      {/* Progress Bar */}
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-xs">
-                          <span className="text-muted-foreground">Funding Progress</span>
-                          <span className="font-medium">
-                            {Math.round((pool.totalContributions / pool.minTotalContributions) * 100)}%
-                          </span>
-                        </div>
-                        <div className="w-full bg-muted h-2 rounded-full overflow-hidden border border-border/60 shadow-inner">
-                          <div 
-                            className={`h-full bg-gradient-to-r from-primary to-accent transition-all duration-300 ${
-                              pool.status === 'active' ? 'animate-pulse-slow shadow-sm shadow-primary/50' : ''
-                            }`}
-                            style={{ 
-                              width: `${Math.min((pool.totalContributions / pool.minTotalContributions) * 100, 100)}%` 
-                            }}
-                          />
-                        </div>
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>${pool.totalContributions.toLocaleString()} raised</span>
-                          <span>${pool.minTotalContributions.toLocaleString()} goal</span>
-                        </div>
-                      </div>
-                      
-                      {/* Stats */}
-                      <div className="grid grid-cols-2 gap-4 text-xs">
-                        <div className="flex items-center space-x-1">
-                          <Users className="h-3 w-3 text-primary" />
-                          <span className="text-muted-foreground">{pool.contributorCount} contributors</span>
-                        </div>
-                        <div className="flex items-center space-x-1">
-                          <Clock className="h-3 w-3 text-primary" />
-                          <span className="text-muted-foreground">
-                            {pool.status === 'active' 
-                              ? `${Math.ceil((pool.endTime - Date.now()) / (86400000))} days left`
-                              : pool.status === 'upcoming'
-                              ? `Starts in ${Math.ceil((pool.startTime - Date.now()) / (86400000))} days`
-                              : 'Ended'
-                            }
-                          </span>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <PoolCard key={pool.id} pool={pool} />
                 ))}
               </div>
             ) : (
