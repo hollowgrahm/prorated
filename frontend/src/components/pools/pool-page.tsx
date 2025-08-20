@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator'
 import { ArrowLeft, Users, Clock, Target, TrendingUp } from 'lucide-react'
 import { Pool } from '@/types/pool'
 import { ContributionInterface } from './contribution-interface'
+import { DeploymentWizard } from './deployment-wizard'
 
 // Mock data - will be replaced with real contract data
 const mockPools: Pool[] = [
@@ -80,6 +81,52 @@ const mockPools: Pool[] = [
     status: 'launched',
     developer: '0xdeveloper...9012',
     description: 'Community-driven social media platform with decentralized content moderation.'
+  },
+  {
+    id: '4',
+    address: '0x1111122223333444455556666777788889999aaaa',
+    tokenName: 'AI Trading Bot',
+    tokenSymbol: 'AITRADE',
+    tokenTotalSupply: 10000000,
+    developmentFund: 150000,
+    liquidityFund: 50000,
+    minTotalContributions: 200000,
+    fundingToken: '0xA0b86a33E6411c88f7f3A3c4D79F85B8b52E8e',
+    fundingTokenSymbol: 'USDC',
+    startTime: (Date.now() - 86400000 * 20) / 1000,
+    endTime: (Date.now() - 86400000 * 2) / 1000,
+    developerPercent: 15,
+    treasuryPercent: 25,
+    daoPercent: 60,
+    totalContributions: 250000,
+    totalShares: 20000000, // Average ~80 weeks lock
+    contributors: 156,
+    status: 'success-pending',
+    developer: '0xdeveloper...1111',
+    description: 'Autonomous AI-powered trading bot with machine learning capabilities for DeFi.'
+  },
+  {
+    id: '5',
+    address: '0x3333444455556666777788889999aaaabbbbcccc',
+    tokenName: 'Green Energy DAO',
+    tokenSymbol: 'GREEN',
+    tokenTotalSupply: 5000000,
+    developmentFund: 100000,
+    liquidityFund: 50000,
+    minTotalContributions: 150000,
+    fundingToken: '0xA0b86a33E6411c88f7f3A3c4D79F85B8b52E8e',
+    fundingTokenSymbol: 'USDC',
+    startTime: (Date.now() - 86400000 * 15) / 1000,
+    endTime: (Date.now() - 86400000 * 3) / 1000,
+    developerPercent: 12,
+    treasuryPercent: 28,
+    daoPercent: 60,
+    totalContributions: 180000,
+    totalShares: 14400000, // Average ~80 weeks lock
+    contributors: 92,
+    status: 'deploying',
+    developer: '0xdeveloper...3333',
+    description: 'Sustainable energy projects funding through blockchain technology and carbon credits.'
   }
 ]
 
@@ -126,7 +173,13 @@ export function PoolPage({ address }: PoolPageProps) {
 
   useEffect(() => {
     // Simulate loading and finding pool by address
-    const foundPool = mockPools.find(p => p.address === address)
+    // Handle both full addresses and shortened addresses from mock data
+    const foundPool = mockPools.find(p => 
+      p.address === address || 
+      p.address.toLowerCase() === address.toLowerCase() ||
+      address.toLowerCase().includes(p.address.toLowerCase()) ||
+      p.address.toLowerCase().includes(address.toLowerCase())
+    )
     
     // Simulate API delay
     setTimeout(() => {
@@ -245,13 +298,13 @@ export function PoolPage({ address }: PoolPageProps) {
             {/* Pool Status Content */}
             {pool.status === 'active' ? (
               <ContributionInterface pool={pool} />
+            ) : pool.status === 'success-pending' || pool.status === 'deploying' ? (
+              <DeploymentWizard pool={pool} />
             ) : (
               <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
                 <CardHeader>
                   <CardTitle>
                     {pool.status === 'upcoming' ? 'Funding Starts Soon' :
-                     pool.status === 'success-pending' ? 'Ready for Deployment' :
-                     pool.status === 'deploying' ? 'Deployment in Progress' :
                      pool.status === 'failed' ? 'Funding Failed' :
                      'Pool Status'
                     }
@@ -269,17 +322,6 @@ export function PoolPage({ address }: PoolPageProps) {
                       </p>
                       <Button variant="outline" className="btn-outline-custom">
                         Notify Me
-                      </Button>
-                    </div>
-                  )}
-                  
-                  {pool.status === 'success-pending' && (
-                    <div className="text-center py-8">
-                      <p className="text-lg mb-6">
-                        Funding successful! The deployment wizard will be available here.
-                      </p>
-                      <Button size="lg" className="btn-primary-custom">
-                        Start Deployment
                       </Button>
                     </div>
                   )}

@@ -20,13 +20,22 @@ const mockPools: Pool[] = [
     address: '0x1234...5678',
     tokenName: 'DeFiDAO Token',
     tokenSymbol: 'DEFI',
-    developer: '0xdeveloper...1234',
-    status: 'active',
+    tokenTotalSupply: 1000000,
+    developmentFund: 60000,
+    liquidityFund: 40000,
+    minTotalContributions: 100000,
+    fundingToken: '0xA0b86a33E6411c88f7f3A3c4D79F85B8b52E8e',
+    fundingTokenSymbol: 'USDC',
     startTime: (Date.now() - 86400000) / 1000, // 1 day ago (in seconds)
     endTime: (Date.now() + 86400000 * 6) / 1000, // 6 days from now (in seconds)
+    developerPercent: 15,
+    treasuryPercent: 25,
+    daoPercent: 60,
     totalContributions: 75000,
-    minTotalContributions: 100000,
+    totalShares: 3750000, // Average ~50 weeks lock
     contributors: 42,
+    status: 'active',
+    developer: '0xdeveloper...1234',
     description: 'Building the next generation DeFi infrastructure with community governance.'
   },
   {
@@ -34,13 +43,22 @@ const mockPools: Pool[] = [
     address: '0x5678...9012',
     tokenName: 'GameFi Protocol',
     tokenSymbol: 'GAME',
-    developer: '0xdeveloper...5678',
-    status: 'upcoming',
+    tokenTotalSupply: 500000,
+    developmentFund: 30000,
+    liquidityFund: 20000,
+    minTotalContributions: 50000,
+    fundingToken: '0xA0b86a33E6411c88f7f3A3c4D79F85B8b52E8e',
+    fundingTokenSymbol: 'USDC',
     startTime: (Date.now() + 86400000) / 1000, // 1 day from now (in seconds)
     endTime: (Date.now() + 86400000 * 15) / 1000, // 15 days from now (in seconds)
+    developerPercent: 20,
+    treasuryPercent: 20,
+    daoPercent: 60,
     totalContributions: 0,
-    minTotalContributions: 50000,
+    totalShares: 0,
     contributors: 0,
+    status: 'upcoming',
+    developer: '0xdeveloper...5678',
     description: 'Decentralized gaming platform with play-to-earn mechanics and NFT integration.'
   },
   {
@@ -48,55 +66,93 @@ const mockPools: Pool[] = [
     address: '0x9012...3456',
     tokenName: 'SocialDAO',
     tokenSymbol: 'SOCIAL',
-    developer: '0xdeveloper...9012',
-    status: 'launched',
+    tokenTotalSupply: 2000000,
+    developmentFund: 50000,
+    liquidityFund: 30000,
+    minTotalContributions: 80000,
+    fundingToken: '0xdAC17F958D2ee523a2206206994597C13D831ec7',
+    fundingTokenSymbol: 'USDT',
     startTime: (Date.now() - 86400000 * 10) / 1000, // 10 days ago (in seconds)
     endTime: (Date.now() - 86400000) / 1000, // 1 day ago (in seconds)
+    developerPercent: 10,
+    treasuryPercent: 30,
+    daoPercent: 60,
     totalContributions: 125000,
-    minTotalContributions: 80000,
+    totalShares: 8750000, // Average ~70 weeks lock
     contributors: 89,
-    description: 'Community-driven social media platform with decentralized content moderation.'
+    status: 'launched',
+    developer: '0xdeveloper...9012',
+    description: 'Community-driven social media platform with decentralized content moderation.',
+    tokenAddress: '0xtoken...9012',
+    pairAddress: '0xpair...9012'
   },
   {
     id: '4',
     address: '0xabcd...efgh',
     tokenName: 'MetaVerse Protocol',
     tokenSymbol: 'META',
-    developer: '0xdeveloper...abcd',
-    status: 'failed',
+    tokenTotalSupply: 20000000,
+    developmentFund: 70000,
+    liquidityFund: 30000,
+    minTotalContributions: 100000,
+    fundingToken: '0xA0b86a33E6411c88f7f3A3c4D79F85B8b52E8e',
+    fundingTokenSymbol: 'USDC',
     startTime: (Date.now() - 86400000 * 30) / 1000, // 30 days ago (in seconds)
     endTime: (Date.now() - 86400000 * 5) / 1000, // 5 days ago (in seconds)
+    developerPercent: 25,
+    treasuryPercent: 15,
+    daoPercent: 60,
     totalContributions: 15000,
-    minTotalContributions: 100000,
+    totalShares: 600000, // Average ~40 weeks lock
     contributors: 8,
+    status: 'failed',
+    developer: '0xdeveloper...abcd',
     description: 'Virtual reality metaverse platform with NFT integration and digital land ownership.'
   },
   {
     id: '5',
-    address: '0x1111...2222',
+    address: '0x1111122223333444455556666777788889999aaaa',
     tokenName: 'AI Trading Bot',
     tokenSymbol: 'AITRADE',
-    developer: '0xdeveloper...1111',
-    status: 'success-pending',
+    tokenTotalSupply: 10000000,
+    developmentFund: 150000,
+    liquidityFund: 50000,
+    minTotalContributions: 200000,
+    fundingToken: '0xA0b86a33E6411c88f7f3A3c4D79F85B8b52E8e',
+    fundingTokenSymbol: 'USDC',
     startTime: (Date.now() - 86400000 * 20) / 1000, // 20 days ago (in seconds)
     endTime: (Date.now() - 86400000 * 2) / 1000, // 2 days ago (in seconds)
+    developerPercent: 15,
+    treasuryPercent: 25,
+    daoPercent: 60,
     totalContributions: 250000,
-    minTotalContributions: 200000,
+    totalShares: 20000000, // Average ~80 weeks lock
     contributors: 156,
+    status: 'success-pending',
+    developer: '0xdeveloper...1111',
     description: 'Autonomous AI-powered trading bot with machine learning capabilities for DeFi.'
   },
   {
     id: '6',
-    address: '0x3333...4444',
+    address: '0x3333444455556666777788889999aaaabbbbcccc',
     tokenName: 'Green Energy DAO',
     tokenSymbol: 'GREEN',
-    developer: '0xdeveloper...3333',
-    status: 'deploying',
+    tokenTotalSupply: 5000000,
+    developmentFund: 100000,
+    liquidityFund: 50000,
+    minTotalContributions: 150000,
+    fundingToken: '0xA0b86a33E6411c88f7f3A3c4D79F85B8b52E8e',
+    fundingTokenSymbol: 'USDC',
     startTime: (Date.now() - 86400000 * 15) / 1000, // 15 days ago (in seconds)
     endTime: (Date.now() - 86400000 * 3) / 1000, // 3 days ago (in seconds)
+    developerPercent: 12,
+    treasuryPercent: 28,
+    daoPercent: 60,
     totalContributions: 180000,
-    minTotalContributions: 150000,
+    totalShares: 14400000, // Average ~80 weeks lock
     contributors: 92,
+    status: 'deploying',
+    developer: '0xdeveloper...3333',
     description: 'Sustainable energy projects funding through blockchain technology and carbon credits.'
   }
 ]
