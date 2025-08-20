@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { Github, Twitter, Globe, BookOpen } from 'lucide-react'
+import { Github, Twitter, BookOpen } from 'lucide-react'
 
 const footerLinks = {
   product: [
@@ -22,7 +22,7 @@ const footerLinks = {
 export function Footer() {
   return (
     <footer className="border-t border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container max-w-screen-2xl py-12 md:py-16">
+      <div className="container mx-auto px-4 max-w-screen-2xl py-12 md:py-16">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-4">
           {/* Brand */}
           <div className="space-y-4">

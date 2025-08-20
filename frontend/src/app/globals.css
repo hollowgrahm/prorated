@@ -1,7 +1,6 @@
 @import "tailwindcss";
-@import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
+@variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
@@ -84,27 +83,27 @@
 }
 
 .dark {
-  /* Dark theme - deep purple/blue */
-  --background: oklch(0.08 0.02 260);
-  --foreground: oklch(0.92 0.008 260);
-  --card: oklch(0.12 0.025 260);
-  --card-foreground: oklch(0.92 0.008 260);
-  --popover: oklch(0.12 0.025 260);
-  --popover-foreground: oklch(0.92 0.008 260);
-  /* Brighter purple for primary in dark mode */
-  --primary: oklch(0.7 0.18 290);
-  --primary-foreground: oklch(0.08 0.02 260);
-  --secondary: oklch(0.18 0.03 260);
-  --secondary-foreground: oklch(0.9 0.008 260);
-  --muted: oklch(0.15 0.025 260);
-  --muted-foreground: oklch(0.65 0.02 260);
-  /* Electric blue accent */
-  --accent: oklch(0.75 0.25 210);
-  --accent-foreground: oklch(0.08 0.02 260);
-  --destructive: oklch(0.7 0.22 25);
-  --border: oklch(0.25 0.03 260);
-  --input: oklch(0.18 0.03 260);
-  --ring: oklch(0.7 0.18 290);
+  /* Dark theme - inspired by sophisticated dark UIs */
+  --background: oklch(0.04 0.008 260);
+  --foreground: oklch(0.95 0.005 260);
+  --card: oklch(0.06 0.01 260);
+  --card-foreground: oklch(0.95 0.005 260);
+  --popover: oklch(0.06 0.01 260);
+  --popover-foreground: oklch(0.9 0.005 260);
+  /* Sophisticated purple for primary */
+  --primary: oklch(0.6 0.15 285);
+  --primary-foreground: oklch(0.04 0.008 260);
+  --secondary: oklch(0.12 0.02 260);
+  --secondary-foreground: oklch(0.85 0.005 260);
+  --muted: oklch(0.08 0.01 260);
+  --muted-foreground: oklch(0.7 0.008 260);
+  /* Subtle blue accent */
+  --accent: oklch(0.65 0.18 240);
+  --accent-foreground: oklch(0.04 0.008 260);
+  --destructive: oklch(0.6 0.18 25);
+  --border: oklch(0.15 0.015 260);
+  --input: oklch(0.08 0.01 260);
+  --ring: oklch(0.6 0.15 285);
   /* Chart colors - vibrant purple/blue theme for dark mode */
   --chart-1: oklch(0.7 0.18 290);
   --chart-2: oklch(0.75 0.25 210);
@@ -112,55 +111,103 @@
   --chart-4: oklch(0.6 0.2 310);
   --chart-5: oklch(0.85 0.18 240);
   /* Sidebar */
-  --sidebar: oklch(0.1 0.022 260);
-  --sidebar-foreground: oklch(0.92 0.008 260);
-  --sidebar-primary: oklch(0.7 0.18 290);
-  --sidebar-primary-foreground: oklch(0.08 0.02 260);
-  --sidebar-accent: oklch(0.18 0.03 260);
-  --sidebar-accent-foreground: oklch(0.9 0.008 260);
-  --sidebar-border: oklch(0.25 0.03 260);
-  --sidebar-ring: oklch(0.7 0.18 290);
+  --sidebar: oklch(0.05 0.01 260);
+  --sidebar-foreground: oklch(0.9 0.005 260);
+  --sidebar-primary: oklch(0.6 0.15 285);
+  --sidebar-primary-foreground: oklch(0.04 0.008 260);
+  --sidebar-accent: oklch(0.12 0.02 260);
+  --sidebar-accent-foreground: oklch(0.85 0.005 260);
+  --sidebar-border: oklch(0.15 0.015 260);
+  --sidebar-ring: oklch(0.6 0.15 285);
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
+    @apply border-border;
   }
   
-  /* Set dark mode as default */
-  html {
-    @apply dark;
+  /* Force dark mode variables */
+  :root {
+    color-scheme: dark;
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    /* Force dark background to ensure it works */
+    background-color: #0a0a0f !important;
+    color: oklch(0.95 0.005 260) !important;
+  }
+  
+  /* Clean, readable text colors for excellent contrast */
+  .text-foreground {
+    color: oklch(0.95 0.005 260) !important; /* Bright white with slight cool tint */
+  }
+  
+  .text-muted-foreground {
+    color: oklch(0.7 0.008 260) !important; /* Medium gray for secondary text */
+  }
+  
+  .text-secondary-foreground {
+    color: oklch(0.85 0.005 260) !important; /* Light gray for tertiary text */
+  }
+  
+  .text-card-foreground {
+    color: oklch(0.95 0.005 260) !important; /* Bright white for cards */
   }
 }
 
-@layer utilities {
-  /* Prorated Protocol custom utilities */
+@layer components {
+  /* Custom Prorated Protocol utilities */
   .gradient-purple-blue {
-    background: linear-gradient(135deg, oklch(0.7 0.18 290), oklch(0.75 0.25 210));
+    background: linear-gradient(135deg, oklch(0.6 0.15 285), oklch(0.65 0.18 240));
   }
-  
+
   .gradient-text {
-    background: linear-gradient(135deg, oklch(0.7 0.18 290), oklch(0.75 0.25 210));
+    background: linear-gradient(135deg, oklch(0.6 0.15 285), oklch(0.65 0.18 240));
     background-clip: text;
     -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
+    color: transparent;
   }
-  
+
   .glass {
-    background: oklch(0.12 0.025 260 / 0.8);
+    background-color: rgba(30, 30, 46, 0.8);
     backdrop-filter: blur(20px);
-    border: 1px solid oklch(0.25 0.03 260 / 0.5);
+    border: 1px solid rgba(255, 255, 255, 0.1);
   }
-  
+
   .glow-purple {
-    box-shadow: 0 0 20px oklch(0.7 0.18 290 / 0.3);
+    box-shadow: 0 0 20px rgba(168, 85, 247, 0.3);
+  }
+
+  .glow-blue {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
   }
   
-  .glow-blue {
-    box-shadow: 0 0 20px oklch(0.75 0.25 210 / 0.3);
+  /* Custom button styles to match wallet connect */
+  .btn-primary-custom {
+    background: oklch(0.6 0.15 285) !important;
+    color: white !important;
+    border: none !important;
+  }
+  
+  .btn-primary-custom:hover {
+    background: linear-gradient(135deg, oklch(0.6 0.15 285), oklch(0.65 0.18 240)) !important;
+    transform: translateY(-1px);
+    box-shadow: 0 0 20px oklch(0.6 0.15 285 / 0.4) !important;
+  }
+  
+  .btn-outline-custom {
+    background: transparent !important;
+    color: white !important;
+    border: 1px solid oklch(0.6 0.15 285) !important;
+  }
+  
+  .btn-outline-custom:hover {
+    background: linear-gradient(135deg, oklch(0.6 0.15 285), oklch(0.65 0.18 240)) !important;
+    color: white !important;
+    border: 1px solid transparent !important;
+    transform: translateY(-1px);
+    box-shadow: 0 0 20px oklch(0.6 0.15 285 / 0.4) !important;
   }
 
   .animate-float {
@@ -185,7 +232,7 @@
     background: linear-gradient(
       90deg,
       transparent,
-      oklch(0.7 0.18 290 / 0.1),
+      rgba(168, 85, 247, 0.1),
       transparent
     );
     background-size: 200% 100%;

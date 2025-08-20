@@ -16,7 +16,7 @@ export function HeroSection() {
           <div className="flex justify-center">
             <Badge variant="outline" className="px-4 py-2 text-sm font-medium border-primary/20 bg-primary/5">
               <Rocket className="w-4 h-4 mr-2" />
-              The Future of Token Launches
+              The Future of Tokenomics
             </Badge>
           </div>
 
@@ -24,23 +24,23 @@ export function HeroSection() {
           <div className="space-y-6">
             <h1 className="text-4xl sm:text-5xl lg:text-7xl font-bold tracking-tight">
               <span className="gradient-text">Crowdfund</span>{' '}
-              <span className="text-foreground">Your Token</span>
+              <span className="text-foreground">Your DAO</span>
               <br />
               <span className="text-foreground">Launch with</span>{' '}
               <span className="gradient-text">Community</span>
             </h1>
             
-            <p className="text-xl lg:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              The only platform you need to crowdfund your token, deploy to DEX, 
-              enable lending, and launch governance - all in one seamless flow.
+            <p className="text-xl lg:text-2xl text-foreground max-w-3xl mx-auto leading-relaxed">
+              The only platform you need to crowdfund development, bootstrap liquidity for your token, 
+              enable leverage trading, and launch governance - all in one seamless flow.
             </p>
           </div>
 
           {/* Key benefits */}
-          <div className="flex flex-wrap justify-center gap-4 text-sm text-muted-foreground">
+          <div className="flex flex-wrap justify-center gap-4 text-sm text-foreground">
             <div className="flex items-center space-x-2">
               <TrendingUp className="w-4 h-4 text-primary" />
-              <span>Community-Driven Funding</span>
+              <span>Community Driven Funding</span>
             </div>
             <div className="flex items-center space-x-2">
               <Shield className="w-4 h-4 text-primary" />
@@ -54,16 +54,16 @@ export function HeroSection() {
 
           {/* CTA buttons */}
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center pt-8">
-            <Button asChild size="lg" className="text-lg px-8 py-6 glow-purple">
+            <Button asChild size="lg" className="text-lg px-8 py-6 btn-primary-custom">
               <Link href="/pools">
-                Discover Projects
+                Discover Fundraising Pools
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Link>
             </Button>
             
-            <Button asChild variant="outline" size="lg" className="text-lg px-8 py-6">
+            <Button asChild variant="outline" size="lg" className="text-lg px-8 py-6 btn-outline-custom">
               <Link href="/pools/create">
-                Launch Your Token
+                Launch Your DAO
               </Link>
             </Button>
           </div>
@@ -73,15 +73,15 @@ export function HeroSection() {
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 max-w-2xl mx-auto">
               <div className="text-center">
                 <div className="text-3xl lg:text-4xl font-bold gradient-text">4</div>
-                <div className="text-sm text-muted-foreground mt-1">Active Pools</div>
+                <div className="text-sm text-foreground mt-1">Active Pools</div>
               </div>
               <div className="text-center">
                 <div className="text-3xl lg:text-4xl font-bold gradient-text">$0</div>
-                <div className="text-sm text-muted-foreground mt-1">Total Raised</div>
+                <div className="text-sm text-foreground mt-1">Total Raised</div>
               </div>
               <div className="text-center">
                 <div className="text-3xl lg:text-4xl font-bold gradient-text">100%</div>
-                <div className="text-sm text-muted-foreground mt-1">Success Rate</div>
+                <div className="text-sm text-foreground mt-1">Success Rate</div>
               </div>
             </div>
           </div>

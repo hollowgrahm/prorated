@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ConnectButton } from '@rainbow-me/rainbowkit'
-import { Menu, X, Home, Search, Plus, Briefcase } from 'lucide-react'
+import { Menu, Home, Search, Plus, Briefcase } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { cn } from '@/lib/utils'
@@ -13,7 +13,7 @@ const navigation = [
   { name: 'Home', href: '/', icon: Home },
   { name: 'Discover Pools', href: '/pools', icon: Search },
   { name: 'Create Pool', href: '/pools/create', icon: Plus },
-  { name: 'Projects', href: '/projects', icon: Briefcase },
+  { name: 'Live Projects', href: '/projects', icon: Briefcase },
 ]
 
 export function Header() {
@@ -22,7 +22,7 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container flex h-16 max-w-screen-2xl items-center">
+      <div className="container mx-auto px-4 flex h-16 max-w-screen-2xl items-center">
         {/* Logo */}
         <div className="mr-4 flex">
           <Link href="/" className="mr-6 flex items-center space-x-2">
@@ -30,7 +30,7 @@ export function Header() {
               <span className="font-bold text-primary-foreground text-sm">P</span>
             </div>
             <span className="hidden font-bold sm:inline-block gradient-text">
-              Prorated Protocol
+              Prorated
             </span>
           </Link>
         </div>
@@ -86,7 +86,7 @@ export function Header() {
                     <span className="font-bold text-primary-foreground text-sm">P</span>
                   </div>
                   <span className="font-bold gradient-text">
-                    Prorated Protocol
+                    Prorated
                   </span>
                 </div>
 

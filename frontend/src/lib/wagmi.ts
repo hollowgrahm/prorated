@@ -1,7 +1,7 @@
 // Wagmi Configuration for Prorated Protocol
 import { http, createConfig } from 'wagmi'
 import { defineChain } from 'viem'
-import { injected, metaMask, walletConnect } from 'wagmi/connectors'
+import { injected, metaMask } from 'wagmi/connectors'
 import { env } from './env'
 
 // Define Anvil Local Chain

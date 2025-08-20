@@ -26,7 +26,9 @@ export function useAllPoolAddresses() {
   const pool8 = useAllPools(8)
   const pool9 = useAllPools(9)
   
-  const poolQueries = [pool0, pool1, pool2, pool3, pool4, pool5, pool6, pool7, pool8, pool9]
+  const poolQueries = useMemo(() => [
+    pool0, pool1, pool2, pool3, pool4, pool5, pool6, pool7, pool8, pool9
+  ], [pool0, pool1, pool2, pool3, pool4, pool5, pool6, pool7, pool8, pool9])
   
   const poolAddresses = useMemo(() => {
     const addresses: Address[] = []
@@ -57,20 +59,25 @@ export function useAllPoolsData() {
   // In production, this should be properly paginated
   const limitedAddresses = addresses.slice(0, 10)
   
-  // Fetch pool data for each address - we need to call usePool for each known address
-  const pool0Data = limitedAddresses[0] ? usePool(limitedAddresses[0]) : { data: undefined, isLoading: false, error: null, refetch: () => {} }
-  const pool1Data = limitedAddresses[1] ? usePool(limitedAddresses[1]) : { data: undefined, isLoading: false, error: null, refetch: () => {} }
-  const pool2Data = limitedAddresses[2] ? usePool(limitedAddresses[2]) : { data: undefined, isLoading: false, error: null, refetch: () => {} }
-  const pool3Data = limitedAddresses[3] ? usePool(limitedAddresses[3]) : { data: undefined, isLoading: false, error: null, refetch: () => {} }
-  const pool4Data = limitedAddresses[4] ? usePool(limitedAddresses[4]) : { data: undefined, isLoading: false, error: null, refetch: () => {} }
+  // Default address for when no pool address is available
+  const defaultAddress = '0x0000000000000000000000000000000000000000' as Address
   
-  const poolQueries = [pool0Data, pool1Data, pool2Data, pool3Data, pool4Data]
+  // Fetch pool data for each address - hooks must be called unconditionally
+  const pool0Data = usePool(limitedAddresses[0] || defaultAddress)
+  const pool1Data = usePool(limitedAddresses[1] || defaultAddress)
+  const pool2Data = usePool(limitedAddresses[2] || defaultAddress)
+  const pool3Data = usePool(limitedAddresses[3] || defaultAddress)
+  const pool4Data = usePool(limitedAddresses[4] || defaultAddress)
+  
+  const poolQueries = useMemo(() => [
+    pool0Data, pool1Data, pool2Data, pool3Data, pool4Data
+  ], [pool0Data, pool1Data, pool2Data, pool3Data, pool4Data])
   
   const pools = useMemo(() => {
     return poolQueries
-      .map(query => query.data)
+      .map((query, index) => limitedAddresses[index] ? query.data : null)
       .filter(Boolean) as PoolData[]
-  }, [poolQueries])
+  }, [poolQueries, limitedAddresses])
   
   const isLoading = isAddressesLoading || poolQueries.some(query => query.isLoading)
   const error = addressesError || poolQueries.find(query => query.error)?.error

@@ -175,7 +175,7 @@ export function parseContributionAmount(
     const amount = BigInt(Math.floor(num * 10 ** decimals))
     
     return { amount, isValid: true }
-  } catch (error) {
+  } catch {
     return { amount: BigInt(0), isValid: false, error: 'Invalid amount format' }
   }
 }
@@ -185,7 +185,7 @@ export async function copyToClipboard(text: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text)
     return true
-  } catch (error) {
+  } catch {
     // Fallback for older browsers
     const textArea = document.createElement('textarea')
     textArea.value = text

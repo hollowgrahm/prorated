@@ -17,10 +17,10 @@ const mainFeatures = [
   {
     icon: Rocket,
     title: "Community Crowdfunding",
-    description: "Launch your token through transparent community funding rounds",
+    description: "Launch your DAO through transparent community funding",
     benefits: [
       "Set custom funding goals and duration",
-      "Community chooses commitment levels (1-208 weeks)",
+      "Community chooses commitment levels (1-208 weeks) for leverage on the size of their contribution",
       "Transparent progress tracking",
       "Minimum threshold protection"
     ],
@@ -31,9 +31,9 @@ const mainFeatures = [
     title: "Instant DEX Trading",
     description: "Automatic Proswap deployment with optimized liquidity pools",
     benefits: [
-      "80/20 weighted pools for price stability",
+      "80/20 weighted pools for deep liquidity, maximum upside exposure and downside protection",
       "Automated liquidity seeding",
-      "Built-in MEV protection",
+      "Leveraged exposure enabled through Prolend markets",
       "Professional trading interface"
     ],
     accent: "from-accent to-accent/70"
@@ -43,6 +43,7 @@ const mainFeatures = [
     title: "Governance & veNFTs",
     description: "DAO governance powered by lock-duration based voting",
     benefits: [
+      "Transferable veNFTs create liquidity opportunities for contributors",
       "veNFT voting power scales with commitment",
       "Proposal creation and voting",
       "Treasury management",
@@ -66,7 +67,7 @@ const additionalFeatures = [
   {
     icon: Globe,
     title: "Decentralized",
-    description: "No central authority, community-governed protocol"
+    description: "No central authority, community governed protocol"
   },
   {
     icon: Users,
@@ -84,9 +85,9 @@ export function FeaturesShowcase() {
           <h2 className="text-3xl lg:text-5xl font-bold mb-6">
             Why Choose <span className="gradient-text">Prorated</span>?
           </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
-            The most comprehensive platform for token launches, combining crowdfunding, 
-            DEX deployment, lending markets, and governance in one seamless experience.
+          <p className="text-xl text-foreground max-w-3xl mx-auto">
+            The most comprehensive platform for fair token launches, combining decentralized crowdfunding, instant DAO creation, 
+            DEX deployment, lending markets, and governance infrastructure in one seamless experience.
           </p>
         </div>
 
@@ -102,7 +103,7 @@ export function FeaturesShowcase() {
                   <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
                     <Icon className="w-6 h-6 text-primary" />
                   </div>
-                  <CardTitle className="text-xl">{feature.title}</CardTitle>
+                  <CardTitle className="text-xl text-accent">{feature.title}</CardTitle>
                   <CardDescription className="text-base">
                     {feature.description}
                   </CardDescription>
@@ -113,7 +114,7 @@ export function FeaturesShowcase() {
                     {feature.benefits.map((benefit, i) => (
                       <li key={i} className="flex items-start space-x-2 text-sm">
                         <CheckCircle className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-                        <span className="text-muted-foreground">{benefit}</span>
+                        <span className="text-foreground">{benefit}</span>
                       </li>
                     ))}
                   </ul>
@@ -133,8 +134,8 @@ export function FeaturesShowcase() {
                   <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
                     <Icon className="w-8 h-8 text-primary" />
                   </div>
-                  <h3 className="font-semibold mb-2">{feature.title}</h3>
-                  <p className="text-sm text-muted-foreground">{feature.description}</p>
+                  <h3 className="font-semibold mb-2 text-accent">{feature.title}</h3>
+                  <p className="text-sm text-foreground">{feature.description}</p>
                 </div>
               )
             })}
@@ -144,23 +145,23 @@ export function FeaturesShowcase() {
         {/* CTA section */}
         <div className="text-center">
           <div className="max-w-2xl mx-auto glass p-8 rounded-2xl">
-            <h3 className="text-2xl lg:text-3xl font-bold mb-4">
+            <h3 className="text-2xl lg:text-3xl font-bold mb-4 text-accent">
               Ready to Launch Your Token?
             </h3>
-            <p className="text-muted-foreground mb-6">
+            <p className="text-foreground mb-6">
               Join the future of decentralized token launches. Create your crowdfunding 
               campaign and deploy your complete DeFi ecosystem today.
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button asChild size="lg" className="glow-purple">
+              <Button asChild size="lg" className="btn-primary-custom">
                 <Link href="/pools/create">
                   Start Your Campaign
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>
               </Button>
               
-              <Button asChild variant="outline" size="lg">
+              <Button asChild variant="outline" size="lg" className="btn-outline-custom">
                 <Link href="/pools">
                   Browse Projects
                 </Link>

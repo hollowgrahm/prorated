@@ -158,12 +158,11 @@ export function usePoolDeploymentStatus(poolAddress: Address) {
 // Validation helpers
 export function usePoolValidation(poolAddress: Address) {
   const { data: poolData } = usePool(poolAddress)
+  const timing = usePoolTiming(poolAddress)
+  const progress = usePoolProgress(poolAddress)
   
   return useMemo(() => {
     if (!poolData) return { isValid: false }
-    
-    const timing = usePoolTiming(poolAddress)
-    const progress = usePoolProgress(poolAddress)
     
     return {
       isValid: true,
@@ -174,5 +173,5 @@ export function usePoolValidation(poolAddress: Address) {
       isActive: timing.isActive,
       hasEnded: timing.hasEnded,
     }
-  }, [poolData, poolAddress])
+  }, [poolData, timing, progress])
 }

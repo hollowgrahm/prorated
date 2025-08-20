@@ -12,38 +12,40 @@ import {
 const steps = [
   {
     step: 1,
-    title: "Create Pool",
-    description: "Launch a crowdfunding campaign for your token with customizable parameters.",
+    title: "Create Fundraising Pool",
+    description: "Launch a crowdfunding campaign for your DAO with customizable parameters.",
     icon: Rocket,
     details: [
       "Set token name, symbol, and total supply",
       "Define funding goals and duration", 
-      "Configure tokenomics (dev fund, treasury, DAO)",
-      "Deploy to the Prorated Factory"
+      "Configure developer, treasury and DAO allocations",
+      "Deploy your Prorated Fundraising Pool",
+      "Share and grow your community!"
     ]
   },
   {
     step: 2,
     title: "Community Funding",
-    description: "Contributors fund your project with USDC and choose their commitment level.",
+    description: "Contributors fund your project's DAO and choose their commitment level.",
     icon: Users,
     details: [
-      "Contributors deposit USDC to support your project",
-      "Lock duration (1-208 weeks) determines voting power",
+      "Contributors deposit assets to support your project",
+      "Voter Escrow lock duration (1-208 weeks) is a multiplier on ownership shares of the pool",
       "Transparent funding progress and milestones",
-      "Minimum funding threshold protection"
+      "Minimum funding threshold protection, oversubscription creates even deeper liquidity"
     ]
   },
   {
     step: 3,
     title: "Successful Launch",
-    description: "Once funding succeeds, deploy your complete DeFi ecosystem automatically.",
+    description: "Once funding succeeds, deploy your complete DAO ecosystem automatically.",
     icon: CheckCircle,
     details: [
       "Deploy ERC-20 token contract",
       "Create 80/20 weighted Proswap pair",
-      "Seed initial liquidity from raised funds",
-      "Launch veNFT and governance contracts"
+      "Developer team receives funding to build protocol",
+      "Seed initial liquidity from remaining raised funds",
+      "DEX pool LP tokens are locked into veNFTs and distributed back to contributors"
     ]
   },
   {
@@ -53,7 +55,8 @@ const steps = [
     icon: TrendingUp,
     details: [
       "Trade on Proswap with automated liquidity",
-      "Lend and borrow on Prolend markets",
+      "Borrow on Prolend markets to long and short with leverage",
+      "Lend on Prolend markets to earn yield",
       "Participate in DAO governance with veNFTs",
       "Treasury management and protocol fees"
     ]
@@ -74,7 +77,7 @@ const features = [
   {
     icon: Vote,
     title: "veNFT Governance",
-    description: "Voting power based on LP lock duration creates aligned long-term governance."
+    description: "Voting power based on LP lock duration creates aligned long term governance."
   }
 ]
 
@@ -87,7 +90,7 @@ export function HowItWorks() {
           <h2 className="text-3xl lg:text-5xl font-bold mb-6">
             How <span className="gradient-text">Prorated</span> Works
           </h2>
-          <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+          <p className="text-xl text-foreground max-w-3xl mx-auto">
             From crowdfunding to full DeFi deployment in four simple steps. 
             No coding required, no complex integrations.
           </p>
@@ -116,12 +119,12 @@ export function HowItWorks() {
                         <span className="w-2 h-2 rounded-full bg-primary/50" />
                       </div>
                       
-                      <h3 className="text-2xl font-bold mb-3">{step.title}</h3>
-                      <p className="text-muted-foreground mb-4">{step.description}</p>
+                      <h3 className="text-2xl font-bold mb-3 text-accent">{step.title}</h3>
+                      <p className="text-foreground mb-4">{step.description}</p>
                       
                       <ul className="space-y-2">
                         {step.details.map((detail, i) => (
-                          <li key={i} className="flex items-center space-x-2 text-sm text-muted-foreground">
+                          <li key={i} className="flex items-center space-x-2 text-sm text-foreground">
                             <ArrowRight className="w-4 h-4 text-primary flex-shrink-0" />
                             <span>{detail}</span>
                           </li>
@@ -146,7 +149,7 @@ export function HowItWorks() {
             <h3 className="text-2xl lg:text-3xl font-bold mb-4">
               Integrated <span className="gradient-text">DeFi Stack</span>
             </h3>
-            <p className="text-muted-foreground">
+            <p className="text-foreground">
               Every launched token gets a complete DeFi ecosystem out of the box
             </p>
           </div>
@@ -159,8 +162,8 @@ export function HowItWorks() {
                   <div className="w-12 h-12 mx-auto mb-4 rounded-lg bg-primary/10 flex items-center justify-center">
                     <Icon className="w-6 h-6 text-primary" />
                   </div>
-                  <h4 className="text-lg font-semibold mb-2">{feature.title}</h4>
-                  <p className="text-sm text-muted-foreground">{feature.description}</p>
+                  <h4 className="text-lg font-semibold mb-2 text-accent">{feature.title}</h4>
+                  <p className="text-sm text-foreground">{feature.description}</p>
                 </div>
               )
             })}

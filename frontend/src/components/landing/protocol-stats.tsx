@@ -91,7 +91,7 @@ export function ProtocolStats() {
           <h2 className="text-3xl lg:text-5xl font-bold mb-6">
             Protocol <span className="gradient-text">Metrics</span>
           </h2>
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+          <p className="text-xl text-foreground max-w-2xl mx-auto">
             Real-time statistics from the Prorated Protocol ecosystem
           </p>
         </div>
@@ -107,7 +107,7 @@ export function ProtocolStats() {
                     <div>
                       <div className="flex items-center space-x-2 mb-2">
                         <Icon className={`w-5 h-5 ${stat.color}`} />
-                        <span className="text-sm font-medium text-muted-foreground">
+                        <span className="text-sm font-medium text-foreground">
                           {stat.label}
                         </span>
                       </div>
@@ -138,20 +138,20 @@ export function ProtocolStats() {
           <div className="mt-16 max-w-4xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <div className="text-center glass p-6 rounded-xl">
-                <h3 className="text-lg font-semibold mb-2">Deployment Progress</h3>
+                <h3 className="text-lg font-semibold mb-2 text-accent">Deployment Progress</h3>
                 <div className="space-y-2">
                   {stats.deployingPools > 0 && (
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-sm text-foreground">
                       {stats.deployingPools} project{stats.deployingPools !== 1 ? 's' : ''} currently deploying
                     </div>
                   )}
                   {stats.successPendingPools > 0 && (
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-sm text-foreground">
                       {stats.successPendingPools} project{stats.successPendingPools !== 1 ? 's' : ''} ready for deployment
                     </div>
                   )}
                   {stats.deployingPools === 0 && stats.successPendingPools === 0 && (
-                    <div className="text-sm text-muted-foreground">
+                    <div className="text-sm text-foreground">
                       All successful pools have been deployed
                     </div>
                   )}
@@ -159,12 +159,12 @@ export function ProtocolStats() {
               </div>
 
               <div className="text-center glass p-6 rounded-xl">
-                <h3 className="text-lg font-semibold mb-2">Community Activity</h3>
+                <h3 className="text-lg font-semibold mb-2 text-accent">Community Activity</h3>
                 <div className="space-y-2">
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm text-foreground">
                     {stats.totalUsers} unique participants
                   </div>
-                  <div className="text-sm text-muted-foreground">
+                  <div className="text-sm text-foreground">
                     {stats.activePools + stats.upcomingPools} pools accepting contributions
                   </div>
                 </div>
