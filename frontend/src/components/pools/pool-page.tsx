@@ -12,6 +12,7 @@ import { ContributionInterface } from './contribution-interface'
 import { DeploymentWizard } from './deployment-wizard'
 import { PoolTimeline } from './pool-timeline'
 import { ContributorList } from './contributor-list'
+import { getTokenSymbol } from '@/lib/token-utils'
 
 // Mock data - will be replaced with real contract data
 const mockPools: Pool[] = [
@@ -245,6 +246,9 @@ export function PoolPage({ address }: PoolPageProps) {
     )
   }
 
+  // Get dynamic token symbol
+  const fundingTokenSymbol = getTokenSymbol(pool.fundingToken)
+  
   const progressPercentage = Math.min(
     (pool.totalContributions / pool.minTotalContributions) * 100,
     100
@@ -333,9 +337,9 @@ export function PoolPage({ address }: PoolPageProps) {
                       <p className="text-lg mb-4">
                         This funding round did not reach its minimum target.
                       </p>
-                      <p className="text-muted-foreground mb-6">
-                        Raised ${pool.totalContributions.toLocaleString()} of ${pool.minTotalContributions.toLocaleString()} goal
-                      </p>
+                                              <p className="text-muted-foreground mb-6">
+                         Raised {pool.totalContributions.toLocaleString()} of {pool.minTotalContributions.toLocaleString()} {fundingTokenSymbol} goal
+                        </p>
                       <Button variant="outline" className="btn-outline-custom">
                         View Details
                       </Button>
@@ -365,15 +369,15 @@ export function PoolPage({ address }: PoolPageProps) {
                   </div>
                   <div>
                     <span className="text-muted-foreground">Funding Token</span>
-                    <p className="font-medium">{pool.fundingTokenSymbol}</p>
+                    <p className="font-medium">{fundingTokenSymbol}</p>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Development Fund</span>
-                    <p className="font-medium">{pool.developmentFund.toLocaleString()} {pool.fundingTokenSymbol}</p>
+                    <p className="font-medium">{pool.developmentFund.toLocaleString()} {fundingTokenSymbol}</p>
                   </div>
                   <div>
                     <span className="text-muted-foreground">Liquidity Fund</span>
-                    <p className="font-medium">{pool.liquidityFund.toLocaleString()} {pool.fundingTokenSymbol}</p>
+                    <p className="font-medium">{pool.liquidityFund.toLocaleString()} {fundingTokenSymbol}</p>
                   </div>
                   <div className="col-span-2">
                     <span className="text-muted-foreground">Developer</span>
@@ -384,7 +388,7 @@ export function PoolPage({ address }: PoolPageProps) {
                 <Separator />
                 
                 <div>
-                  <span className="text-muted-foreground text-sm">Allocation Percentages</span>
+                  <span className="text-muted-foreground text-sm">Token Allocation Percentages</span>
                   <div className="grid grid-cols-3 gap-2 mt-2">
                     <div className="text-center p-2 bg-secondary/20 rounded">
                       <div className="text-sm font-medium">{pool.developerPercent}%</div>
@@ -399,6 +403,18 @@ export function PoolPage({ address }: PoolPageProps) {
                       <div className="text-xs text-muted-foreground">DAO</div>
                     </div>
                   </div>
+                </div>
+                
+                <Separator />
+                
+                <div className="p-3 bg-blue-500/5 border border-blue-500/20 rounded-lg">
+                  <h4 className="font-medium text-sm mb-2">🔄 Liquidity Seeding</h4>
+                  <p className="text-xs text-muted-foreground">
+                    Liquidity fund ({pool.liquidityFund.toLocaleString()} {fundingTokenSymbol}) is the <strong>minimum</strong> for seeding. 
+                    Any oversubscription beyond the {pool.minTotalContributions.toLocaleString()} {fundingTokenSymbol} goal 
+                    goes entirely to liquidity, creating a deeper 80/20 {pool.tokenSymbol}/{fundingTokenSymbol} pool 
+                    against the ENTIRE token supply. Contributors receive LP tokens proportional to their pool shares, locked in their veNFT.
+                  </p>
                 </div>
               </CardContent>
             </Card>
@@ -435,11 +451,11 @@ export function PoolPage({ address }: PoolPageProps) {
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Raised</span>
-                    <span className="font-medium">{pool.totalContributions.toLocaleString()} {pool.fundingTokenSymbol}</span>
+                    <span className="font-medium">{pool.totalContributions.toLocaleString()} {fundingTokenSymbol}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Goal</span>
-                    <span className="font-medium">{pool.minTotalContributions.toLocaleString()} {pool.fundingTokenSymbol}</span>
+                    <span className="font-medium">{pool.minTotalContributions.toLocaleString()} {fundingTokenSymbol}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Total Shares</span>

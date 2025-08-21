@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Clock, Users } from 'lucide-react'
 import { Pool, PoolCardProps } from '@/types/pool'
+import { getTokenSymbol } from '@/lib/token-utils'
 
 function formatTimeRemaining(endTime: number): string {
   const now = Date.now() / 1000
@@ -48,6 +49,9 @@ export function PoolCard({ pool, onClick, className = '' }: PoolCardProps) {
       onClick(pool)
     }
   }
+
+  // Get dynamic token symbol
+  const fundingTokenSymbol = getTokenSymbol(pool.fundingToken)
 
   const progressPercentage = Math.min(
     (pool.totalContributions / pool.minTotalContributions) * 100,
@@ -118,10 +122,10 @@ export function PoolCard({ pool, onClick, className = '' }: PoolCardProps) {
           {/* Funding Details */}
           <div className="flex justify-between text-sm">
             <span className="text-muted-foreground">
-              ${pool.totalContributions.toLocaleString()} raised
+              {pool.totalContributions.toLocaleString()} {fundingTokenSymbol} raised
             </span>
             <span className="text-muted-foreground">
-              ${pool.minTotalContributions.toLocaleString()} goal
+              {pool.minTotalContributions.toLocaleString()} {fundingTokenSymbol} goal
             </span>
           </div>
           

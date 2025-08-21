@@ -11,6 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Lock, DollarSign, Calendar, TrendingUp, Info, Wallet } from 'lucide-react'
 import { Pool } from '@/types/pool'
+import { getTokenSymbol } from '@/lib/token-utils'
 
 interface ContributionInterfaceProps {
   pool: Pool
@@ -60,6 +61,9 @@ export function ContributionInterface({ pool }: ContributionInterfaceProps) {
   
   // Calculate average lock duration from pool data
   const averageLockWeeks = pool.totalShares > 0 ? pool.totalShares / pool.totalContributions : 0
+  
+  // Get dynamic token symbol
+  const fundingTokenSymbol = getTokenSymbol(pool.fundingToken)
 
   const handleContribute = async () => {
     if (!isWalletConnected) {
@@ -78,7 +82,7 @@ export function ContributionInterface({ pool }: ContributionInterfaceProps) {
     }, 3000)
   }
 
-  const isValidAmount = contributionValue > 0 && contributionValue >= 10 // Min $10
+  const isValidAmount = contributionValue > 0 // No minimum contribution requirement
 
   return (
     <div className="space-y-6">
@@ -95,11 +99,11 @@ export function ContributionInterface({ pool }: ContributionInterfaceProps) {
           {/* Amount Input */}
           <div className="space-y-2">
             <Label htmlFor="amount" className="text-sm font-medium">
-              Contribution Amount ({pool.fundingTokenSymbol})
+              Contribution Amount ({fundingTokenSymbol})
             </Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-sm font-medium text-muted-foreground">
-                {pool.fundingTokenSymbol}
+                {fundingTokenSymbol}
               </span>
               <Input
                 id="amount"
@@ -108,12 +112,12 @@ export function ContributionInterface({ pool }: ContributionInterfaceProps) {
                 value={contributionAmount}
                 onChange={(e) => setContributionAmount(e.target.value)}
                 className="pl-16 text-lg"
-                min="10"
+                min="0"
                 step="0.01"
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              Minimum contribution: 10.00 {pool.fundingTokenSymbol}
+              No minimum individual contribution required
             </p>
           </div>
 
@@ -165,7 +169,7 @@ export function ContributionInterface({ pool }: ContributionInterfaceProps) {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Contribution Amount:</span>
-                  <span>{contributionValue.toLocaleString()} {pool.fundingTokenSymbol}</span>
+                  <span>{contributionValue.toLocaleString()} {fundingTokenSymbol}</span>
                 </div>
                 
                 <div className="flex justify-between">
@@ -200,8 +204,9 @@ export function ContributionInterface({ pool }: ContributionInterfaceProps) {
           <Alert className="border-blue-500/20 bg-blue-500/5">
             <Info className="h-4 w-4" />
             <AlertDescription className="text-sm">
-              Your contribution will be locked for the selected duration. Pool shares are calculated as: 
-              contribution amount × lock duration in weeks. Longer locks give you proportionally more shares.
+              <strong>How it works:</strong> Your contribution is locked for the selected duration. Pool shares = contribution × lock weeks. 
+              When deployed, liquidity funds create an 80/20 {pool.tokenSymbol}/{fundingTokenSymbol} pool against the ENTIRE token supply. 
+              Your pool shares determine your portion of LP tokens, which are locked in your veNFT.
             </AlertDescription>
           </Alert>
 
@@ -227,7 +232,7 @@ export function ContributionInterface({ pool }: ContributionInterfaceProps) {
             ) : (
               <div className="flex items-center space-x-2">
                 <TrendingUp className="h-4 w-4" />
-                <span>Contribute {contributionValue.toLocaleString()} {pool.fundingTokenSymbol}</span>
+                <span>Contribute {contributionValue.toLocaleString()} {fundingTokenSymbol}</span>
               </div>
             )}
           </Button>
@@ -248,24 +253,24 @@ export function ContributionInterface({ pool }: ContributionInterfaceProps) {
             <div className="p-3 rounded bg-secondary/20 border border-border/30">
               <div className="font-medium mb-1">Example 1:</div>
               <div className="text-muted-foreground">
-                1,000 {pool.fundingTokenSymbol} × 100 weeks = 100,000 shares
+                1,000 {fundingTokenSymbol} × 100 weeks = 100,000 shares
               </div>
             </div>
             
             <div className="p-3 rounded bg-secondary/20 border border-border/30">
               <div className="font-medium mb-1">Example 2:</div>
               <div className="text-muted-foreground">
-                100,000 {pool.fundingTokenSymbol} × 1 week = 100,000 shares
+                100,000 {fundingTokenSymbol} × 1 week = 100,000 shares
               </div>
             </div>
             
             <div className="p-3 rounded bg-primary/10 border border-primary/20">
-              <div className="font-medium mb-2">Lock Duration Benefits:</div>
+              <div className="font-medium mb-2">What You Get:</div>
               <ul className="space-y-1 text-xs text-muted-foreground">
-                <li>• Longer locks = more shares per {pool.fundingTokenSymbol}</li>
-                <li>• More shares = larger portion of token allocation</li>
-                <li>• Higher voting power in DAO governance</li>
-                <li>• Demonstrates long-term commitment</li>
+                <li>• Pool shares proportional to (contribution × lock duration)</li>
+                <li>• Portion of {pool.tokenSymbol} tokens when deployed</li>
+                <li>• LP tokens locked in your veNFT from liquidity seeding</li>
+                <li>• Voting power in DAO governance</li>
               </ul>
             </div>
           </div>

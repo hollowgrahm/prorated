@@ -12,6 +12,7 @@ import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { PoolCard } from './pool-card'
 import { Pool, PoolFilters } from '@/types/pool'
+import { getTokenSymbol } from '@/lib/token-utils'
 
 // Mock data for now - will be replaced with real contract data
 const mockPools: Pool[] = [
