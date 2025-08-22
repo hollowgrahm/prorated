@@ -1,13 +1,12 @@
-'use client'
-
 import { ProjectPage } from '@/components/projects/project-page'
 
 interface ProjectPageProps {
-  params: {
+  params: Promise<{
     address: string
-  }
+  }>
 }
 
-export default function ProjectPageRoute({ params }: ProjectPageProps) {
-  return <ProjectPage address={params.address} />
+export default async function ProjectPageRoute({ params }: ProjectPageProps) {
+  const { address } = await params
+  return <ProjectPage address={address} />
 }

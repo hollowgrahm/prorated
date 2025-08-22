@@ -227,9 +227,9 @@ export function PoolTimeline({ pool }: PoolTimelineProps) {
                 <p className="text-sm text-muted-foreground">{event.description}</p>
                 
                 {/* Additional data for milestones */}
-                {event.type === 'milestone' && event.data?.percentage && (
+                {event.type === 'milestone' && event.data && typeof event.data === 'object' && 'percentage' in event.data && (
                   <div className="mt-2 text-xs text-primary">
-                    🎯 {event.data.percentage}% milestone achieved
+                    🎯 {(event.data as any).percentage}% milestone achieved
                   </div>
                 )}
               </div>

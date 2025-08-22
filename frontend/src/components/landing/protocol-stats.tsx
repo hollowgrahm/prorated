@@ -145,12 +145,7 @@ export function ProtocolStats() {
                       {stats.deployingPools} project{stats.deployingPools !== 1 ? 's' : ''} currently deploying
                     </div>
                   )}
-                  {stats.successPendingPools > 0 && (
-                    <div className="text-sm text-foreground">
-                      {stats.successPendingPools} project{stats.successPendingPools !== 1 ? 's' : ''} ready for deployment
-                    </div>
-                  )}
-                  {stats.deployingPools === 0 && stats.successPendingPools === 0 && (
+                  {stats.deployingPools === 0 && (
                     <div className="text-sm text-foreground">
                       All successful pools have been deployed
                     </div>

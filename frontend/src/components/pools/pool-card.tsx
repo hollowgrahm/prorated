@@ -56,13 +56,7 @@ export function PoolCard({ pool, onClick, className = '' }: PoolCardProps) {
     100
   )
 
-  const CardWrapper = onClick ? 'div' : Link
-  const cardProps = onClick 
-    ? { onClick: handleClick }
-    : { href: `/pools/${pool.address}` }
-
-  return (
-    <CardWrapper {...cardProps}>
+  const cardContent = (
       <Card className={`group hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 cursor-pointer hover:-translate-y-1 border-border border-2 hover:border-primary/60 relative overflow-hidden bg-card backdrop-blur-sm shadow-lg ${className}`}>
         {/* Static gradient background */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/12 via-transparent to-accent/12" />
@@ -141,6 +135,15 @@ export function PoolCard({ pool, onClick, className = '' }: PoolCardProps) {
           </div>
         </CardContent>
       </Card>
-    </CardWrapper>
+  )
+
+  return onClick ? (
+    <div onClick={handleClick}>
+      {cardContent}
+    </div>
+  ) : (
+    <Link href={`/pools/${pool.address}`}>
+      {cardContent}
+    </Link>
   )
 }

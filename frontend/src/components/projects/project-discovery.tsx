@@ -305,7 +305,7 @@ function FilterSidebar({ filters, setFilters, categoryStats }: FilterSidebarProp
             <Button
               key={category}
               variant={filters.category === category ? "default" : "ghost"}
-              onClick={() => setFilters({ ...filters, category: category as any })}
+              onClick={() => setFilters({ ...filters, category: category as ProjectFilters['category'] })}
               className={`w-full justify-between ${
                 filters.category === category ? 'btn-primary-custom' : ''
               }`}
@@ -326,7 +326,7 @@ function FilterSidebar({ filters, setFilters, categoryStats }: FilterSidebarProp
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Select value={filters.sortBy} onValueChange={(value) => setFilters({ ...filters, sortBy: value as any })}>
+          <Select value={filters.sortBy} onValueChange={(value) => setFilters({ ...filters, sortBy: value as ProjectFilters['sortBy'] })}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
