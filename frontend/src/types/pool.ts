@@ -1,4 +1,4 @@
-export type PoolStatus = 'upcoming' | 'active' | 'failed' | 'success-pending' | 'deploying' | 'launched'
+export type PoolStatus = 'upcoming' | 'active' | 'failed' | 'deploying' | 'launched'
 
 export interface Pool {
   id: string

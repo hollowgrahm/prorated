@@ -129,7 +129,7 @@ const mockPools: Pool[] = [
     totalContributions: 250000,
     totalShares: 20000000, // Average ~80 weeks lock
     contributors: 156,
-    status: 'success-pending',
+    status: 'deploying',
     developer: '0xdeveloper...1111',
     description: 'Autonomous AI-powered trading bot with machine learning capabilities for DeFi.'
   },
@@ -155,6 +155,29 @@ const mockPools: Pool[] = [
     status: 'deploying',
     developer: '0xdeveloper...3333',
     description: 'Sustainable energy projects funding through blockchain technology and carbon credits.'
+  },
+  {
+    id: '7',
+    address: '0x4444555566667777888899990000aaaabbbbcccc',
+    tokenName: 'MetaVerse Builder',
+    tokenSymbol: 'MVRS',
+    tokenTotalSupply: 1500000,
+    developmentFund: 80000,
+    liquidityFund: 60000,
+    minTotalContributions: 140000,
+    fundingToken: '0xA0b86a33E6411c88f7f3A3c4D79F85B8b52E8e',
+    fundingTokenSymbol: 'USDC',
+    startTime: (Date.now() - 86400000 * 30) / 1000, // 30 days ago
+    endTime: (Date.now() - 86400000 * 2) / 1000, // 2 days ago (ended)
+    developerPercent: 18,
+    treasuryPercent: 22,
+    daoPercent: 60,
+    totalContributions: 95000, // Failed to reach 140k minimum
+    totalShares: 4750000, // Average ~50 weeks lock
+    contributors: 67,
+    status: 'failed',
+    developer: '0xdeveloper...4444',
+    description: 'Building immersive virtual worlds and metaverse experiences with decentralized governance.'
   }
 ]
 
@@ -251,7 +274,6 @@ export function PoolDiscovery() {
             <SelectItem value="all">All Pools</SelectItem>
             <SelectItem value="active">Active</SelectItem>
             <SelectItem value="upcoming">Upcoming</SelectItem>
-            <SelectItem value="success-pending">Success - Pending Deploy</SelectItem>
             <SelectItem value="deploying">Deploying</SelectItem>
             <SelectItem value="failed">Failed</SelectItem>
             <SelectItem value="launched">Launched</SelectItem>

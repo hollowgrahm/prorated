@@ -124,9 +124,8 @@ export function useDeploymentSteps(poolAddress: Address, poolStatus?: string): D
   }
 
   // For pools that haven't reached minimum funding, all steps should be pending
-  // BUT: If poolStatus indicates success-pending or deploying, we know they've reached the goal
+  // BUT: If poolStatus indicates deploying, we know they've reached the goal
   const isReadyForDeployment = deployment.hasReachedMinimum || 
-                              poolStatus === 'success-pending' || 
                               poolStatus === 'deploying'
   
   if (!isReadyForDeployment) {

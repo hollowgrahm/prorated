@@ -171,7 +171,7 @@ export function useUpcomingPools() {
 
 export function useSuccessfulPools() {
   return useFilteredPools({ 
-    status: ['success-pending', 'deploying', 'launched'] 
+    status: ['deploying', 'launched'] 
   })
 }
 
@@ -211,7 +211,6 @@ export function usePoolStats() {
       launchedProjects: statusCounts.launched || 0,
       failedPools: statusCounts.failed || 0,
       deployingPools: statusCounts.deploying || 0,
-      successPendingPools: statusCounts['success-pending'] || 0,
       totalUsers,
       statusCounts,
     }

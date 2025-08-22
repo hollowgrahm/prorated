@@ -150,7 +150,7 @@ export function usePoolDeploymentStatus(poolAddress: Address) {
       // Overall status
       isFullyDeployed: poolData.status === 'launched',
       isPartiallyDeployed: poolData.status === 'deploying',
-      isReadyForDeployment: poolData.status === 'success-pending',
+      isReadyForDeployment: poolData.status === 'deploying',
     }
   }, [poolData])
 }
@@ -167,7 +167,7 @@ export function usePoolValidation(poolAddress: Address) {
     return {
       isValid: true,
       canContribute: poolData.status === 'active',
-      canDeploy: poolData.status === 'success-pending',
+      canDeploy: poolData.status === 'deploying',
       canClaim: poolData.status === 'launched' || poolData.status === 'failed',
       meetsMinimum: progress.hasReachedMinimum,
       isActive: timing.isActive,

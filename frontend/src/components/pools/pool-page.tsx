@@ -12,6 +12,7 @@ import { ContributionInterface } from './contribution-interface'
 import { DeploymentWizard } from './deployment-wizard'
 import { PoolTimeline } from './pool-timeline'
 import { ContributorList } from './contributor-list'
+import { WithdrawalInterface } from './withdrawal-interface'
 import { getTokenSymbol } from '@/lib/token-utils'
 
 // Mock data - will be replaced with real contract data
@@ -104,7 +105,7 @@ const mockPools: Pool[] = [
     totalContributions: 250000,
     totalShares: 20000000, // Average ~80 weeks lock
     contributors: 156,
-    status: 'success-pending',
+    status: 'deploying',
     developer: '0xdeveloper...1111',
     description: 'Autonomous AI-powered trading bot with machine learning capabilities for DeFi.'
   },
@@ -130,6 +131,29 @@ const mockPools: Pool[] = [
     status: 'deploying',
     developer: '0xdeveloper...3333',
     description: 'Sustainable energy projects funding through blockchain technology and carbon credits.'
+  },
+  {
+    id: '6',
+    address: '0x4444555566667777888899990000aaaabbbbcccc',
+    tokenName: 'MetaVerse Builder',
+    tokenSymbol: 'MVRS',
+    tokenTotalSupply: 1500000,
+    developmentFund: 80000,
+    liquidityFund: 60000,
+    minTotalContributions: 140000,
+    fundingToken: '0xA0b86a33E6411c88f7f3A3c4D79F85B8b52E8e',
+    fundingTokenSymbol: 'USDC',
+    startTime: (Date.now() - 86400000 * 30) / 1000, // 30 days ago
+    endTime: (Date.now() - 86400000 * 2) / 1000, // 2 days ago (ended)
+    developerPercent: 18,
+    treasuryPercent: 22,
+    daoPercent: 60,
+    totalContributions: 95000, // Failed to reach 140k minimum
+    totalShares: 4750000, // Average ~50 weeks lock
+    contributors: 67,
+    status: 'failed',
+    developer: '0xdeveloper...4444',
+    description: 'Building immersive virtual worlds and metaverse experiences with decentralized governance.'
   }
 ]
 
@@ -158,10 +182,8 @@ function getStatusColor(status: Pool['status']): string {
       return 'bg-green-500/20 text-green-300 border-green-500/30'
     case 'failed':
       return 'bg-red-500/20 text-red-300 border-red-500/30'
-    case 'success-pending':
-      return 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30'
     case 'deploying':
-      return 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+      return 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30'
     case 'launched':
       return 'bg-primary/20 text-primary border-primary/30'
     default:
@@ -284,7 +306,7 @@ export function PoolPage({ address }: PoolPageProps) {
                         variant="outline" 
                         className={`text-sm ${getStatusColor(pool.status)}`}
                       >
-                        {pool.status === 'success-pending' ? 'Success - Pending Deploy' : pool.status}
+                        {pool.status === 'deploying' ? 'Deploying' : pool.status}
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground mt-2">
@@ -304,16 +326,15 @@ export function PoolPage({ address }: PoolPageProps) {
             {/* Pool Status Content */}
             {pool.status === 'active' ? (
               <ContributionInterface pool={pool} />
-            ) : pool.status === 'success-pending' || pool.status === 'deploying' ? (
+            ) : pool.status === 'deploying' ? (
               <DeploymentWizard pool={pool} />
+            ) : pool.status === 'failed' ? (
+              <WithdrawalInterface pool={pool} />
             ) : (
               <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
                 <CardHeader>
                   <CardTitle>
-                    {pool.status === 'upcoming' ? 'Funding Starts Soon' :
-                     pool.status === 'failed' ? 'Funding Failed' :
-                     'Pool Status'
-                    }
+                    {pool.status === 'upcoming' ? 'Funding Starts Soon' : 'Pool Status'}
                   </CardTitle>
                 </CardHeader>
                 
@@ -331,20 +352,7 @@ export function PoolPage({ address }: PoolPageProps) {
                       </Button>
                     </div>
                   )}
-                  
-                  {pool.status === 'failed' && (
-                    <div className="text-center py-8">
-                      <p className="text-lg mb-4">
-                        This funding round did not reach its minimum target.
-                      </p>
-                                              <p className="text-muted-foreground mb-6">
-                         Raised {pool.totalContributions.toLocaleString()} of {pool.minTotalContributions.toLocaleString()} {fundingTokenSymbol} goal
-                        </p>
-                      <Button variant="outline" className="btn-outline-custom">
-                        View Details
-                      </Button>
-                    </div>
-                  )}
+
                 </CardContent>
               </Card>
             )}

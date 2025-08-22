@@ -22,7 +22,7 @@ interface TimelineEvent {
   type: 'created' | 'started' | 'milestone' | 'ended' | 'deployed' | 'launched'
   icon: React.ComponentType<{ className?: string }>
   status: 'completed' | 'current' | 'upcoming'
-  data?: any
+  data?: Record<string, unknown>
 }
 
 interface PoolTimelineProps {
@@ -119,7 +119,7 @@ export function PoolTimeline({ pool }: PoolTimelineProps) {
     })
 
     // Deployment events (if pool is successful)
-    if (pool.status === 'success-pending' || pool.status === 'deploying' || pool.status === 'launched') {
+    if (pool.status === 'deploying' || pool.status === 'launched') {
       // Token deployment
       events.push({
         id: 'token-deployed',
@@ -246,8 +246,7 @@ export function PoolTimeline({ pool }: PoolTimelineProps) {
           <p className="text-sm text-muted-foreground">
             {pool.status === 'active' && `Funding active • ${pool.contributors} contributors • ${((pool.totalContributions / pool.minTotalContributions) * 100).toFixed(1)}% of goal`}
             {pool.status === 'upcoming' && 'Funding has not started yet'}
-            {pool.status === 'success-pending' && 'Funding successful • Ready for deployment'}
-            {pool.status === 'deploying' && 'Deployment in progress'}
+            {pool.status === 'deploying' && 'Funding successful • Deployment in progress'}
             {pool.status === 'launched' && 'Project fully launched and operational'}
             {pool.status === 'failed' && 'Funding failed to reach minimum target'}
           </p>
