@@ -6,12 +6,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ArrowLeft, ExternalLink, Globe, Twitter, Github, MessageCircle, TrendingUp, TrendingDown } from 'lucide-react'
+import { ArrowLeft, Globe, Twitter, Github, MessageCircle, TrendingUp, TrendingDown } from 'lucide-react'
 import { Project } from '@/types/project'
 import { ProswapInterface } from './proswap-interface'
 import { ProlendInterface } from './prolend-interface'
 import { GovernanceInterface } from './governance-interface'
-import { getTokenSymbol } from '@/lib/token-utils'
+import { VeNFTClaimInterface } from '../pools/venft-claim-interface'
+import { Pool } from '@/types/pool'
 
 // Mock data - will be replaced with real contract data
 const mockProjects: Project[] = [
@@ -100,6 +101,33 @@ const mockProjects: Project[] = [
 
 interface ProjectPageProps {
   address: string
+}
+
+// Helper function to convert Project to Pool for veNFT claiming
+function projectToPool(project: Project): Pool {
+  return {
+    id: project.id,
+    address: project.address,
+    tokenName: project.name,
+    tokenSymbol: project.symbol,
+    tokenTotalSupply: project.totalSupply,
+    developmentFund: project.fundingRaised * 0.6, // Estimate based on typical allocation
+    liquidityFund: project.fundingRaised * 0.4,
+    minTotalContributions: project.fundingRaised,
+    fundingToken: '0xA0b86a33E6411c88f7f3A3c4D79F85B8b52E8e', // Mock USDC address
+    fundingTokenSymbol: project.fundingTokenSymbol,
+    startTime: project.launchDate - 86400 * 30, // 30 days before launch
+    endTime: project.launchDate - 86400 * 2, // 2 days before launch
+    developerPercent: 15,
+    treasuryPercent: 25,
+    daoPercent: 60,
+    totalContributions: project.fundingRaised,
+    totalShares: project.fundingRaised * 50, // Estimate average 50 week lock
+    contributors: Math.floor(project.holders * 0.3), // Estimate 30% of holders contributed
+    status: 'launched' as const,
+    developer: '0xdeveloper...1234',
+    description: project.description
+  }
 }
 
 function formatNumber(num: number, decimals: number = 2): string {
@@ -197,7 +225,6 @@ export function ProjectPage({ address }: ProjectPageProps) {
     )
   }
 
-  const fundingTokenSymbol = getTokenSymbol(project.fundingTokenSymbol)
   const priceChangeIsPositive = project.priceChange24h >= 0
 
   return (
@@ -368,6 +395,9 @@ export function ProjectPage({ address }: ProjectPageProps) {
             </CardContent>
           </Card>
         </div>
+
+        {/* veNFT Claim Interface - Show if user has unclaimed positions */}
+        <VeNFTClaimInterface pool={projectToPool(project)} />
 
         {/* DeFi Interface Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
