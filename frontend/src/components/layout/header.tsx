@@ -7,6 +7,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit'
 import { Menu, Home, Search, Plus, Briefcase } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
+import { FaucetButton } from '@/components/ui/faucet-button'
 import { cn } from '@/lib/utils'
 
 const navigation = [
@@ -62,6 +63,11 @@ export function Header() {
 
         {/* Right side */}
         <div className="flex flex-1 items-center justify-end space-x-4">
+          {/* Desktop USDC Faucet */}
+          <div className="hidden md:block">
+            <FaucetButton />
+          </div>
+          
           {/* Desktop Wallet Connect */}
           <div className="hidden md:block">
             <ConnectButton />
@@ -116,8 +122,11 @@ export function Header() {
                   })}
                 </nav>
 
-                {/* Mobile Wallet Connect */}
-                <div className="pt-6 border-t">
+                {/* Mobile Faucet and Wallet Connect */}
+                <div className="pt-6 border-t space-y-4">
+                  <div className="flex justify-center">
+                    <FaucetButton />
+                  </div>
                   <div className="flex justify-center">
                     <ConnectButton />
                   </div>
