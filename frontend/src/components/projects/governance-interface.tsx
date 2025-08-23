@@ -13,6 +13,8 @@ import { Slider } from '@/components/ui/slider'
 import { Vote, Users, CheckCircle, XCircle, AlertCircle, Plus, Eye, Gavel, Trophy, Info, DollarSign, Clock, Download, TrendingDown, Activity, Timer, AlertTriangle } from 'lucide-react'
 import { Project } from '@/types/project'
 import { VeNFTCreationInterface } from './venft-creation-interface'
+import { ProposalCreationInterface } from './proposal-creation-interface'
+import { useGovernance } from '@/hooks/useGovernance'
 
 interface GovernanceInterfaceProps {
   project: Project
@@ -198,6 +200,9 @@ export function GovernanceInterface({ project }: GovernanceInterfaceProps) {
   const [isVoting, setIsVoting] = useState(false)
   const [isManagingLock, setIsManagingLock] = useState(false)
   const [showCreateVeNFT, setShowCreateVeNFT] = useState(false)
+
+  // Real governance hook
+  const governance = useGovernance(project.governanceAddress as `0x${string}`)
   const [lockManagementType, setLockManagementType] = useState<'amount' | 'duration' | null>(null)
   const [selectedNFTForManagement, setSelectedNFTForManagement] = useState<number | null>(null)
   const [additionalLockAmount, setAdditionalLockAmount] = useState('')
@@ -216,16 +221,22 @@ export function GovernanceInterface({ project }: GovernanceInterfaceProps) {
   const totalUserVotingPower = userVeNFTs.reduce((sum, nft) => sum + nft.votingPower, 0)
 
   const handleVote = async () => {
+    if (!selectedProposal || selectedVeNFT === null || voteSupport === null) return
+    
     setIsVoting(true)
     
-    // Simulate vote transaction
-    setTimeout(() => {
-      setIsVoting(false)
+    try {
+      await governance.vote(selectedProposal.id, selectedVeNFT, voteSupport)
+      
+      // Reset form on success
       setSelectedProposal(null)
       setVoteSupport(null)
       setSelectedVeNFT(null)
-      // In real app: execute vote transaction
-    }, 2000)
+    } catch (error) {
+      console.error('Voting failed:', error)
+    } finally {
+      setIsVoting(false)
+    }
   }
 
   const handleVeNFTCreated = (tokenId: number) => {
@@ -966,96 +977,7 @@ export function GovernanceInterface({ project }: GovernanceInterfaceProps) {
           value="create" 
           className="space-y-6 animate-in fade-in-50 slide-in-from-bottom-4 duration-500"
         >
-          <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
-            <CardHeader>
-              <CardTitle>Create New Proposal</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                Propose changes to the protocol (only approved target contracts allowed)
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <Alert className="border-blue-500/20 bg-blue-500/5">
-                <Info className="h-4 w-4" />
-                <AlertDescription className="text-sm">
-                  <strong>Proposal Requirements:</strong> 2-day voting delay, 5-day voting period, 25% quorum required.
-                  Only approved target contracts can be called through governance.
-                </AlertDescription>
-              </Alert>
-
-              <div className="space-y-4">
-                <div>
-                  <label className="text-sm font-medium">Proposal Title</label>
-                  <Input
-                    placeholder="Brief description of the proposal"
-                    className="mt-1"
-                  />
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium">Target Contract</label>
-                  <select className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-md text-sm">
-                    <option value="">Select target contract...</option>
-                    <option value={project.address}>Project Treasury</option>
-                    <option value={project.pairAddress}>Trading Pool</option>
-                    <option value={project.lendingAddress}>Lending Pool</option>
-                  </select>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Only pre-approved contracts can be targeted by governance proposals
-                  </p>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium">Function Call</label>
-                  <Input
-                    placeholder="Function signature (e.g., transferTreasuryFunds(address,uint256,string))"
-                    className="mt-1"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Enter the function signature to call on the target contract
-                  </p>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium">Parameters</label>
-                  <Input
-                    placeholder="ABI-encoded parameters (e.g., 0x123...)"
-                    className="mt-1"
-                  />
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Encoded function parameters (use a tool like abi.encodePacked)
-                  </p>
-                </div>
-
-                <div>
-                  <label className="text-sm font-medium">Detailed Description</label>
-                  <textarea
-                    placeholder="Provide a detailed explanation of the proposal, its rationale, and expected impact..."
-                    className="w-full mt-1 px-3 py-2 bg-background border border-border rounded-md text-sm min-h-[100px] resize-y"
-                  />
-                </div>
-              </div>
-
-              <div className="p-4 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
-                <h4 className="font-medium text-sm mb-2">⚠️ Important</h4>
-                <ul className="text-xs space-y-1 text-muted-foreground">
-                  <li>• Proposals cannot be modified after creation</li>
-                  <li>• Voting starts after a 2-day delay</li>
-                  <li>• 25% of total veNFT power must participate for quorum</li>
-                  <li>• Only approved target contracts can be called</li>
-                  <li>• Failed proposals cannot be re-executed</li>
-                </ul>
-              </div>
-
-              <Button
-                className="w-full btn-primary-custom"
-                size="lg"
-                disabled
-              >
-                <Plus className="h-4 w-4 mr-2" />
-                Create Proposal (Coming Soon)
-              </Button>
-            </CardContent>
-          </Card>
+          <ProposalCreationInterface project={project} />
         </TabsContent>
 
         </div>
