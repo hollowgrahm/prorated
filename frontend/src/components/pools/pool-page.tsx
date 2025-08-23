@@ -13,6 +13,8 @@ import { DeploymentWizard } from './deployment-wizard'
 import { PoolTimeline } from './pool-timeline'
 import { ContributorList } from './contributor-list'
 import { WithdrawalInterface } from './withdrawal-interface'
+import { PageLoadingSpinner } from '@/components/ui/loading-spinner'
+import { PageErrorDisplay } from '@/components/ui/error-boundary'
 import { getTokenSymbol } from '@/lib/token-utils'
 
 // Mock data - will be replaced with real contract data
@@ -221,50 +223,17 @@ export function PoolPage({ address }: PoolPageProps) {
   }, [pool, address, router])
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <div className="animate-pulse">
-            <div className="h-8 bg-muted rounded w-1/4 mb-6"></div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-              <div className="lg:col-span-2 space-y-6">
-                <div className="h-64 bg-muted rounded"></div>
-                <div className="h-48 bg-muted rounded"></div>
-              </div>
-              <div className="h-96 bg-muted rounded"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )
+    return <PageLoadingSpinner text="Loading pool details..." />
   }
 
   if (!pool) {
     return (
-      <div className="min-h-screen bg-background">
-        <div className="container mx-auto px-4 py-8">
-          <Button
-            variant="ghost"
-            onClick={() => router.back()}
-            className="mb-6"
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back
-          </Button>
-          
-          <Card className="text-center py-12">
-            <CardContent>
-              <h1 className="text-2xl font-bold mb-4">Pool Not Found</h1>
-              <p className="text-muted-foreground mb-6">
-                The pool at address {address} could not be found.
-              </p>
-              <Button onClick={() => router.push('/pools')}>
-                Browse All Pools
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <PageErrorDisplay
+        error={`Pool at address ${address} not found`}
+        title="Pool Not Found"
+        description="The pool you're looking for doesn't exist or may have been removed."
+        onRetry={() => window.location.reload()}
+      />
     )
   }
 

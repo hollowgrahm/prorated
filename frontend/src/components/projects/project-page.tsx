@@ -13,6 +13,8 @@ import { ProlendInterface } from './prolend-interface'
 import { GovernanceInterface } from './governance-interface'
 import { VeNFTClaimInterface } from '../pools/venft-claim-interface'
 import { Pool } from '@/types/pool'
+import { PageLoadingSpinner } from '@/components/ui/loading-spinner'
+import { PageErrorDisplay } from '@/components/ui/error-boundary'
 
 // Mock data - will be replaced with real contract data
 const mockProjects: Project[] = [
@@ -195,33 +197,17 @@ export function ProjectPage({ address }: ProjectPageProps) {
   }, [address])
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-muted-foreground">Loading project...</p>
-        </div>
-      </div>
-    )
+    return <PageLoadingSpinner text="Loading project details..." />
   }
 
   if (!project) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-background via-background to-background/80">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(120,119,198,0.1),transparent_50%)]" />
-        <div className="relative z-10 container mx-auto px-4 py-8">
-          <div className="text-center py-16">
-            <h1 className="text-2xl font-bold mb-4">Project not found</h1>
-            <p className="text-muted-foreground mb-6">
-              The project with address {address} does not exist.
-            </p>
-            <Button onClick={() => router.push('/projects')} className="btn-outline-custom">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to Projects
-            </Button>
-          </div>
-        </div>
-      </div>
+      <PageErrorDisplay
+        error={`Project at address ${address} not found`}
+        title="Project Not Found"
+        description="The project you're looking for doesn't exist or may have been removed."
+        onRetry={() => window.location.reload()}
+      />
     )
   }
 

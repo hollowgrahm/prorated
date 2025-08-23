@@ -9,9 +9,12 @@ import { Slider } from '@/components/ui/slider'
 import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Lock, DollarSign, Calendar, TrendingUp, Info, Wallet } from 'lucide-react'
+import { Lock, DollarSign, Calendar, TrendingUp, Info, Wallet, Activity } from 'lucide-react'
 import { Pool } from '@/types/pool'
 import { getTokenSymbol } from '@/lib/token-utils'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { ErrorDisplay } from '@/components/ui/error-boundary'
+import { useFormSubmission } from '@/hooks/useLoadingState'
 
 interface ContributionInterfaceProps {
   pool: Pool
@@ -51,8 +54,9 @@ const formatDuration = (weeks: number) => {
 export function ContributionInterface({ pool }: ContributionInterfaceProps) {
   const [contributionAmount, setContributionAmount] = useState('')
   const [lockWeeks, setLockWeeks] = useState([52]) // Default to 1 year
-  const [isContributing, setIsContributing] = useState(false)
   const [isWalletConnected, setIsWalletConnected] = useState(false) // Mock wallet state
+  
+  const { isSubmitting, isSuccess, error, submit, reset } = useFormSubmission()
 
   const currentLockWeeks = lockWeeks[0]
   const lockColor = getLockColor(currentLockWeeks)
@@ -72,14 +76,22 @@ export function ContributionInterface({ pool }: ContributionInterfaceProps) {
       return
     }
 
-    setIsContributing(true)
+    await submit(async () => {
+      // Simulate contribution transaction
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Simulate random error (5% chance)
+      if (Math.random() < 0.05) {
+        throw new Error('Transaction failed: Insufficient allowance or network error')
+      }
+      
+      return { txHash: '0x' + Math.random().toString(16).slice(2, 42) }
+    })
     
-    // Simulate transaction
-    setTimeout(() => {
-      setIsContributing(false)
-      // Reset form or show success
+    // Reset form on success
+    if (isSuccess) {
       setContributionAmount('')
-    }, 3000)
+    }
   }
 
   const isValidAmount = contributionValue > 0 // No minimum contribution requirement
@@ -213,29 +225,50 @@ export function ContributionInterface({ pool }: ContributionInterfaceProps) {
           {/* Contribute Button */}
           <Button
             onClick={handleContribute}
-            disabled={!isValidAmount || isContributing}
+            disabled={!isValidAmount || isSubmitting}
             className="w-full btn-primary-custom"
             size="lg"
           >
-            {isContributing ? (
-              <div className="flex items-center space-x-2">
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Contributing...</span>
-              </div>
+            {isSubmitting ? (
+              <>
+                <Activity className="mr-2 h-4 w-4 animate-spin" />
+                Contributing...
+              </>
             ) : !isWalletConnected ? (
-              <div className="flex items-center space-x-2">
-                <Wallet className="h-4 w-4" />
-                <span>Connect Wallet</span>
-              </div>
+              <>
+                <Wallet className="mr-2 h-4 w-4" />
+                Connect Wallet
+              </>
             ) : !isValidAmount ? (
               'Enter Amount'
             ) : (
-              <div className="flex items-center space-x-2">
-                <TrendingUp className="h-4 w-4" />
-                <span>Contribute {contributionValue.toLocaleString()} {fundingTokenSymbol}</span>
-              </div>
+              <>
+                <TrendingUp className="mr-2 h-4 w-4" />
+                Contribute {contributionValue.toLocaleString()} {fundingTokenSymbol}
+              </>
             )}
           </Button>
+
+          {/* Error Display */}
+          {error && (
+            <ErrorDisplay
+              error={error}
+              title="Contribution Failed"
+              description="There was an error processing your contribution. Please try again."
+              onRetry={handleContribute}
+              variant="destructive"
+            />
+          )}
+
+          {/* Success Display */}
+          {isSuccess && (
+            <Alert className="border-green-500/50 bg-green-500/10">
+              <Info className="h-4 w-4" />
+              <AlertDescription className="text-green-400">
+                <strong>Contribution Successful!</strong> Your contribution has been processed and you'll receive your veNFT position when the pool launches.
+              </AlertDescription>
+            </Alert>
+          )}
         </CardContent>
       </Card>
 

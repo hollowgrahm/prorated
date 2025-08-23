@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { PoolCreationStepProps, FUNDING_TOKENS } from '@/types/pool-creation'
 import { usePoolDeployment } from '@/hooks/usePoolDeployment'
+import { ErrorDisplay } from '@/components/ui/error-boundary'
 
 export function PreviewStep({
   data
@@ -317,11 +318,13 @@ export function PreviewStep({
         </Button>
         
         {error && (
-          <Alert className="border-red-500/50 bg-red-500/10">
-            <AlertDescription className="text-red-400">
-              <strong>Deployment Failed:</strong> {error.message}
-            </AlertDescription>
-          </Alert>
+          <ErrorDisplay
+            error={error}
+            title="Pool Deployment Failed"
+            description="There was an error deploying your pool to the blockchain. Please try again."
+            onRetry={() => handleDeploy()}
+            variant="destructive"
+          />
         )}
         
         <p className="text-sm text-muted-foreground">
