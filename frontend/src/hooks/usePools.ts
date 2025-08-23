@@ -185,7 +185,7 @@ export function useFailedPools() {
 
 // Hook for pool statistics
 export function usePoolStats() {
-  const { pools, isLoading } = useAllPoolsData()
+  const { pools, isLoading, error } = useAllPoolsData()
   
   const stats = useMemo(() => {
     if (!pools) return null
@@ -219,6 +219,7 @@ export function usePoolStats() {
   return {
     stats,
     isLoading,
+    error,
   }
 }
 

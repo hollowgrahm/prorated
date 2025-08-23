@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Search, Filter, Rocket, ArrowUpDown } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Search, Filter, Rocket, ArrowUpDown, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,7 +12,9 @@ import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { PoolCard } from './pool-card'
 import { Pool, PoolFilters } from '@/types/pool'
-import { getTokenSymbol } from '@/lib/token-utils'
+import { LoadingSpinner, CardLoadingSkeleton } from '@/components/ui/loading-spinner'
+import { ErrorDisplay } from '@/components/ui/error-boundary'
+import { useLoadingState } from '@/hooks/useLoadingState'
 
 // Mock data for now - will be replaced with real contract data
 const mockPools: Pool[] = [
@@ -189,9 +191,28 @@ export function PoolDiscovery() {
   const [sortBy, setSortBy] = useState<PoolFilters['sortBy']>('recent')
   const [showMobileFilters, setShowMobileFilters] = useState(false)
 
+  const { isLoading, error, data: pools, execute } = useLoadingState<Pool[]>([])
+
+  // Simulate loading pools from contract
+  const loadPools = async () => {
+    // Simulate API delay and potential errors
+    await new Promise(resolve => setTimeout(resolve, 800))
+    
+    // Simulate random error for demo (3% chance)
+    if (Math.random() < 0.03) {
+      throw new Error('Failed to fetch pools from ProratedFactory contract')
+    }
+    
+    return mockPools
+  }
+
+  useEffect(() => {
+    execute(loadPools)
+  }, [execute])
+
   // Filter and sort pools based on current selections
-  const filteredPools = mockPools
-    .filter(pool => {
+  const filteredPools = (pools || [])
+    .filter((pool: Pool) => {
       // Apply all filters simultaneously
       let matchesSearch = true
       let matchesStatus = true
@@ -214,7 +235,7 @@ export function PoolDiscovery() {
 
       return matchesSearch && matchesStatus
     })
-    .sort((a, b) => {
+    .sort((a: Pool, b: Pool) => {
       // Sort logic
       switch (sortBy) {
         case 'ending-soon':
@@ -311,28 +332,28 @@ export function PoolDiscovery() {
             className="text-center p-2 bg-gradient-to-br from-primary/10 to-accent/10 rounded hover:from-primary/20 hover:to-accent/20 transition-all duration-300 group cursor-pointer border border-border/30 hover:border-primary/40"
             onClick={() => setSelectedStatus('active')}
           >
-            <div className="font-semibold text-accent group-hover:scale-110 transition-transform duration-300">{mockPools.filter(p => p.status === 'active').length}</div>
+            <div className="font-semibold text-accent group-hover:scale-110 transition-transform duration-300">{(pools || []).filter((p: Pool) => p.status === 'active').length}</div>
             <div className="text-muted-foreground">Active</div>
           </div>
           <div 
             className="text-center p-2 bg-gradient-to-br from-accent/10 to-primary/10 rounded hover:from-accent/20 hover:to-primary/20 transition-all duration-300 group cursor-pointer border border-border/30 hover:border-accent/40"
             onClick={() => setSelectedStatus('upcoming')}
           >
-            <div className="font-semibold text-accent group-hover:scale-110 transition-transform duration-300">{mockPools.filter(p => p.status === 'upcoming').length}</div>
+            <div className="font-semibold text-accent group-hover:scale-110 transition-transform duration-300">{(pools || []).filter((p: Pool) => p.status === 'upcoming').length}</div>
             <div className="text-muted-foreground">Upcoming</div>
           </div>
           <div 
             className="text-center p-2 bg-gradient-to-br from-green-500/10 to-emerald-500/10 rounded hover:from-green-500/20 hover:to-emerald-500/20 transition-all duration-300 group cursor-pointer border border-border/30 hover:border-green-500/40"
             onClick={() => setSelectedStatus('launched')}
           >
-            <div className="font-semibold text-green-400 group-hover:scale-110 transition-transform duration-300">{mockPools.filter(p => p.status === 'launched').length}</div>
+            <div className="font-semibold text-green-400 group-hover:scale-110 transition-transform duration-300">{(pools || []).filter((p: Pool) => p.status === 'launched').length}</div>
             <div className="text-muted-foreground">Launched</div>
           </div>
           <div 
             className="text-center p-2 bg-gradient-to-br from-red-500/10 to-orange-500/10 rounded hover:from-red-500/20 hover:to-orange-500/20 transition-all duration-300 group cursor-pointer border border-border/30 hover:border-red-500/40"
             onClick={() => setSelectedStatus('failed')}
           >
-            <div className="font-semibold text-red-400 group-hover:scale-110 transition-transform duration-300">{mockPools.filter(p => p.status === 'failed').length}</div>
+            <div className="font-semibold text-red-400 group-hover:scale-110 transition-transform duration-300">{(pools || []).filter((p: Pool) => p.status === 'failed').length}</div>
             <div className="text-muted-foreground">Failed</div>
           </div>
         </div>
@@ -369,7 +390,19 @@ export function PoolDiscovery() {
         <div className="container mx-auto px-4 py-8 relative z-10">
           <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight gradient-text">Discover Fundraising Pools</h1>
+              <div className="flex items-center space-x-3">
+                <h1 className="text-3xl font-bold tracking-tight gradient-text">Discover Fundraising Pools</h1>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => execute(loadPools)}
+                  disabled={isLoading}
+                  className="hidden md:flex"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </div>
               <p className="text-foreground">
                 Browse active and upcoming DAO fundraising campaigns. Support projects you believe in.
               </p>
@@ -479,15 +512,49 @@ export function PoolDiscovery() {
               </div>
             </div>
             
+            {/* Loading State */}
+            {isLoading && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-center py-8">
+                  <LoadingSpinner size="lg" text="Loading pools from blockchain..." />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <Card key={i} className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
+                      <CardContent className="p-6">
+                        <CardLoadingSkeleton />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Error State */}
+            {error && !isLoading && (
+              <div className="py-8">
+                <ErrorDisplay
+                  error={error}
+                  title="Failed to load pools"
+                  description="We couldn't fetch the latest pools from the blockchain. Please try again."
+                  onRetry={() => execute(loadPools)}
+                  variant="destructive"
+                />
+              </div>
+            )}
+
             {/* Pool Cards Grid */}
-            {filteredPools.length > 0 ? (
+            {!isLoading && !error && filteredPools.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                {filteredPools.map((pool) => (
+                {filteredPools.map((pool: Pool) => (
                   <PoolCard key={pool.id} pool={pool} />
                 ))}
               </div>
-            ) : (
-              /* Empty State */
+            )}
+
+            {/* Empty State */}
+            {!isLoading && !error && filteredPools.length === 0 && pools && pools.length > 0 && (
+              /* Filtered empty state */
               <div className="text-center py-12">
                 <Rocket className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-semibold mb-2">No pools found</h3>

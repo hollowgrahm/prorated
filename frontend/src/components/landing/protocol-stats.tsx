@@ -1,9 +1,11 @@
 'use client'
 
-import { TrendingUp, Users, DollarSign, Target, Rocket, CheckCircle } from 'lucide-react'
+import { TrendingUp, Users, DollarSign, Target, Rocket, CheckCircle, AlertTriangle } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { usePoolStats } from '@/hooks'
 import { formatTokenAmount } from '@/lib/utils'
+import { LoadingSpinner } from '@/components/ui/loading-spinner'
+import { ErrorDisplay } from '@/components/ui/error-boundary'
 
 const statCards = [
   {
@@ -47,7 +49,7 @@ const statCards = [
 ]
 
 export function ProtocolStats() {
-  const { stats, isLoading } = usePoolStats()
+  const { stats, isLoading, error } = usePoolStats()
 
   const getStatValue = (key: typeof statCards[number]['key']) => {
     if (!stats) return undefined
@@ -96,6 +98,19 @@ export function ProtocolStats() {
           </p>
         </div>
 
+        {/* Error State */}
+        {error && !isLoading && (
+          <div className="max-w-2xl mx-auto mb-8">
+            <ErrorDisplay
+              error={error}
+              title="Failed to load protocol statistics"
+              description="We couldn't fetch the latest protocol metrics from the blockchain."
+              variant="warning"
+              className="border-yellow-500/50 bg-yellow-500/10"
+            />
+          </div>
+        )}
+
         {/* Stats grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
           {statCards.map((stat) => {
@@ -123,8 +138,8 @@ export function ProtocolStats() {
                   
                   {/* Loading indicator */}
                   {isLoading && (
-                    <div className="absolute inset-0 bg-background/50 flex items-center justify-center">
-                      <div className="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                    <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center">
+                      <LoadingSpinner size="sm" />
                     </div>
                   )}
                 </CardContent>

@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Search, Filter, TrendingUp, Zap, ArrowUpDown, ExternalLink } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Search, Filter, TrendingUp, Zap, ArrowUpDown, ExternalLink, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -12,6 +12,9 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { ProjectCard } from './project-card'
 import { Project, ProjectFilters } from '@/types/project'
 import { getTokenSymbol } from '@/lib/token-utils'
+import { LoadingSpinner, CardLoadingSkeleton } from '@/components/ui/loading-spinner'
+import { ErrorDisplay } from '@/components/ui/error-boundary'
+import { useLoadingState } from '@/hooks/useLoadingState'
 
 // Mock data for launched projects - will be replaced with real contract data
 const mockProjects: Project[] = [
@@ -103,8 +106,27 @@ export function ProjectDiscovery() {
     sortBy: 'newest'
   })
 
+  const { isLoading, error, data: projects, execute } = useLoadingState<Project[]>([])
+
+  // Simulate loading projects from contract
+  const loadProjects = async () => {
+    // Simulate API delay and potential errors
+    await new Promise(resolve => setTimeout(resolve, 900))
+    
+    // Simulate random error for demo (4% chance)
+    if (Math.random() < 0.04) {
+      throw new Error('Failed to fetch launched projects from blockchain')
+    }
+    
+    return mockProjects
+  }
+
+  useEffect(() => {
+    execute(loadProjects)
+  }, [execute])
+
   // Apply filters and sorting
-  const filteredProjects = mockProjects
+  const filteredProjects = (projects || [])
     .filter(project => {
       const matchesSearch = project.name.toLowerCase().includes(filters.search.toLowerCase()) ||
                           project.symbol.toLowerCase().includes(filters.search.toLowerCase()) ||
@@ -235,21 +257,74 @@ export function ProjectDiscovery() {
           <div className="lg:col-span-3">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <p className="text-sm text-muted-foreground">
-                  Showing {filteredProjects.length} of {mockProjects.length} projects
-                  {filters.category !== 'all' && ` in ${filters.category}`}
-                  {filters.search && ` matching "${filters.search}"`}
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    {!isLoading && !error && (
+                      <>
+                        Showing {filteredProjects.length} of {(projects || []).length} projects
+                        {filters.category !== 'all' && ` in ${filters.category}`}
+                        {filters.search && ` matching "${filters.search}"`}
+                      </>
+                    )}
+                    {isLoading && "Loading projects..."}
+                    {error && "Error loading projects"}
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => execute(loadProjects)}
+                    disabled={isLoading}
+                    className="hidden md:flex"
+                  >
+                    <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                    Refresh
+                  </Button>
+                </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-              {filteredProjects.map((project) => (
-                <ProjectCard key={project.id} project={project} />
-              ))}
-            </div>
+            {/* Loading State */}
+            {isLoading && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-center py-8">
+                  <LoadingSpinner size="lg" text="Loading launched projects..." />
+                </div>
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <Card key={i} className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
+                      <CardContent className="p-6">
+                        <CardLoadingSkeleton />
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </div>
+            )}
 
-            {filteredProjects.length === 0 && (
+            {/* Error State */}
+            {error && !isLoading && (
+              <div className="py-8">
+                <ErrorDisplay
+                  error={error}
+                  title="Failed to load projects"
+                  description="We couldn't fetch the latest launched projects from the blockchain. Please try again."
+                  onRetry={() => execute(loadProjects)}
+                  variant="destructive"
+                />
+              </div>
+            )}
+
+            {/* Projects Grid */}
+            {!isLoading && !error && filteredProjects.length > 0 && (
+              <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                {filteredProjects.map((project: Project) => (
+                  <ProjectCard key={project.id} project={project} />
+                ))}
+              </div>
+            )}
+
+            {/* Empty State */}
+            {!isLoading && !error && filteredProjects.length === 0 && projects && projects.length > 0 && (
               <div className="text-center py-12">
                 <p className="text-muted-foreground">No projects found matching your criteria.</p>
                 <Button 
@@ -259,6 +334,17 @@ export function ProjectDiscovery() {
                 >
                   Clear Filters
                 </Button>
+              </div>
+            )}
+
+            {/* No Projects State */}
+            {!isLoading && !error && projects && projects.length === 0 && (
+              <div className="text-center py-12">
+                <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No projects launched yet</h3>
+                <p className="text-muted-foreground">
+                  Be the first to launch a project through our crowdfunding platform!
+                </p>
               </div>
             )}
           </div>
