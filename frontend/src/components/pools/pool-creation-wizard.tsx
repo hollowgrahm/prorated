@@ -67,15 +67,22 @@ const CREATION_STEPS: PoolCreationStep[] = [
   }
 ]
 
+// Helper function to generate a random salt
+function generateSalt(): string {
+  return '0x' + Array.from({ length: 64 }, () => 
+    Math.floor(Math.random() * 16).toString(16)
+  ).join('')
+}
+
 export function PoolCreationWizard() {
   const router = useRouter()
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [formData, setFormData] = useState<Partial<PoolCreationFormData>>({
+    salt: generateSalt(), // Auto-generate salt on initialization
     // Set some defaults
     developerPercent: 15,
     treasuryPercent: 25,
-    daoPercent: 60,
-    salt: generateRandomSalt()
+    daoPercent: 60
   })
 
   const currentStep = CREATION_STEPS[currentStepIndex]

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import React from 'react'
 import { useRouter } from 'next/navigation'
 import { 
   Eye, 
@@ -20,15 +20,20 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { PoolCreationStepProps, FUNDING_TOKENS } from '@/types/pool-creation'
-import { toTokenUnits } from '@/lib/token-precision'
+import { usePoolDeployment } from '@/hooks/usePoolDeployment'
 
 export function PreviewStep({
   data
 }: PoolCreationStepProps) {
   const router = useRouter()
-  const [isDeploying, setIsDeploying] = useState(false)
-  const [deploymentTx, setDeploymentTx] = useState<string>('')
-  const [deployedPoolAddress, setDeployedPoolAddress] = useState<string>('')
+  const {
+    isDeploying,
+    isConfirming,
+    isSuccess,
+    error,
+    result,
+    deployPool
+  } = usePoolDeployment()
 
   const selectedToken = FUNDING_TOKENS.find(token => token.address === data.fundingToken)
   const minTotalContributions = (data.developmentFund || 0) + (data.liquidityFund || 0)
@@ -37,50 +42,29 @@ export function PreviewStep({
     : 0
 
   const handleDeploy = async () => {
-    setIsDeploying(true)
-    
+    if (!data.tokenName || !data.tokenSymbol || !data.tokenTotalSupply ||
+        !data.developmentFund || !data.liquidityFund || !data.fundingToken ||
+        !data.startTime || !data.endTime || !data.developerPercent ||
+        !data.treasuryPercent || !data.daoPercent || !data.salt) {
+      console.error('Missing required form data')
+      return
+    }
+
     try {
-      // TODO: Implement actual pool deployment
-      // const result = await deployPool({
-      //   tokenName: data.tokenName!,
-      //   tokenSymbol: data.tokenSymbol!,
-      //   tokenTotalSupply: toTokenUnits(data.tokenTotalSupply!), // Convert to 18 decimal precision
-      //   developmentFund: data.developmentFund!,
-      //   liquidityFund: data.liquidityFund!,
-      //   fundingToken: data.fundingToken!,
-      //   startTime: Math.floor(data.startTime!.getTime() / 1000),
-      //   endTime: Math.floor(data.endTime!.getTime() / 1000),
-      //   developerPercent: data.developerPercent!,
-      //   treasuryPercent: data.treasuryPercent!,
-      //   daoPercent: data.daoPercent!,
-      //   salt: data.salt!
-      // })
-
-      // Mock deployment for now
-      await new Promise(resolve => setTimeout(resolve, 3000))
-      const mockTxHash = '0x' + Array.from({ length: 64 }, () => 
-        Math.floor(Math.random() * 16).toString(16)
-      ).join('')
-      const mockPoolAddress = '0x' + Array.from({ length: 40 }, () => 
-        Math.floor(Math.random() * 16).toString(16)
-      ).join('')
-
-      setDeploymentTx(mockTxHash)
-      setDeployedPoolAddress(mockPoolAddress)
-      
-      // Redirect to the new pool page after a short delay
-      setTimeout(() => {
-        router.push(`/pools/${mockPoolAddress}`)
-      }, 2000)
-
+      await deployPool(data as Required<typeof data>)
     } catch (error) {
       console.error('Deployment failed:', error)
-    } finally {
-      setIsDeploying(false)
     }
   }
 
-  if (deployedPoolAddress) {
+  // Redirect to pool page after successful deployment
+  if (isSuccess && result?.poolAddress) {
+    setTimeout(() => {
+      router.push(`/pools/${result.poolAddress}`)
+    }, 2000)
+  }
+
+  if (isSuccess && result) {
     return (
       <div className="text-center space-y-6">
         <div className="mx-auto mb-6 h-16 w-16 rounded-full bg-green-500/20 flex items-center justify-center">
@@ -99,30 +83,28 @@ export function PreviewStep({
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Pool Address:</span>
               <a
-                href={`https://etherscan.io/address/${deployedPoolAddress}`}
+                href={`https://etherscan.io/address/${result.poolAddress}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center text-sm text-primary hover:text-primary/80"
               >
-                {deployedPoolAddress.slice(0, 10)}...{deployedPoolAddress.slice(-8)}
+                {result.poolAddress.slice(0, 10)}...{result.poolAddress.slice(-8)}
                 <ExternalLink className="ml-1 h-3 w-3" />
               </a>
             </div>
             
-            {deploymentTx && (
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Transaction:</span>
-                <a
-                  href={`https://etherscan.io/tx/${deploymentTx}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center text-sm text-primary hover:text-primary/80"
-                >
-                  {deploymentTx.slice(0, 10)}...{deploymentTx.slice(-8)}
-                  <ExternalLink className="ml-1 h-3 w-3" />
-                </a>
-              </div>
-            )}
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Transaction:</span>
+              <a
+                href={`https://etherscan.io/tx/${result.txHash}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center text-sm text-primary hover:text-primary/80"
+              >
+                {result.txHash.slice(0, 10)}...{result.txHash.slice(-8)}
+                <ExternalLink className="ml-1 h-3 w-3" />
+              </a>
+            </div>
           </CardContent>
         </Card>
 
@@ -312,7 +294,7 @@ export function PreviewStep({
       <div className="text-center space-y-4">
         <Button
           onClick={handleDeploy}
-          disabled={isDeploying}
+          disabled={isDeploying || isConfirming}
           className="btn-primary w-full md:w-auto px-8 py-3 text-lg"
           size="lg"
         >
@@ -321,6 +303,11 @@ export function PreviewStep({
               <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
               Deploying Pool...
             </>
+          ) : isConfirming ? (
+            <>
+              <RefreshCw className="mr-2 h-5 w-5 animate-spin" />
+              Confirming Transaction...
+            </>
           ) : (
             <>
               <Rocket className="mr-2 h-5 w-5" />
@@ -328,6 +315,14 @@ export function PreviewStep({
             </>
           )}
         </Button>
+        
+        {error && (
+          <Alert className="border-red-500/50 bg-red-500/10">
+            <AlertDescription className="text-red-400">
+              <strong>Deployment Failed:</strong> {error.message}
+            </AlertDescription>
+          </Alert>
+        )}
         
         <p className="text-sm text-muted-foreground">
           This will create your pool on the blockchain and make it available for contributions.
