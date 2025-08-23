@@ -28,18 +28,19 @@ contract DemoProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     using SafeTransferLib for ERC20;
 
     // ============ DEMO TIME MANIPULATION ============
-    uint256 public demoTimeOffset;
+    uint256 public timeSkipped;
+    uint256 public timeRewound;
     
     function _currentTime() internal view returns (uint256) {
-        return block.timestamp + demoTimeOffset;
+        return block.timestamp + timeSkipped - timeRewound;
     }
     
     function skipTime(uint256 timeToSkip) external onlyOwner {
-        demoTimeOffset += timeToSkip;
+        timeSkipped += timeToSkip;
     }
     
-    function setTime(uint256 newTime) external onlyOwner {
-        demoTimeOffset = newTime - block.timestamp;
+    function rewindTime(uint256 timeToRewind) external onlyOwner {
+        timeRewound += timeToRewind;
     }
 
     // ============ ERRORS ============
