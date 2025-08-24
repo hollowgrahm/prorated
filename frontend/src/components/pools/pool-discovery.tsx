@@ -13,6 +13,7 @@ import { PoolCard } from './pool-card'
 import { PoolFilters, PoolStatus } from '@/types'
 import { LoadingSpinner, CardLoadingSkeleton } from '@/components/ui/loading-spinner'
 import { ErrorDisplay } from '@/components/ui/error-boundary'
+import { NetworkHelper } from '@/components/ui/network-helper'
 import { useFilteredPools, usePoolStats } from '@/hooks/usePools'
 
 export function PoolDiscovery() {
@@ -137,6 +138,11 @@ export function PoolDiscovery() {
 
       {/* Main Content */}
       <div className="container mx-auto px-4 py-8 relative z-10">
+        {/* Network Helper */}
+        <div className="mb-6">
+          <NetworkHelper />
+        </div>
+
         {/* Quick Stats - Full Width Above Everything */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {quickStats.map((stat, index) => (

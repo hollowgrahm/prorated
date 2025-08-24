@@ -347,12 +347,24 @@ contract DeployDemo is Script {
         console.log("Launched Pool:", launchedPool);
         console.log("\n=== Frontend Environment Variables ===");
         console.log("NEXT_PUBLIC_MOCK_USDC_ADDRESS=", mockUSDC);
-        console.log("NEXT_PUBLIC_DEMO_FACTORY_ADDRESS=", demoProratedFactory);
+        console.log(
+            "NEXT_PUBLIC_PRORATED_FACTORY_ADDRESS=",
+            demoProratedFactory
+        );
         console.log("NEXT_PUBLIC_PROSWAP_FACTORY_ADDRESS=", proswapFactory);
         console.log("NEXT_PUBLIC_PROSWAP_ROUTER_ADDRESS=", proswapRouter);
+        console.log("NEXT_PUBLIC_PROLEND_FACTORY_ADDRESS=", prolendFactory);
+        console.log("NEXT_PUBLIC_TOKEN_DEPLOYER_ADDRESS=", tokenDeployer);
+        console.log("NEXT_PUBLIC_PAIR_DEPLOYER_ADDRESS=", pairDeployer);
+        console.log(
+            "NEXT_PUBLIC_LIQUIDITY_DEPLOYER_ADDRESS=",
+            liquidityDeployer
+        );
+        console.log("NEXT_PUBLIC_VENFT_DEPLOYER_ADDRESS=", veNFTDeployer);
+        console.log("NEXT_PUBLIC_GOVERNOR_DEPLOYER_ADDRESS=", governorDeployer);
+        console.log("NEXT_PUBLIC_TREASURY_DEPLOYER_ADDRESS=", treasuryDeployer);
+        console.log("NEXT_PUBLIC_PROLEND_DEPLOYER_ADDRESS=", prolendDeployer);
         console.log("NEXT_PUBLIC_ACTIVE_POOL_ADDRESS=", activePool);
         console.log("NEXT_PUBLIC_SUCCESSFUL_POOL_ADDRESS=", successfulPool);
-        console.log("NEXT_PUBLIC_FAILED_POOL_ADDRESS=", failedPool);
-        console.log("NEXT_PUBLIC_LAUNCHED_POOL_ADDRESS=", launchedPool);
     }
 }

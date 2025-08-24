@@ -4,7 +4,7 @@ import { Address, createPublicClient, http } from 'viem'
 import { anvilLocal } from '@/lib/wagmi'
 import { env } from '@/lib/env'
 import { proratedFactoryConfig } from '@/lib/contracts'
-import { useAllPoolsLength, useAllPools } from './useContracts'
+import { useAllPools } from './useContracts'
 import { usePool } from './usePool'
 import { PoolData, PoolStatus, PoolFilters } from '@/types'
 
@@ -26,12 +26,17 @@ export function useDirectPoolCount() {
     const fetchPoolCount = async () => {
       try {
         setIsLoading(true)
+        console.log('🔍 Direct viem call starting:', {
+          address: proratedFactoryConfig.address,
+          rpcUrl: env.rpcUrl,
+          chainId: anvilLocal.id
+        })
         const result = await publicClient.readContract({
           address: proratedFactoryConfig.address,
           abi: proratedFactoryConfig.abi,
           functionName: 'getPoolCount',
         })
-        console.log('Direct viem call result:', result)
+        console.log('✅ Direct viem call result:', result, 'type:', typeof result)
         setPoolCount(Number(result))
         setError(null)
       } catch (err) {
@@ -51,36 +56,23 @@ export function useDirectPoolCount() {
 // Hook to get all pool addresses
 export function useAllPoolAddresses() {
   console.log('🎯 useAllPoolAddresses hook called')
-  const { data: poolsLength, isLoading: isLengthLoading, error: lengthError } = useAllPoolsLength()
+  // Use direct Viem calls instead of Wagmi (Wagmi was having connection issues)
   const { poolCount: directPoolCount, isLoading: directLoading, error: directError } = useDirectPoolCount()
   
   // Debug logging
   console.log('useAllPoolAddresses Debug:', {
-    wagmiPoolsLength: poolsLength,
-    wagmiIsLoading: isLengthLoading,
-    wagmiError: lengthError?.message,
     directPoolCount,
     directLoading,
     directError: directError?.message
   })
   
-  // Don't early return - this violates React hooks rules
-  // Instead, handle loading state in the logic below
-  
   // We'll use a maximum reasonable number of pools to avoid infinite hook calls
   // In production, this should be paginated or have a reasonable limit
   const MAX_POOLS = 100
-  // Use direct count as fallback if Wagmi fails
-  const wagmiCount = poolsLength ? Number(poolsLength) : 0
-  const effectiveCount = wagmiCount > 0 ? wagmiCount : (directPoolCount || 0)
-  const poolCount = Math.min(effectiveCount, MAX_POOLS)
+  const poolCount = Math.min(directPoolCount || 0, MAX_POOLS)
   
   console.log('Pool count conversion debug:', {
-    poolsLength,
-    poolsLengthType: typeof poolsLength,
-    wagmiCount,
     directPoolCount,
-    effectiveCount,
     finalPoolCount: poolCount
   })
   
@@ -107,24 +99,30 @@ export function useAllPoolAddresses() {
         addresses.push(poolQueries[i].data as Address)
       }
     }
-    console.log('Pool addresses debug:', {
-      poolCount,
-      poolQueriesLength: poolQueries.length,
-      poolQueriesData: poolQueries.map((q, i) => ({ index: i, data: q.data, isLoading: q.isLoading, error: q.error?.message })),
-      addresses
-    })
+      console.log('Pool addresses debug:', {
+    poolCount,
+    poolQueriesLength: poolQueries.length,
+    poolQueriesData: poolQueries.map((q, i) => ({ 
+      index: i, 
+      data: q.data, 
+      isLoading: q.isLoading, 
+      error: q.error?.message,
+      queryKey: q.queryKey 
+    })),
+    addresses,
+    factoryAddress: proratedFactoryConfig.address
+  })
     return addresses
   }, [poolQueries, poolCount])
   
   // Handle loading state properly without early returns
   const hasPoolCount = poolCount > 0
-  const stillLoadingPoolCount = isLengthLoading && directLoading // Both sources still loading
+  const stillLoadingPoolCount = directLoading // Direct source still loading
   const loadingIndividualPools = hasPoolCount && poolQueries.slice(0, poolCount).some(query => query.isLoading)
   const isLoading = stillLoadingPoolCount || loadingIndividualPools
-  const error = lengthError || directError || (hasPoolCount && poolQueries.slice(0, poolCount).find(query => query.error)?.error)
+  const error = directError || (hasPoolCount && poolQueries.slice(0, poolCount).find(query => query.error)?.error)
   
   console.log('useAllPoolAddresses loading debug:', {
-    isLengthLoading,
     directLoading,
     hasPoolCount,
     stillLoadingPoolCount,
@@ -151,7 +149,7 @@ export function useAllPoolsData() {
     addressesLength: addresses?.length,
     count,
     isAddressesLoading,
-    addressesError: addressesError?.message
+    addressesError: addressesError instanceof Error ? addressesError.message : addressesError
   })
   
   // For now, we'll limit to the first few pools to avoid too many hook calls

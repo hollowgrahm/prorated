@@ -16,11 +16,11 @@ contract DeployMockUSDC is DeploymentHelpers {
 
         // Claim some USDC for the deployer
         mockUSDC.faucet();
-        console.log("Claimed 1000 USDC for deployer");
+        console.log("Claimed 10,000 USDC for deployer");
 
         // Verify functionality works
         require(
-            mockUSDC.balanceOf(msg.sender) == 1000 * 10 ** 6,
+            mockUSDC.balanceOf(msg.sender) == 10000 * 10 ** 6,
             "Faucet failed"
         );
 

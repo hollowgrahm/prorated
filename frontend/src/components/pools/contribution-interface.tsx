@@ -1,6 +1,5 @@
 'use client'
 
-import { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,14 +9,15 @@ import { Separator } from '@/components/ui/separator'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Lock, DollarSign, Calendar, TrendingUp, Info, Wallet, Activity } from 'lucide-react'
-import { Pool } from '@/types/pool'
-import { getTokenSymbol } from '@/lib/token-utils'
-import { LoadingSpinner } from '@/components/ui/loading-spinner'
-import { ErrorDisplay } from '@/components/ui/error-boundary'
-import { useFormSubmission } from '@/hooks/useLoadingState'
+import { PoolData } from '@/types'
+import { useAccount } from 'wagmi'
+import { useContribution } from '@/hooks/useContribution'
+import { useFaucet } from '@/hooks/useFaucet'
+import { formatUSD } from '@/lib/utils'
+import { BalanceDebug } from '@/components/ui/balance-debug'
 
 interface ContributionInterfaceProps {
-  pool: Pool
+  pool: PoolData
 }
 
 // Lock duration directly multiplies the contribution to create shares
@@ -52,85 +52,115 @@ const formatDuration = (weeks: number) => {
 }
 
 export function ContributionInterface({ pool }: ContributionInterfaceProps) {
-  const [contributionAmount, setContributionAmount] = useState('')
-  const [lockWeeks, setLockWeeks] = useState([52]) // Default to 1 year
-  const [isWalletConnected, setIsWalletConnected] = useState(false) // Mock wallet state
-  
-  const { isSubmitting, isSuccess, error, submit, reset } = useFormSubmission()
+  const { address: userAddress } = useAccount()
+  const contribution = useContribution(pool.address)
+  const faucet = useFaucet()
 
-  const currentLockWeeks = lockWeeks[0]
+  const currentLockWeeks = contribution.lockDuration
   const lockColor = getLockColor(currentLockWeeks)
-  const contributionValue = parseFloat(contributionAmount) || 0
+  const contributionValue = parseFloat(contribution.contributionAmount) || 0
   const sharesReceived = contributionValue * currentLockWeeks
   
   // Calculate average lock duration from pool data
-  const averageLockWeeks = pool.totalShares > 0 ? pool.totalShares / pool.totalContributions : 0
-  
-  // Get dynamic token symbol
-  const fundingTokenSymbol = getTokenSymbol(pool.fundingToken)
+  const averageLockWeeks = pool.totalContributions > 0n ? Number(pool.totalShares) / Number(pool.totalContributions) : 0
 
   const handleContribute = async () => {
-    if (!isWalletConnected) {
-      // Would trigger wallet connection
-      setIsWalletConnected(true)
+    if (!userAddress) {
+      // Wallet connection should be handled by the app
       return
     }
 
-    await submit(async () => {
-      // Simulate contribution transaction
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      // Simulate random error (5% chance)
-      if (Math.random() < 0.05) {
-        throw new Error('Transaction failed: Insufficient allowance or network error')
-      }
-      
-      return { txHash: '0x' + Math.random().toString(16).slice(2, 42) }
-    })
-    
-    // Reset form on success
-    if (isSuccess) {
-      setContributionAmount('')
+    if (contribution.needsApproval) {
+      contribution.approveTokens()
+    } else {
+      contribution.contribute()
     }
   }
 
-  const isValidAmount = contributionValue > 0 // No minimum contribution requirement
+  const handleMintUSDC = () => {
+    faucet.claimUSDC()
+  }
+
+  // Reset form on successful contribution
+  if (contribution.contribution.isConfirmed) {
+    contribution.resetForm()
+  }
+
+  // Refresh balance after successful faucet claim
+  // Note: The balance should refresh automatically via wagmi's query invalidation
 
   return (
     <div className="space-y-6">
+      {/* Debug Component - Remove after fixing */}
+      <BalanceDebug />
+      
       {/* Contribution Form */}
       <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
         <CardHeader>
           <CardTitle className="flex items-center space-x-2">
             <DollarSign className="h-5 w-5 text-primary" />
-            <span>Contribute to {pool.tokenSymbol}</span>
+            <span>Contribute to {pool.config.tokenSymbol}</span>
           </CardTitle>
         </CardHeader>
         
         <CardContent className="space-y-6">
           {/* Amount Input */}
+          {/* USDC Balance and Mint Button */}
+          <div className="flex items-center justify-between p-3 bg-secondary/20 rounded-lg">
+            <div>
+              <p className="text-sm text-muted-foreground">Your USDC Balance</p>
+              <p className="font-medium">
+                {contribution.usdcBalance ? formatUSD(contribution.usdcBalance, false) : '0'} USDC
+              </p>
+            </div>
+            <Button
+              onClick={handleMintUSDC}
+              disabled={faucet.isLoading}
+              variant="default"
+              size="sm"
+              className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-medium shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 border-0 hover:border-0"
+            >
+              {faucet.isLoading ? (
+                <>
+                  <Activity className="mr-2 h-4 w-4 animate-pulse" />
+                  Claiming...
+                </>
+              ) : faucet.success ? (
+                <>
+                  <Activity className="mr-2 h-4 w-4" />
+                  Claimed!
+                </>
+              ) : (
+                'Get 10K USDC'
+              )}
+            </Button>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="amount" className="text-sm font-medium">
-              Contribution Amount ({fundingTokenSymbol})
+              Contribution Amount (USDC)
             </Label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-sm font-medium text-muted-foreground">
-                {fundingTokenSymbol}
+                USDC
               </span>
               <Input
                 id="amount"
                 type="number"
                 placeholder="0.00"
-                value={contributionAmount}
-                onChange={(e) => setContributionAmount(e.target.value)}
+                value={contribution.contributionAmount}
+                onChange={(e) => contribution.setContributionAmount(e.target.value)}
                 className="pl-16 text-lg"
                 min="0"
                 step="0.01"
               />
             </div>
-            <p className="text-xs text-muted-foreground">
-              No minimum individual contribution required
-            </p>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">No minimum individual contribution required</span>
+              {!contribution.validation.isValid && contribution.validation.error && (
+                <span className="text-red-400">{contribution.validation.error}</span>
+              )}
+            </div>
           </div>
 
           <Separator />
@@ -155,8 +185,8 @@ export function ContributionInterface({ pool }: ContributionInterfaceProps) {
               </div>
               
               <Slider
-                value={lockWeeks}
-                onValueChange={setLockWeeks}
+                value={[contribution.lockDuration]}
+                onValueChange={(value) => contribution.setLockDuration(value[0])}
                 min={1}
                 max={208}
                 step={1}
@@ -181,7 +211,7 @@ export function ContributionInterface({ pool }: ContributionInterfaceProps) {
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Contribution Amount:</span>
-                  <span>{contributionValue.toLocaleString()} {fundingTokenSymbol}</span>
+                  <span>{contributionValue.toLocaleString()} USDC</span>
                 </div>
                 
                 <div className="flex justify-between">
@@ -217,7 +247,7 @@ export function ContributionInterface({ pool }: ContributionInterfaceProps) {
             <Info className="h-4 w-4" />
             <AlertDescription className="text-sm">
               <strong>How it works:</strong> Your contribution is locked for the selected duration. Pool shares = contribution × lock weeks. 
-              When deployed, liquidity funds create an 80/20 {pool.tokenSymbol}/{fundingTokenSymbol} pool against the ENTIRE token supply. 
+              When deployed, liquidity funds create an 80/20 {pool.config.tokenSymbol}/USDC pool against the ENTIRE token supply. 
               Your pool shares determine your portion of LP tokens, which are locked in your veNFT.
             </AlertDescription>
           </Alert>
@@ -225,47 +255,66 @@ export function ContributionInterface({ pool }: ContributionInterfaceProps) {
           {/* Contribute Button */}
           <Button
             onClick={handleContribute}
-            disabled={!isValidAmount || isSubmitting}
+            disabled={!contribution.validation.isValid || contribution.isTransacting}
             className="w-full btn-primary-custom"
             size="lg"
           >
-            {isSubmitting ? (
+            {contribution.isTransacting ? (
               <>
                 <Activity className="mr-2 h-4 w-4 animate-spin" />
-                Contributing...
+                {contribution.approve.isPending ? 'Approving...' : 
+                 contribution.contribution.isPending ? 'Contributing...' : 'Processing...'}
               </>
-            ) : !isWalletConnected ? (
+            ) : !userAddress ? (
               <>
                 <Wallet className="mr-2 h-4 w-4" />
                 Connect Wallet
               </>
-            ) : !isValidAmount ? (
-              'Enter Amount'
+            ) : !contribution.validation.isValid ? (
+              contribution.validation.error || 'Enter Amount'
+            ) : contribution.needsApproval ? (
+              <>
+                <TrendingUp className="mr-2 h-4 w-4" />
+                Approve USDC
+              </>
             ) : (
               <>
                 <TrendingUp className="mr-2 h-4 w-4" />
-                Contribute {contributionValue.toLocaleString()} {fundingTokenSymbol}
+                Contribute {contributionValue.toLocaleString()} USDC
               </>
             )}
           </Button>
 
           {/* Error Display */}
-          {error && (
-            <ErrorDisplay
-              error={error}
-              title="Contribution Failed"
-              description="There was an error processing your contribution. Please try again."
-              onRetry={handleContribute}
-              variant="destructive"
-            />
+          {(contribution.approve.error || contribution.contribution.error || faucet.error) && (
+            <Alert className="border-red-500/50 bg-red-500/10">
+              <Info className="h-4 w-4" />
+              <AlertDescription className="text-red-400">
+                <strong>Transaction Failed:</strong> {
+                  contribution.approve.error?.message || 
+                  contribution.contribution.error?.message || 
+                  faucet.error
+                }
+              </AlertDescription>
+            </Alert>
           )}
 
           {/* Success Display */}
-          {isSuccess && (
+          {contribution.contribution.isConfirmed && (
             <Alert className="border-green-500/50 bg-green-500/10">
               <Info className="h-4 w-4" />
               <AlertDescription className="text-green-400">
-                <strong>Contribution Successful!</strong> Your contribution has been processed and you'll receive your veNFT position when the pool launches.
+                <strong>Contribution Successful!</strong> Your contribution has been processed and you&apos;ll receive your veNFT position when the pool launches.
+              </AlertDescription>
+            </Alert>
+          )}
+
+          {/* Mint Success */}
+          {faucet.success && (
+            <Alert className="border-blue-500/50 bg-blue-500/10">
+              <Info className="h-4 w-4" />
+              <AlertDescription className="text-blue-400">
+                <strong>USDC Claimed!</strong> 10,000 USDC has been added to your wallet for testing.
               </AlertDescription>
             </Alert>
           )}
@@ -286,14 +335,14 @@ export function ContributionInterface({ pool }: ContributionInterfaceProps) {
             <div className="p-3 rounded bg-secondary/20 border border-border/30">
               <div className="font-medium mb-1">Example 1:</div>
               <div className="text-muted-foreground">
-                1,000 {fundingTokenSymbol} × 100 weeks = 100,000 shares
+                1,000 USDC × 100 weeks = 100,000 shares
               </div>
             </div>
             
             <div className="p-3 rounded bg-secondary/20 border border-border/30">
               <div className="font-medium mb-1">Example 2:</div>
               <div className="text-muted-foreground">
-                100,000 {fundingTokenSymbol} × 1 week = 100,000 shares
+                100,000 USDC × 1 week = 100,000 shares
               </div>
             </div>
             
@@ -301,7 +350,7 @@ export function ContributionInterface({ pool }: ContributionInterfaceProps) {
               <div className="font-medium mb-2">What You Get:</div>
               <ul className="space-y-1 text-xs text-muted-foreground">
                 <li>• Pool shares proportional to (contribution × lock duration)</li>
-                <li>• Portion of {pool.tokenSymbol} tokens when deployed</li>
+                <li>• Portion of {pool.config.tokenSymbol} tokens when deployed</li>
                 <li>• LP tokens locked in your veNFT from liquidity seeding</li>
                 <li>• Voting power in DAO governance</li>
               </ul>
