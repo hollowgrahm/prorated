@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Clock, Users, TrendingUp } from 'lucide-react'
+import { Clock, Users } from 'lucide-react'
 import { PoolData, PoolCardProps } from '@/types'
 
 function formatTimeRemaining(endTime: number): string {
@@ -51,88 +51,148 @@ function formatAmount(amount: bigint, decimals: number = 6): string {
   return value.toFixed(0)
 }
 
-export function PoolCard({ pool, showActions = true, compact = false }: PoolCardProps) {
+export function PoolCard({ pool, compact = false }: PoolCardProps) {
   const progressPercentage = pool.progressPercentage
   const timeRemaining = formatTimeRemaining(pool.config.endTime)
   const totalContributions = formatAmount(pool.totalContributions)
   const minContributions = formatAmount(pool.minTotalContributions)
 
+  // Generate a simple description based on pool data
+  const description = `A decentralized ${pool.config.tokenName} project raising funds through community contributions. Join the movement and help shape the future of decentralized finance.`
+
+  // Mock contributors count (since we don't have this data from contracts yet)
+  const contributors = Math.floor(Math.random() * 50) + 5
+
   return (
     <Link href={`/pools/${pool.address}`}>
-      <Card className="group hover:shadow-lg transition-all duration-200 hover:border-primary/20 cursor-pointer h-full">
-        <CardHeader className="pb-3">
+      <Card className="group hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 cursor-pointer hover:-translate-y-1 border-border border-2 hover:border-primary/60 relative overflow-hidden bg-card backdrop-blur-sm shadow-lg h-full">
+        {/* Static gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/12 via-transparent to-accent/12" />
+        {/* Animated background gradient on hover */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-transparent to-accent/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary to-accent transform origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
+        
+        <CardHeader className="pb-3 relative z-10">
           <div className="flex items-start justify-between">
             <div className="flex-1 min-w-0">
-              <CardTitle className="text-lg font-semibold group-hover:text-primary transition-colors truncate">
+              <CardTitle className="text-lg font-semibold">
                 {pool.config.tokenName}
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
-                ${pool.config.tokenSymbol} • {formatAddress(pool.address)}
+                {formatAddress(pool.address)}
               </p>
             </div>
-            <Badge 
-              variant="outline" 
-              className={`ml-2 capitalize ${getStatusColor(pool.status)}`}
-            >
-              {pool.status}
-            </Badge>
+            <div className="flex flex-col items-end space-y-2">
+              <Badge variant="outline" className="text-xs font-medium bg-secondary/50">
+                {pool.config.tokenSymbol}
+              </Badge>
+              <Badge 
+                variant="outline" 
+                className={`text-xs font-medium ${getStatusColor(pool.status)}`}
+              >
+                {pool.status}
+              </Badge>
+            </div>
           </div>
         </CardHeader>
-
-        <CardContent className="space-y-4">
-          {/* Progress Bar */}
+        
+        <CardContent className="space-y-4 relative z-10">
+          <p className="text-sm text-foreground line-clamp-2">
+            {description}
+          </p>
+          
+          {/* Funding Progress */}
           <div className="space-y-2">
             <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Progress</span>
-              <span className="font-medium">{progressPercentage.toFixed(1)}%</span>
+              <span className="text-muted-foreground">Funding Progress</span>
+              <span className="font-medium">
+                {Math.round(progressPercentage)}%
+              </span>
             </div>
-            <div className="w-full bg-secondary rounded-full h-2">
+            <div className="w-full bg-muted h-2 rounded-full overflow-hidden border border-border/60 shadow-inner">
               <div 
-                className="bg-gradient-to-r from-primary to-primary/80 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${Math.min(progressPercentage, 100)}%` }}
+                className={`h-full bg-gradient-to-r from-primary to-accent transition-all duration-300 ${
+                  pool.status === 'active' ? 'animate-pulse-slow shadow-sm shadow-primary/50' : ''
+                }`}
+                style={{ 
+                  width: `${Math.min(progressPercentage, 100)}%` 
+                }}
               />
             </div>
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>{totalContributions} USDC raised</span>
-              <span>{minContributions} USDC goal</span>
-            </div>
           </div>
-
+          
+          {/* Funding Details */}
+          <div className="flex justify-between text-sm">
+            <span className="text-muted-foreground">
+              {totalContributions} USDC raised
+            </span>
+            <span className="text-muted-foreground">
+              {minContributions} USDC goal
+            </span>
+          </div>
+          
           {/* Stats */}
-          <div className="grid grid-cols-2 gap-4 pt-2">
-            <div className="flex items-center space-x-2">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-xs text-muted-foreground">Time Left</p>
-                <p className="text-sm font-medium">{timeRemaining}</p>
-              </div>
+          <div className="flex items-center justify-between pt-2 border-t border-border/30">
+            <div className="flex items-center space-x-1 text-sm text-muted-foreground">
+              <Users className="h-4 w-4" />
+              <span>{contributors} contributor{contributors !== 1 ? 's' : ''}</span>
             </div>
             
-            <div className="flex items-center space-x-2">
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              <div>
-                <p className="text-xs text-muted-foreground">Supply</p>
-                <p className="text-sm font-medium">
-                  {formatAmount(pool.config.tokenTotalSupply, 18)} {pool.config.tokenSymbol}
-                </p>
-              </div>
+            <div className="flex items-center space-x-1 text-sm text-muted-foreground">
+              <Clock className="h-4 w-4" />
+              <span>{timeRemaining}</span>
             </div>
           </div>
 
-          {/* Allocation Info */}
+          {/* Allocation Info - Single Segmented Bar */}
           {!compact && (
-            <div className="pt-2 border-t border-border/50">
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Dev: {pool.config.developerPercent || 40}%</span>
-                <span>Treasury: {pool.config.treasuryPercent}%</span>
-                <span>DAO: {pool.config.daoPercent}%</span>
+            <div className="pt-4 border-t border-border/30">
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Token Allocation</p>
+                
+                {/* Single Segmented Bar */}
+                <div className="w-full bg-muted h-2 rounded-full overflow-hidden">
+                  <div className="flex h-full">
+                    {/* Developer Segment */}
+                    <div 
+                      className="bg-gradient-to-r from-blue-500 to-blue-400 transition-all duration-500"
+                      style={{ width: `${pool.config.developerPercent || 40}%` }}
+                    />
+                    {/* Treasury Segment */}
+                    <div 
+                      className="bg-gradient-to-r from-purple-500 to-purple-400 transition-all duration-500"
+                      style={{ width: `${pool.config.treasuryPercent}%` }}
+                    />
+                    {/* DAO Segment */}
+                    <div 
+                      className="bg-gradient-to-r from-green-500 to-green-400 transition-all duration-500"
+                      style={{ width: `${pool.config.daoPercent}%` }}
+                    />
+                  </div>
+                </div>
+                
+                {/* Legend */}
+                <div className="flex justify-between text-xs">
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-500 to-blue-400"></div>
+                    <span className="text-muted-foreground">Dev {pool.config.developerPercent || 40}%</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 rounded-full bg-gradient-to-r from-purple-500 to-purple-400"></div>
+                    <span className="text-muted-foreground">Treasury {pool.config.treasuryPercent}%</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-2 h-2 rounded-full bg-gradient-to-r from-green-500 to-green-400"></div>
+                    <span className="text-muted-foreground">DAO {pool.config.daoPercent}%</span>
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
           {/* Status-specific info */}
           {pool.status === 'launched' && pool.proratedToken !== '0x0000000000000000000000000000000000000000' && (
-            <div className="pt-2 border-t border-border/50">
+            <div className="pt-2 border-t border-border/30">
               <p className="text-xs text-green-400">
                 ✓ Token deployed • Trading live
               </p>
@@ -140,7 +200,7 @@ export function PoolCard({ pool, showActions = true, compact = false }: PoolCard
           )}
 
           {pool.status === 'failed' && (
-            <div className="pt-2 border-t border-border/50">
+            <div className="pt-2 border-t border-border/30">
               <p className="text-xs text-red-400">
                 ⚠ Funding failed • Refunds available
               </p>

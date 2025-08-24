@@ -8,10 +8,9 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { PoolCard } from './pool-card'
-import { PoolData, PoolFilters, PoolStatus } from '@/types'
+import { PoolFilters, PoolStatus } from '@/types'
 import { LoadingSpinner, CardLoadingSkeleton } from '@/components/ui/loading-spinner'
 import { ErrorDisplay } from '@/components/ui/error-boundary'
 import { useFilteredPools, usePoolStats } from '@/hooks/usePools'
@@ -33,7 +32,7 @@ export function PoolDiscovery() {
 
   // Use real contract data
   const { pools, totalCount, filteredCount, isLoading, error, refetch } = useFilteredPools(filters)
-  const { stats, isLoading: isStatsLoading, error: statsError } = usePoolStats()
+  const { stats, isLoading: isStatsLoading } = usePoolStats()
 
   const handleRefresh = () => {
     refetch()
@@ -82,149 +81,250 @@ export function PoolDiscovery() {
   ]
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-7xl">
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold gradient-text mb-2">
-            Discover Pools
-          </h1>
-          <p className="text-muted-foreground">
-            Find and contribute to crowdfunding pools for innovative projects
-          </p>
-        </div>
-        
-        <Button 
-          onClick={handleRefresh}
-          variant="outline" 
-          size="sm"
-          disabled={isLoading}
-          className="self-start md:self-center"
-        >
-          <RefreshCw className={`mr-2 h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-          Refresh
-        </Button>
-      </div>
-
-      {/* Quick Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        {quickStats.map((stat, index) => (
-          <Card key={index} className="p-4">
-            <div className="flex items-center space-x-3">
-              <stat.icon className={`h-5 w-5 ${stat.color}`} />
-              <div>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
-                <p className="text-lg font-semibold">{stat.value}</p>
+    <div className="min-h-screen bg-background relative">
+      {/* Subtle background pattern */}
+      <div className="absolute inset-0 opacity-[0.015] bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary via-transparent to-accent" />
+      
+      {/* Page Header */}
+      <div className="border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 relative overflow-hidden">
+        {/* Animated background gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 animate-float" />
+        <div className="container mx-auto px-4 py-8 relative z-10">
+          <div className="flex flex-col space-y-4 md:flex-row md:items-center md:justify-between md:space-y-0">
+            <div>
+              <div className="flex items-center space-x-3">
+                <h1 className="text-3xl font-bold tracking-tight gradient-text">Discover Fundraising Pools</h1>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleRefresh}
+                  disabled={isLoading}
+                  className="hidden md:flex"
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${isLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </div>
+              <p className="text-foreground">
+                Browse active and upcoming DAO fundraising campaigns. Support projects you believe in.
+              </p>
+            </div>
+            
+            {/* Mobile filter toggle */}
+            <div className="flex items-center space-x-2 md:hidden">
+              <Sheet open={showMobileFilters} onOpenChange={setShowMobileFilters}>
+                <SheetTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Filter className="h-4 w-4 mr-2" />
+                    Filters
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-80">
+                  <div className="py-6">
+                    <h3 className="text-lg font-semibold mb-4">Filter Pools</h3>
+                    {/* Mobile filters content will be added */}
+                  </div>
+                </SheetContent>
+              </Sheet>
+              
+              <div className="text-sm text-muted-foreground">
+                {filteredCount} pool{filteredCount !== 1 ? 's' : ''}
               </div>
             </div>
-          </Card>
-        ))}
+          </div>
+        </div>
       </div>
 
-      {/* Search and Filters */}
-      <div className="flex flex-col md:flex-row gap-4 mb-6">
-        {/* Search */}
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
-          <Input
-            placeholder="Search pools by token name or symbol..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
-        </div>
-
-        {/* Desktop Filters */}
-        <div className="hidden md:flex gap-4">
-          <Select value={selectedStatus[0] || 'all'} onValueChange={handleStatusChange}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="All Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
-              <SelectItem value="upcoming">Upcoming</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="deploying">Deploying</SelectItem>
-              <SelectItem value="launched">Launched</SelectItem>
-              <SelectItem value="failed">Failed</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <Select value={`${sortBy}-${sortOrder}`} onValueChange={handleSortChange}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="created-desc">Newest First</SelectItem>
-              <SelectItem value="created-asc">Oldest First</SelectItem>
-              <SelectItem value="timeRemaining-asc">Ending Soon</SelectItem>
-              <SelectItem value="totalContributions-desc">Most Funded</SelectItem>
-              <SelectItem value="totalContributions-asc">Least Funded</SelectItem>
-              <SelectItem value="progress-desc">Highest Progress</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-
-        {/* Mobile Filter Button */}
-        <Sheet open={showMobileFilters} onOpenChange={setShowMobileFilters}>
-          <SheetTrigger asChild>
-            <Button variant="outline" className="md:hidden">
-              <Filter className="mr-2 h-4 w-4" />
-              Filters
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-80">
-            <div className="space-y-6 py-6">
-              <div>
-                <Label className="text-base font-medium">Status</Label>
-                <Select value={selectedStatus[0] || 'all'} onValueChange={handleStatusChange}>
-                  <SelectTrigger className="mt-2">
-                    <SelectValue placeholder="All Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="upcoming">Upcoming</SelectItem>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="deploying">Deploying</SelectItem>
-                    <SelectItem value="launched">Launched</SelectItem>
-                    <SelectItem value="failed">Failed</SelectItem>
-                  </SelectContent>
-                </Select>
+      {/* Main Content */}
+      <div className="container mx-auto px-4 py-8 relative z-10">
+        {/* Quick Stats - Full Width Above Everything */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+          {quickStats.map((stat, index) => (
+            <Card key={index} className="p-4 glass bg-card backdrop-blur-sm border-border/50">
+              <div className="flex items-center space-x-3">
+                <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                <div>
+                  <p className="text-sm text-muted-foreground">{stat.label}</p>
+                  <p className="text-lg font-semibold">{stat.value}</p>
+                </div>
               </div>
+            </Card>
+          ))}
+        </div>
 
-              <div>
-                <Label className="text-base font-medium">Sort By</Label>
-                <Select value={`${sortBy}-${sortOrder}`} onValueChange={handleSortChange}>
-                  <SelectTrigger className="mt-2">
-                    <SelectValue placeholder="Sort by" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="created-desc">Newest First</SelectItem>
-                    <SelectItem value="created-asc">Oldest First</SelectItem>
-                    <SelectItem value="timeRemaining-asc">Ending Soon</SelectItem>
-                    <SelectItem value="totalContributions-desc">Most Funded</SelectItem>
-                    <SelectItem value="totalContributions-asc">Least Funded</SelectItem>
-                    <SelectItem value="progress-desc">Highest Progress</SelectItem>
-                  </SelectContent>
-                </Select>
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Desktop Sidebar */}
+          <div className="hidden lg:block">
+            <div className="sticky top-8">
+              <Card className="border-border glass bg-card backdrop-blur-md shadow-2xl border-2 ring-1 ring-primary/20">
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2 text-accent">
+                    <Filter className="h-5 w-5 text-primary" />
+                    <span>Filter Pools</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Search */}
+                  <div className="space-y-2">
+                    <Label htmlFor="search">Search</Label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                      <Input
+                        id="search"
+                        placeholder="Search pools..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Status Filter */}
+                  <div className="space-y-2">
+                    <Label>Status</Label>
+                    <Select value={selectedStatus.length > 0 ? selectedStatus[0] : 'all'} onValueChange={handleStatusChange}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="All statuses" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Statuses</SelectItem>
+                        <SelectItem value="upcoming">Upcoming</SelectItem>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="deploying">Deploying</SelectItem>
+                        <SelectItem value="launched">Launched</SelectItem>
+                        <SelectItem value="failed">Failed</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Sort */}
+                  <div className="space-y-2">
+                    <Label>Sort By</Label>
+                    <Select value={`${sortBy}-${sortOrder}`} onValueChange={handleSortChange}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="created-desc">Recently Created</SelectItem>
+                        <SelectItem value="created-asc">Oldest First</SelectItem>
+                        <SelectItem value="totalContributions-desc">Most Funded</SelectItem>
+                        <SelectItem value="totalContributions-asc">Least Funded</SelectItem>
+                        <SelectItem value="progress-desc">Highest Progress</SelectItem>
+                        <SelectItem value="progress-asc">Lowest Progress</SelectItem>
+                        <SelectItem value="timeRemaining-asc">Ending Soon</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Clear Filters */}
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => {
+                      setSearchQuery('')
+                      setSelectedStatus([])
+                      setSortBy('created')
+                      setSortOrder('desc')
+                    }}
+                    className="w-full"
+                  >
+                    Clear All Filters
+                  </Button>
+                </CardContent>
+              </Card>
+              
+              {/* Pool Count */}
+              <div className="mt-6">
+                <div className="text-sm text-muted-foreground">
+                  Showing {filteredCount} of {totalCount} pool{filteredCount !== 1 ? 's' : ''}
+                  {selectedStatus.length > 0 && (
+                    <span className="text-accent font-medium"> ({selectedStatus[0]})</span>
+                  )}
+                  {searchQuery && (
+                    <span className="text-primary font-medium"> matching &ldquo;{searchQuery}&rdquo;</span>
+                  )}
+                </div>
               </div>
             </div>
-          </SheetContent>
-        </Sheet>
-      </div>
+          </div>
 
-      {/* Results Summary */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="text-sm text-muted-foreground">
-          {isLoading ? (
-            <LoadingSpinner size="sm" text="Loading pools..." />
-          ) : error ? (
-            'Error loading pools'
-          ) : (
-            `Showing ${filteredCount} of ${totalCount} pools`
-          )}
-        </div>
-      </div>
+          {/* Pool Grid */}
+          <div className="lg:col-span-3">
+
+            {/* Mobile Search and Filters */}
+            <div className="lg:hidden mb-6">
+              <div className="flex flex-col gap-4 mb-4">
+                {/* Mobile Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+                  <Input
+                    placeholder="Search pools by token name or symbol..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10"
+                  />
+                </div>
+
+                {/* Mobile Filters Row */}
+                <div className="flex gap-2">
+                  <Select value={selectedStatus.length > 0 ? selectedStatus[0] : 'all'} onValueChange={handleStatusChange}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="All Status" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">All Status</SelectItem>
+                      <SelectItem value="upcoming">Upcoming</SelectItem>
+                      <SelectItem value="active">Active</SelectItem>
+                      <SelectItem value="deploying">Deploying</SelectItem>
+                      <SelectItem value="launched">Launched</SelectItem>
+                      <SelectItem value="failed">Failed</SelectItem>
+                    </SelectContent>
+                  </Select>
+
+                  <Select value={`${sortBy}-${sortOrder}`} onValueChange={handleSortChange}>
+                    <SelectTrigger className="flex-1">
+                      <SelectValue placeholder="Sort by" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="created-desc">Recently Created</SelectItem>
+                      <SelectItem value="created-asc">Oldest First</SelectItem>
+                      <SelectItem value="totalContributions-desc">Most Funded</SelectItem>
+                      <SelectItem value="totalContributions-asc">Least Funded</SelectItem>
+                      <SelectItem value="progress-desc">Highest Progress</SelectItem>
+                      <SelectItem value="progress-asc">Lowest Progress</SelectItem>
+                      <SelectItem value="timeRemaining-asc">Ending Soon</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
+            {/* Results Header with Sort Indicator */}
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-1 text-sm text-muted-foreground">
+                <ArrowUpDown className="h-3 w-3" />
+                <span>Sorted by:</span>
+                <span className="text-accent font-medium">
+                  {sortBy === 'created' && sortOrder === 'desc' ? 'Recently Created' :
+                   sortBy === 'created' && sortOrder === 'asc' ? 'Oldest First' :
+                   sortBy === 'totalContributions' && sortOrder === 'desc' ? 'Most Funded' :
+                   sortBy === 'totalContributions' && sortOrder === 'asc' ? 'Least Funded' :
+                   sortBy === 'progress' && sortOrder === 'desc' ? 'Highest Progress' :
+                   sortBy === 'progress' && sortOrder === 'asc' ? 'Lowest Progress' :
+                   sortBy === 'timeRemaining' && sortOrder === 'asc' ? 'Ending Soon' :
+                   'Recently Created'}
+                </span>
+              </div>
+              <div className="text-sm text-muted-foreground">
+                {isLoading ? (
+                  <LoadingSpinner size="sm" text="Loading pools..." />
+                ) : error ? (
+                  'Error loading pools'
+                ) : (
+                  `Showing ${filteredCount} of ${totalCount} pools`
+                )}
+              </div>
+            </div>
 
       {/* Error State */}
       {error && (
@@ -238,9 +338,11 @@ export function PoolDiscovery() {
 
       {/* Loading State */}
       {isLoading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <CardLoadingSkeleton key={i} />
+        <div className="space-y-8">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="mb-4">
+              <CardLoadingSkeleton />
+            </div>
           ))}
         </div>
       )}
@@ -270,14 +372,19 @@ export function PoolDiscovery() {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="space-y-8">
               {pools.map((pool) => (
-                <PoolCard key={pool.address} pool={pool} />
+                <div key={pool.address} className="mb-4">
+                  <PoolCard pool={pool} />
+                </div>
               ))}
             </div>
           )}
         </>
       )}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
