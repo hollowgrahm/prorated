@@ -215,7 +215,7 @@ export function PoolDiscovery() {
 
       {/* Results Summary */}
       <div className="flex items-center justify-between mb-6">
-        <p className="text-sm text-muted-foreground">
+        <div className="text-sm text-muted-foreground">
           {isLoading ? (
             <LoadingSpinner size="sm" text="Loading pools..." />
           ) : error ? (
@@ -223,7 +223,7 @@ export function PoolDiscovery() {
           ) : (
             `Showing ${filteredCount} of ${totalCount} pools`
           )}
-        </p>
+        </div>
       </div>
 
       {/* Error State */}

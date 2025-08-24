@@ -48,7 +48,7 @@ export const env: EnvConfig = {
   
   contractAddresses: {
     mockUSDC: getEnvVar('NEXT_PUBLIC_MOCK_USDC_ADDRESS', '0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0'),
-    proratedFactory: getEnvVar('NEXT_PUBLIC_PRORATED_FACTORY_ADDRESS', '0x9A676e781A523b5d0C0e43731313A708CB607508'),
+    proratedFactory: getEnvVar('NEXT_PUBLIC_PRORATED_FACTORY_ADDRESS', '0x2E2Ed0Cfd3AD2f1d34481277b3204d807Ca2F8c2'),
     proswapFactory: getEnvVar('NEXT_PUBLIC_PROSWAP_FACTORY_ADDRESS', '0xDc64a140Aa3E981100a9becA4E685f962f0cF6C9'),
     proswapRouter: getEnvVar('NEXT_PUBLIC_PROSWAP_ROUTER_ADDRESS', '0x5FC8d32690cc91D4c39d9d3abcBD16989F875707'),
     prolendFactory: getEnvVar('NEXT_PUBLIC_PROLEND_FACTORY_ADDRESS', '0x0165878A594ca255338adfa4d48449f69242Eb8F'),
@@ -80,4 +80,7 @@ if (process.env.NODE_ENV === 'development') {
   console.log(`  Chain ID: ${env.chainId}`)
   console.log(`  RPC URL: ${env.rpcUrl}`)
   console.log(`  Factory: ${env.contractAddresses.proratedFactory}`)
+  console.log('🔍 Environment Variables Debug:')
+  console.log(`  NEXT_PUBLIC_PRORATED_FACTORY_ADDRESS: ${process.env.NEXT_PUBLIC_PRORATED_FACTORY_ADDRESS}`)
+  console.log(`  All NEXT_PUBLIC vars:`, Object.keys(process.env).filter(key => key.startsWith('NEXT_PUBLIC')))
 }

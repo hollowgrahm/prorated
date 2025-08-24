@@ -37,9 +37,11 @@ export const config = createConfig({
     // walletConnect({ projectId: 'your-project-id' }),
   ],
   transports: {
-    [anvilLocal.id]: http(),
+    [anvilLocal.id]: http(env.rpcUrl),
   },
   ssr: true, // Enable server-side rendering support
+  // Ensure read calls work without connected wallet
+  multiInjectedProviderDiscovery: false,
 })
 
 // Re-export types for convenience

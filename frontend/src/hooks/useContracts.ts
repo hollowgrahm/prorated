@@ -1,6 +1,9 @@
 // Contract hooks using Wagmi for Prorated Protocol
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
-import { Address } from 'viem'
+import { useEffect, useState } from 'react'
+import { Address, createPublicClient, http } from 'viem'
+import { anvilLocal } from '@/lib/wagmi'
+import { env } from '@/lib/env'
 import { 
   proratedFactoryConfig, 
   mockUSDCConfig,
@@ -9,23 +12,86 @@ import {
   EXAMPLE_POOLS
 } from '@/lib/contracts'
 
-// Factory Contract Hooks
+// Create a direct public client for testing
+const publicClient = createPublicClient({
+  chain: anvilLocal,
+  transport: http(env.rpcUrl)
+})
+
+// Factory Contract Hooks - Using direct viem calls since Wagmi is stuck
 export function useAllPoolsLength() {
-  return useReadContract({
-    ...proratedFactoryConfig,
-    functionName: 'allPoolsLength',
-  })
+  const [data, setData] = useState<bigint | undefined>(undefined)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<Error | null>(null)
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const fetchPoolCount = async () => {
+      try {
+        setIsLoading(true)
+        setError(null)
+        
+        const result = await publicClient.readContract({
+          address: proratedFactoryConfig.address,
+          abi: proratedFactoryConfig.abi,
+          functionName: 'getPoolCount',
+        })
+        
+        console.log('✅ Direct useAllPoolsLength result:', result)
+        setData(result as bigint)
+      } catch (err) {
+        console.error('❌ Direct useAllPoolsLength error:', err)
+        setError(err as Error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchPoolCount()
+  }, [])
+
+  const result = { data, isLoading, error, status: isLoading ? 'pending' : (error ? 'error' : 'success') }
+  return result
 }
 
 export function useAllPools(index: number) {
-  return useReadContract({
-    ...proratedFactoryConfig,
-    functionName: 'allPools',
-    args: [BigInt(index)],
-    query: {
-      enabled: index >= 0,
-    },
-  })
+  const [data, setData] = useState<Address | undefined>(undefined)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<Error | null>(null)
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || index < 0) {
+      setIsLoading(false)
+      return
+    }
+
+    const fetchPoolAddress = async () => {
+      try {
+        setIsLoading(true)
+        setError(null)
+        
+        const result = await publicClient.readContract({
+          address: proratedFactoryConfig.address,
+          abi: proratedFactoryConfig.abi,
+          functionName: 'allPools',
+          args: [BigInt(index)],
+        })
+        
+        console.log(`✅ Direct useAllPools(${index}) result:`, result)
+        setData(result as Address)
+      } catch (err) {
+        console.error(`❌ Direct useAllPools(${index}) error:`, err)
+        setError(err as Error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchPoolAddress()
+  }, [index])
+
+  return { data, isLoading, error }
 }
 
 export function usePoolExists(poolAddress: Address) {

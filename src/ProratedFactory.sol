@@ -175,8 +175,13 @@ contract ProratedFactory is Owned {
 
     // ============ VIEWS ============
     /// @notice Returns number of deployed pools
-    function allPoolsLength() external view returns (uint256) {
+    function getPoolCount() external view returns (uint256) {
         return allPools.length;
+    }
+
+    /// @notice Returns all deployed pool addresses
+    function getAllPools() external view returns (address[] memory) {
+        return allPools;
     }
 
     // ============ INTERNAL FUNCTIONS ============

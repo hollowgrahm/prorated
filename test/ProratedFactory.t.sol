@@ -108,7 +108,7 @@ contract ProratedFactoryTest is Test {
         assertTrue(factory.poolBytecodePointer2() != address(0));
 
         // Test initial state
-        assertEq(factory.allPoolsLength(), 0);
+        assertEq(factory.getPoolCount(), 0);
     }
 
     function testCreatePoolBasic() public {
@@ -135,7 +135,7 @@ contract ProratedFactoryTest is Test {
         // Verify pool was created
         assertTrue(poolAddress != address(0));
         assertTrue(factory.poolExists(poolAddress));
-        assertEq(factory.allPoolsLength(), 1);
+        assertEq(factory.getPoolCount(), 1);
         assertEq(factory.allPools(0), poolAddress);
 
         // Emit event verification would be done with vm.expectEmit in practice
@@ -283,12 +283,12 @@ contract ProratedFactoryTest is Test {
             assertEq(factory.allPools(i), poolAddress);
         }
 
-        assertEq(factory.allPoolsLength(), 3);
+        assertEq(factory.getPoolCount(), 3);
     }
 
     function testViewFunctions() public {
         // Test allPoolsLength starts at 0
-        assertEq(factory.allPoolsLength(), 0);
+        assertEq(factory.getPoolCount(), 0);
 
         // Create a pool
         ProratedPool.PoolConfig memory config = ProratedPool.PoolConfig({
@@ -310,7 +310,7 @@ contract ProratedFactoryTest is Test {
         address poolAddress = factory.createPool(config, salt);
 
         // Test view functions after pool creation
-        assertEq(factory.allPoolsLength(), 1);
+        assertEq(factory.getPoolCount(), 1);
         assertEq(factory.allPools(0), poolAddress);
         assertTrue(factory.poolExists(poolAddress));
         assertFalse(factory.poolExists(address(0x9999)));
