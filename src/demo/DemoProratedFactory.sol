@@ -50,7 +50,9 @@ contract DemoProratedFactory is Owned {
         address _treasuryDeployer,
         address _prolendDeployer
     ) Owned(_owner) {
-        poolBytecodePointer = SSTORE2.write(type(DemoProratedPool).creationCode);
+        poolBytecodePointer = SSTORE2.write(
+            type(DemoProratedPool).creationCode
+        );
 
         proswapFactory = _proswapFactory;
         proswapRouter = _proswapRouter;
@@ -93,7 +95,12 @@ contract DemoProratedFactory is Owned {
         bytes32 finalSalt = keccak256(abi.encodePacked(msg.sender, salt));
 
         assembly {
-            pool := create2(0, add(deploymentCode, 0x20), mload(deploymentCode), finalSalt)
+            pool := create2(
+                0,
+                add(deploymentCode, 0x20),
+                mload(deploymentCode),
+                finalSalt
+            )
         }
 
         if (pool == address(0)) revert PoolAlreadyDeployed(pool);
@@ -151,7 +158,9 @@ contract DemoProratedFactory is Owned {
     }
 
     // ============ VALIDATION ============
-    function _validatePoolConfig(DemoProratedPool.PoolConfig memory config) internal view {
+    function _validatePoolConfig(
+        DemoProratedPool.PoolConfig memory config
+    ) internal view {
         if (config.owner == address(0)) revert ZeroAddress();
         if (config.fundingToken == address(0)) revert ZeroAddress();
         if (bytes(config.tokenName).length == 0) revert EmptyString();
@@ -160,10 +169,14 @@ contract DemoProratedFactory is Owned {
         if (config.developmentFund == 0) revert InvalidAmount();
         if (config.liquidityFund == 0) revert InvalidAmount();
         if (config.startTime >= config.endTime) revert InvalidTimeRange();
-        if (config.startTime > block.timestamp + 365 days) revert StartTimeTooFar();
-        if (config.endTime > config.startTime + 365 days) revert EndTimeTooLong();
-        
-        uint256 totalPercent = config.developerPercent + config.treasuryPercent + config.daoPercent;
+        if (config.startTime > block.timestamp + 365 days)
+            revert StartTimeTooFar();
+        if (config.endTime > config.startTime + 365 days)
+            revert EndTimeTooLong();
+
+        uint256 totalPercent = config.developerPercent +
+            config.treasuryPercent +
+            config.daoPercent;
         if (totalPercent != 100) revert InvalidPercentages();
     }
 }

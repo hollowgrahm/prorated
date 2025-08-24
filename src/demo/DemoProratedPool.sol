@@ -30,15 +30,15 @@ contract DemoProratedPool is ProratedPoolStorage, Owned, ReentrancyGuard {
     // ============ DEMO TIME MANIPULATION ============
     uint256 public timeSkipped;
     uint256 public timeRewound;
-    
+
     function _currentTime() internal view returns (uint256) {
         return block.timestamp + timeSkipped - timeRewound;
     }
-    
+
     function skipTime(uint256 timeToSkip) external onlyOwner {
         timeSkipped += timeToSkip;
     }
-    
+
     function rewindTime(uint256 timeToRewind) external onlyOwner {
         timeRewound += timeToRewind;
     }
