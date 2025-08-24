@@ -28,7 +28,9 @@ contract ProratedFactory is Owned {
     // ============ STORAGE ============
     mapping(address => bool) public poolExists;
     address[] public allPools;
-    address public immutable poolBytecodePointer;
+    /// @notice SSTORE2 pointers for ProratedPool bytecode (split to avoid 24KB limit)
+    address public immutable poolBytecodePointer1; // First chunk
+    address public immutable poolBytecodePointer2; // Second chunk
     address public immutable proswapFactory;
     address public immutable proswapRouter;
     address public immutable tokenDeployer;
@@ -63,8 +65,28 @@ contract ProratedFactory is Owned {
         address _treasuryDeployer,
         address _prolendDeployer
     ) Owned(_owner) {
-        // Store ProratedPool bytecode using SSTORE2
-        poolBytecodePointer = SSTORE2.write(type(ProratedPool).creationCode);
+        // Get the full bytecode
+        bytes memory fullBytecode = type(ProratedPool).creationCode;
+        
+        // Calculate split point (roughly half, but ensure we stay under 24KB per chunk)
+        uint256 splitPoint = fullBytecode.length / 2;
+        
+        // Create first chunk
+        bytes memory chunk1 = new bytes(splitPoint);
+        for (uint256 i = 0; i < splitPoint; i++) {
+            chunk1[i] = fullBytecode[i];
+        }
+        
+        // Create second chunk
+        uint256 chunk2Length = fullBytecode.length - splitPoint;
+        bytes memory chunk2 = new bytes(chunk2Length);
+        for (uint256 i = 0; i < chunk2Length; i++) {
+            chunk2[i] = fullBytecode[splitPoint + i];
+        }
+        
+        // Store both chunks using SSTORE2
+        poolBytecodePointer1 = SSTORE2.write(chunk1);
+        poolBytecodePointer2 = SSTORE2.write(chunk2);
 
         proswapFactory = _proswapFactory;
         proswapRouter = _proswapRouter;
@@ -89,8 +111,12 @@ contract ProratedFactory is Owned {
         // Step 1: Validate configuration parameters (moved from pool constructor)
         _validatePoolConfig(config);
 
-        // Step 2: Get bytecode from SSTORE2 (automatically stays in sync)
-        bytes memory poolCreationCode = SSTORE2.read(poolBytecodePointer);
+        // Step 2: Read both bytecode chunks from SSTORE2
+        bytes memory chunk1 = SSTORE2.read(poolBytecodePointer1);
+        bytes memory chunk2 = SSTORE2.read(poolBytecodePointer2);
+        
+        // Combine chunks to reconstruct full bytecode
+        bytes memory poolCreationCode = abi.encodePacked(chunk1, chunk2);
 
         // Step 3: Build constructor args
         bytes memory constructorArgs = abi.encode(

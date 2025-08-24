@@ -103,8 +103,9 @@ contract ProratedFactoryTest is Test {
         assertEq(factory.treasuryDeployer(), address(treasuryDeployer));
         assertEq(factory.prolendDeployer(), address(prolendDeployer));
 
-        // Test SSTORE2 pointer is set
-        assertTrue(factory.poolBytecodePointer() != address(0));
+        // Test SSTORE2 pointers are set (split bytecode)
+        assertTrue(factory.poolBytecodePointer1() != address(0));
+        assertTrue(factory.poolBytecodePointer2() != address(0));
 
         // Test initial state
         assertEq(factory.allPoolsLength(), 0);
@@ -324,9 +325,11 @@ contract ProratedFactoryTest is Test {
     }
 
     function testSSTORE2Integration() public {
-        // Test that SSTORE2 pointer is properly set
-        address pointer = factory.poolBytecodePointer();
-        assertTrue(pointer != address(0));
+        // Test that SSTORE2 pointers are properly set (split bytecode)
+        address pointer1 = factory.poolBytecodePointer1();
+        address pointer2 = factory.poolBytecodePointer2();
+        assertTrue(pointer1 != address(0));
+        assertTrue(pointer2 != address(0));
 
         // Test that we can create pools (which uses SSTORE2.read internally)
         ProratedPool.PoolConfig memory config = ProratedPool.PoolConfig({
