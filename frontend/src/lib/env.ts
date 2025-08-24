@@ -62,10 +62,10 @@ export const env: EnvConfig = {
   },
   
   examplePools: {
-    activePool: getEnvVarOptional('NEXT_PUBLIC_ACTIVE_POOL', '0xfafAcEDF7f87058Ed51a075E66Df97e0e7B5780D'),
-    upcomingPool: getEnvVarOptional('NEXT_PUBLIC_UPCOMING_POOL', '0x98a7A480a3b078f5DeB5B4dd2ee1873ECf9bF2b6'),
-    successfulPool: getEnvVarOptional('NEXT_PUBLIC_SUCCESSFUL_POOL', '0x52be44C75fB09cBceF6dD0044Ed08f60a9af90fc'),
-    endedSuccessfulPool: getEnvVarOptional('NEXT_PUBLIC_ENDED_SUCCESSFUL_POOL', '0xe93066d51126d444Ca451521c3a127f521E15eD3'),
+    activePool: getEnvVarOptional('NEXT_PUBLIC_ACTIVE_POOL', '0xcAdC354Cb40F540bF5115bb59b3B9bb0eFaf85b7'),
+    upcomingPool: getEnvVarOptional('NEXT_PUBLIC_UPCOMING_POOL', '0xC846fDBd0078fff170ea48a81ec08B5800D7D7BB'),
+    successfulPool: getEnvVarOptional('NEXT_PUBLIC_SUCCESSFUL_POOL', '0x22690b994Fa02A604aC7b13609Ba6F91aAcf7362'),
+    endedSuccessfulPool: getEnvVarOptional('NEXT_PUBLIC_ENDED_SUCCESSFUL_POOL', '0x2De873727E3Bf366b0D563B89aaAfD9dC2eAD21a'),
   },
   
   app: {

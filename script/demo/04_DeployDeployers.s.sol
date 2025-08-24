@@ -12,7 +12,7 @@ import {ProlendDeployer} from "../../src/deployers/ProlendDeployer.sol";
 import {DeploymentHelpers} from "./DeploymentHelpers.sol";
 
 contract DeployDeployers is DeploymentHelpers {
-    function run() external {
+    function run(address prolendFactory) external {
         vm.startBroadcast();
 
         console.log("=== Deploying All Deployer Contracts ===");
@@ -63,47 +63,9 @@ contract DeployDeployers is DeploymentHelpers {
             "TreasuryDeployer deployment failed"
         );
 
-        // ProlendDeployer needs a real ProlendFactory address
-        // Read from environment file (deployed in previous step)
-        string memory envContent = vm.readFile("frontend/.env.local");
-
-        // Parse ProlendFactory address from env file
-        // This is a simplified parser - in production we'd want more robust parsing
-        bytes memory envBytes = bytes(envContent);
-        address prolendFactoryAddr;
-
-        // Look for "NEXT_PUBLIC_PROLEND_FACTORY_ADDRESS="
-        bytes memory searchPattern = bytes(
-            "NEXT_PUBLIC_PROLEND_FACTORY_ADDRESS="
-        );
-        bool found = false;
-
-        for (uint256 i = 0; i <= envBytes.length - searchPattern.length; i++) {
-            bool isMatch = true;
-            for (uint256 j = 0; j < searchPattern.length; j++) {
-                if (envBytes[i + j] != searchPattern[j]) {
-                    isMatch = false;
-                    break;
-                }
-            }
-            if (isMatch) {
-                // Found the pattern, now extract the address (42 chars: 0x + 40 hex chars)
-                bytes memory addrBytes = new bytes(42);
-                for (uint256 k = 0; k < 42; k++) {
-                    addrBytes[k] = envBytes[i + searchPattern.length + k];
-                }
-                string memory addrStr = string(addrBytes);
-                prolendFactoryAddr = parseAddress(addrStr);
-                found = true;
-                break;
-            }
-        }
-
-        require(found, "ProlendFactory address not found in env file");
-        console.log("Using ProlendFactory from env:", prolendFactoryAddr);
-        ProlendDeployer prolendDeployer = new ProlendDeployer(
-            prolendFactoryAddr
-        );
+        // ProlendDeployer needs a real ProlendFactory address (passed as parameter)
+        console.log("Using ProlendFactory from parameter:", prolendFactory);
+        ProlendDeployer prolendDeployer = new ProlendDeployer(prolendFactory);
         console.log("ProlendDeployer deployed at:", address(prolendDeployer));
         console.log("  (using real ProlendFactory)");
         require(
@@ -111,7 +73,7 @@ contract DeployDeployers is DeploymentHelpers {
             "ProlendDeployer deployment failed"
         );
         require(
-            address(prolendDeployer.prolendFactory()) == prolendFactoryAddr,
+            address(prolendDeployer.prolendFactory()) == prolendFactory,
             "ProlendDeployer factory incorrect"
         );
 

@@ -6,15 +6,13 @@ import {DemoProratedFactory} from "../../src/demo/DemoProratedFactory.sol";
 import {DemoProratedPool} from "../../src/demo/DemoProratedPool.sol";
 import {DeploymentHelpers} from "./DeploymentHelpers.sol";
 
-contract CreateDemoPools is DeploymentHelpers {
-    function run() external {
+contract CreatePools is DeploymentHelpers {
+    function run(address factoryAddr, address mockUSDC) external {
         vm.startBroadcast();
 
         console.log("=== Creating Demo Pools ===");
 
-        // Use the deployed factory and USDC addresses from current deployment
-        address factoryAddr = 0xf5059a5D33d5853360D16C683c16e67980206f36; // Latest factory deployment
-        address mockUSDC = 0x4A679253410272dd5232B3Ff7cF5dbB88f295319; // From Step 1 deployment
+        // Addresses passed as parameters from bash script
 
         DemoProratedFactory factory = DemoProratedFactory(factoryAddr);
 

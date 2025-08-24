@@ -22,8 +22,9 @@ contract DeployProlend is DeploymentHelpers {
             "ProlendFactory deployment failed - no code at address"
         );
         require(
-            prolendFactory.pairBytecodePointer() != address(0),
-            "ProlendFactory initialization failed - no bytecode pointer"
+            prolendFactory.pairBytecodePointer1() != address(0) &&
+                prolendFactory.pairBytecodePointer2() != address(0),
+            "ProlendFactory initialization failed - no bytecode pointers"
         );
 
         // Verify deployment succeeded

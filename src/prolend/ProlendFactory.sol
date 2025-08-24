@@ -13,8 +13,9 @@ import {SSTORE2} from "solady/utils/SSTORE2.sol";
 contract ProlendFactory is IProlendFactory {
     // ===== Storage =====
 
-    /// @notice SSTORE2 pointer for ProlendPair bytecode
-    address public immutable pairBytecodePointer;
+    /// @notice SSTORE2 pointers for ProlendPair bytecode (split to avoid 24KB limit)
+    address public immutable pairBytecodePointer1; // First chunk
+    address public immutable pairBytecodePointer2; // Second chunk
 
     /// @notice Mapping from Proswap pair to deployed Prolend pairs
     mapping(address => PairAddresses) public prolendPairs;
@@ -36,10 +37,30 @@ contract ProlendFactory is IProlendFactory {
 
     // ===== Constructor =====
 
-    /// @notice Initialize the factory and store ProlendPair bytecode using SSTORE2
+    /// @notice Initialize the factory and store ProlendPair bytecode using SSTORE2 (split into chunks)
     constructor() {
-        // Store ProlendPair bytecode using SSTORE2
-        pairBytecodePointer = SSTORE2.write(type(ProlendPair).creationCode);
+        // Get the full bytecode
+        bytes memory fullBytecode = type(ProlendPair).creationCode;
+
+        // Calculate split point (roughly half, but ensure we stay under 24KB per chunk)
+        uint256 splitPoint = fullBytecode.length / 2;
+
+        // Create first chunk
+        bytes memory chunk1 = new bytes(splitPoint);
+        for (uint256 i = 0; i < splitPoint; i++) {
+            chunk1[i] = fullBytecode[i];
+        }
+
+        // Create second chunk
+        uint256 chunk2Length = fullBytecode.length - splitPoint;
+        bytes memory chunk2 = new bytes(chunk2Length);
+        for (uint256 i = 0; i < chunk2Length; i++) {
+            chunk2[i] = fullBytecode[splitPoint + i];
+        }
+
+        // Store both chunks using SSTORE2
+        pairBytecodePointer1 = SSTORE2.write(chunk1);
+        pairBytecodePointer2 = SSTORE2.write(chunk2);
     }
 
     // ===== Core Deployment Function =====
@@ -259,8 +280,12 @@ contract ProlendFactory is IProlendFactory {
         address proswapPair,
         bytes32 salt
     ) internal returns (address pair) {
-        // Get bytecode from SSTORE2
-        bytes memory pairCreationCode = SSTORE2.read(pairBytecodePointer);
+        // Read both bytecode chunks from SSTORE2
+        bytes memory chunk1 = SSTORE2.read(pairBytecodePointer1);
+        bytes memory chunk2 = SSTORE2.read(pairBytecodePointer2);
+
+        // Combine chunks to reconstruct full bytecode
+        bytes memory pairCreationCode = abi.encodePacked(chunk1, chunk2);
 
         // Build constructor arguments
         bytes memory constructorArgs = abi.encode(

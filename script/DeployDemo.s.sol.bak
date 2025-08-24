@@ -74,8 +74,8 @@ contract DeployDemo is Script {
         // Step 7: Register demo contracts with MockUSDC for auto-approval
         registerDemoContracts();
 
-        // Step 8: Fund pools after registration (skip for now to avoid deployment failure)
-        // fundDemoPools();
+        // Step 8: Fund pools after registration
+        fundDemoPools();
 
         // Step 9: Log all deployed addresses
         logDeployedAddresses();
@@ -213,11 +213,11 @@ contract DeployDemo is Script {
         );
         console.log("Demo Launched Pool created at:", launchedPool);
 
-        // Fund the successful pool to meet minimum requirements (skip for now)
-        // fundSuccessfulPool();
+        // Fund the successful pool to meet minimum requirements
+        fundSuccessfulPool();
 
-        // Simulate launched pool (fully deployed) (skip for now)
-        // simulateLaunchedPool();
+        // Simulate launched pool (fully deployed)
+        simulateLaunchedPool();
     }
 
     function createDemoPool(
@@ -305,10 +305,10 @@ contract DeployDemo is Script {
 
     function fundDemoPools() internal {
         console.log("\n=== Funding Demo Pools ===");
-
+        
         fundSuccessfulPool();
         simulateLaunchedPool();
-
+        
         console.log("Demo pools funded successfully");
     }
 

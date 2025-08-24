@@ -44,41 +44,4 @@ abstract contract DeploymentHelpers is Script {
             contractAddress
         );
     }
-
-    // ============ ADDRESS PARSING HELPERS ============
-
-    /// @notice Parse an address string (e.g., "0x1234...") to address type
-    /// @param addressStr The address string to parse
-    /// @return The parsed address
-    function parseAddress(
-        string memory addressStr
-    ) internal pure returns (address) {
-        bytes memory addressBytes = bytes(addressStr);
-        require(addressBytes.length == 42, "Invalid address length");
-        require(
-            addressBytes[0] == "0" && addressBytes[1] == "x",
-            "Address must start with 0x"
-        );
-
-        uint160 result = 0;
-        for (uint256 i = 2; i < 42; i++) {
-            result *= 16;
-            uint8 digit = uint8(addressBytes[i]);
-
-            if (digit >= 48 && digit <= 57) {
-                // 0-9
-                result += digit - 48;
-            } else if (digit >= 65 && digit <= 70) {
-                // A-F
-                result += digit - 55;
-            } else if (digit >= 97 && digit <= 102) {
-                // a-f
-                result += digit - 87;
-            } else {
-                revert("Invalid hex character");
-            }
-        }
-
-        return address(result);
-    }
 }

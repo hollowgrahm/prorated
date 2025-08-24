@@ -125,7 +125,10 @@ forge script script/demo/04_DeployDeployers.s.sol \
     --broadcast \
     --sender $SENDER \
     --private-key $PRIVATE_KEY \
-    --slow 2>&1 | tee "$LOG_FILE_4"
+    --slow \
+    --sig "run(address)" \
+    $PROLEND_FACTORY_ADDR \
+    2>&1 | tee "$LOG_FILE_4"
 
 if [ ${PIPESTATUS[0]} -ne 0 ]; then
     echo "❌ Step 4 failed: Deployer Contracts deployment"
@@ -153,18 +156,29 @@ rm -f "$LOG_FILE_4"
 
 echo "✅ Step 4 completed: All 7 Deployer Contracts deployed"
 
-# Step 5: Deploy Demo Factory
-echo "📝 Step 5: Deploying Demo Factory..."
+# Step 5: Deploy Prorated Factory
+echo "📝 Step 5: Deploying Prorated Factory..."
 LOG_FILE_5=$(mktemp)
-forge script script/demo/05_DeployDemoFactory.s.sol \
+forge script script/demo/05_DeployProrated.s.sol \
     --rpc-url $RPC_URL \
     --broadcast \
     --sender $SENDER \
     --private-key $PRIVATE_KEY \
-    --slow 2>&1 | tee "$LOG_FILE_5"
+    --slow \
+    --sig "run(address,address,address,address,address,address,address,address,address)" \
+    $PROSWAP_FACTORY_ADDR \
+    $PROSWAP_ROUTER_ADDR \
+    $TOKEN_DEPLOYER_ADDR \
+    $PAIR_DEPLOYER_ADDR \
+    $LIQUIDITY_DEPLOYER_ADDR \
+    $VENFT_DEPLOYER_ADDR \
+    $GOVERNOR_DEPLOYER_ADDR \
+    $TREASURY_DEPLOYER_ADDR \
+    $PROLEND_DEPLOYER_ADDR \
+    2>&1 | tee "$LOG_FILE_5"
 
 if [ ${PIPESTATUS[0]} -ne 0 ]; then
-    echo "❌ Step 5 failed: Demo Factory deployment"
+    echo "❌ Step 5 failed: Prorated Factory deployment"
     rm -f "$LOG_FILE_5"
     exit 1
 fi
@@ -174,17 +188,21 @@ DEMO_FACTORY_ADDR=$(extract_address "Demo Prorated Factory deployed at:" "$LOG_F
 write_to_env "NEXT_PUBLIC_PRORATED_FACTORY_ADDRESS" "$DEMO_FACTORY_ADDR"
 rm -f "$LOG_FILE_5"
 
-echo "✅ Step 5 completed: Demo Factory deployed at $DEMO_FACTORY_ADDR"
+echo "✅ Step 5 completed: Prorated Factory deployed at $DEMO_FACTORY_ADDR"
 
 # Step 6: Create Demo Pools
 echo "📝 Step 6: Creating Demo Pools..."
 LOG_FILE_6=$(mktemp)
-forge script script/demo/06_CreateDemoPools.s.sol \
+forge script script/demo/06_CreatePools.s.sol \
     --rpc-url $RPC_URL \
     --broadcast \
     --sender $SENDER \
     --private-key $PRIVATE_KEY \
-    --slow 2>&1 | tee "$LOG_FILE_6"
+    --slow \
+    --sig "run(address,address)" \
+    $DEMO_FACTORY_ADDR \
+    $MOCK_USDC_ADDR \
+    2>&1 | tee "$LOG_FILE_6"
 
 if [ ${PIPESTATUS[0]} -ne 0 ]; then
     echo "❌ Step 6 failed: Demo Pools creation"
