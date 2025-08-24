@@ -66,16 +66,18 @@ contract DeployDeployers is DeploymentHelpers {
         // ProlendDeployer needs a real ProlendFactory address
         // Read from environment file (deployed in previous step)
         string memory envContent = vm.readFile("frontend/.env.local");
-        
+
         // Parse ProlendFactory address from env file
         // This is a simplified parser - in production we'd want more robust parsing
         bytes memory envBytes = bytes(envContent);
         address prolendFactoryAddr;
-        
+
         // Look for "NEXT_PUBLIC_PROLEND_FACTORY_ADDRESS="
-        bytes memory searchPattern = bytes("NEXT_PUBLIC_PROLEND_FACTORY_ADDRESS=");
+        bytes memory searchPattern = bytes(
+            "NEXT_PUBLIC_PROLEND_FACTORY_ADDRESS="
+        );
         bool found = false;
-        
+
         for (uint256 i = 0; i <= envBytes.length - searchPattern.length; i++) {
             bool isMatch = true;
             for (uint256 j = 0; j < searchPattern.length; j++) {
@@ -96,7 +98,7 @@ contract DeployDeployers is DeploymentHelpers {
                 break;
             }
         }
-        
+
         require(found, "ProlendFactory address not found in env file");
         console.log("Using ProlendFactory from env:", prolendFactoryAddr);
         ProlendDeployer prolendDeployer = new ProlendDeployer(
@@ -113,42 +115,14 @@ contract DeployDeployers is DeploymentHelpers {
             "ProlendDeployer factory incorrect"
         );
 
-        // Deploy and record all deployers using helper
-        deployAndRecord(
-            address(tokenDeployer),
-            "TokenDeployer",
-            "NEXT_PUBLIC_TOKEN_DEPLOYER_ADDRESS"
-        );
-        deployAndRecord(
-            address(pairDeployer),
-            "PairDeployer",
-            "NEXT_PUBLIC_PAIR_DEPLOYER_ADDRESS"
-        );
-        deployAndRecord(
-            address(liquidityDeployer),
-            "LiquidityDeployer",
-            "NEXT_PUBLIC_LIQUIDITY_DEPLOYER_ADDRESS"
-        );
-        deployAndRecord(
-            address(veNFTDeployer),
-            "VeNFTDeployer",
-            "NEXT_PUBLIC_VENFT_DEPLOYER_ADDRESS"
-        );
-        deployAndRecord(
-            address(governorDeployer),
-            "GovernorDeployer",
-            "NEXT_PUBLIC_GOVERNOR_DEPLOYER_ADDRESS"
-        );
-        deployAndRecord(
-            address(treasuryDeployer),
-            "TreasuryDeployer",
-            "NEXT_PUBLIC_TREASURY_DEPLOYER_ADDRESS"
-        );
-        deployAndRecord(
-            address(prolendDeployer),
-            "ProlendDeployer",
-            "NEXT_PUBLIC_PROLEND_DEPLOYER_ADDRESS"
-        );
+        // Verify all deployer deployments
+        verifyDeploymentAndLog(address(tokenDeployer), "TokenDeployer");
+        verifyDeploymentAndLog(address(pairDeployer), "PairDeployer");
+        verifyDeploymentAndLog(address(liquidityDeployer), "LiquidityDeployer");
+        verifyDeploymentAndLog(address(veNFTDeployer), "VeNFTDeployer");
+        verifyDeploymentAndLog(address(governorDeployer), "GovernorDeployer");
+        verifyDeploymentAndLog(address(treasuryDeployer), "TreasuryDeployer");
+        verifyDeploymentAndLog(address(prolendDeployer), "ProlendDeployer");
 
         vm.stopBroadcast();
     }

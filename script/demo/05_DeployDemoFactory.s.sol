@@ -61,14 +61,8 @@ contract DeployDemoFactory is DeploymentHelpers {
             "Factory tokenDeployer incorrect"
         );
 
-        console.log("Demo Prorated Factory verified successfully");
-
-        // Deploy and record using helper
-        deployAndRecord(
-            address(factory),
-            "DemoProratedFactory",
-            "NEXT_PUBLIC_PRORATED_FACTORY_ADDRESS"
-        );
+        // Verify deployment succeeded
+        verifyDeploymentAndLog(address(factory), "DemoProratedFactory");
 
         vm.stopBroadcast();
     }

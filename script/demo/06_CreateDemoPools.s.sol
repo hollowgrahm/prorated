@@ -62,12 +62,10 @@ contract CreateDemoPools is DeploymentHelpers {
 
         console.log("Demo Successful Pool created at:", successfulPool);
 
-        // Deploy and record pools using helper
-        deployAndRecord(activePool, "DemoActivePool", "NEXT_PUBLIC_ACTIVE_POOL_ADDRESS");
-        deployAndRecord(successfulPool, "DemoSuccessfulPool", "NEXT_PUBLIC_SUCCESSFUL_POOL_ADDRESS");
+        // Verify pool deployments
+        verifyDeploymentAndLog(activePool, "DemoActivePool");
+        verifyDeploymentAndLog(successfulPool, "DemoSuccessfulPool");
 
         vm.stopBroadcast();
     }
-
-
 }

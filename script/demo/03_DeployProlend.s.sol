@@ -26,14 +26,8 @@ contract DeployProlend is DeploymentHelpers {
             "ProlendFactory initialization failed - no bytecode pointer"
         );
 
-        // Step 1: Verify deployment succeeded
+        // Verify deployment succeeded
         verifyDeploymentAndLog(address(prolendFactory), "ProlendFactory");
-
-        // Step 2: Record in environment file
-        recordInEnvFile(
-            "NEXT_PUBLIC_PROLEND_FACTORY_ADDRESS",
-            address(prolendFactory)
-        );
 
         vm.stopBroadcast();
     }

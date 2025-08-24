@@ -38,19 +38,9 @@ contract DeployProswap is DeploymentHelpers {
             "ProswapRouter deployment failed"
         );
 
-        // Step 1: Verify deployments succeeded
+        // Verify deployments succeeded
         verifyDeploymentAndLog(address(proswapFactory), "ProswapFactory");
         verifyDeploymentAndLog(address(proswapRouter), "ProswapRouter");
-
-        // Step 2: Record in environment file
-        recordInEnvFile(
-            "NEXT_PUBLIC_PROSWAP_FACTORY_ADDRESS",
-            address(proswapFactory)
-        );
-        recordInEnvFile(
-            "NEXT_PUBLIC_PROSWAP_ROUTER_ADDRESS",
-            address(proswapRouter)
-        );
 
         vm.stopBroadcast();
     }

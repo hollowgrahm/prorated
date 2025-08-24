@@ -24,14 +24,8 @@ contract DeployMockUSDC is DeploymentHelpers {
             "Faucet failed"
         );
 
-        // Step 1: Verify deployment succeeded
+        // Verify deployment succeeded
         verifyDeploymentAndLog(address(mockUSDC), "MockUSDC");
-
-        // Step 2: Record in environment file (creates new env file)
-        recordFirstInEnvFile(
-            "NEXT_PUBLIC_MOCK_USDC_ADDRESS",
-            address(mockUSDC)
-        );
 
         vm.stopBroadcast();
     }
