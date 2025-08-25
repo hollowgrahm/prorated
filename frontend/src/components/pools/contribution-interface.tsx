@@ -1,5 +1,6 @@
 'use client'
 
+import { useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,11 +11,12 @@ import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Lock, DollarSign, Calendar, TrendingUp, Info, Wallet, Activity } from 'lucide-react'
 import { PoolData } from '@/types'
-import { useAccount } from 'wagmi'
+import { useAccount, useReadContract } from 'wagmi'
 import { useContribution } from '@/hooks/useContribution'
 import { useFaucet } from '@/hooks/useFaucet'
 import { formatUSD } from '@/lib/utils'
-import { BalanceDebug } from '@/components/ui/balance-debug'
+import { ExistingContribution } from './existing-contribution'
+
 
 interface ContributionInterfaceProps {
   pool: PoolData
@@ -55,6 +57,34 @@ export function ContributionInterface({ pool }: ContributionInterfaceProps) {
   const { address: userAddress } = useAccount()
   const contribution = useContribution(pool.address)
   const faucet = useFaucet()
+  
+  // Check if user has existing contribution
+  const { data: existingContribution, refetch: refetchContribution } = useReadContract({
+    address: pool.address,
+    abi: [
+      {
+        inputs: [{ name: 'user', type: 'address' }],
+        name: 'contributions',
+        outputs: [
+          { name: 'amount', type: 'uint256' },
+          { name: 'lockDuration', type: 'uint256' },
+          { name: 'shares', type: 'uint256' },
+          { name: 'timestamp', type: 'uint256' }
+        ],
+        stateMutability: 'view',
+        type: 'function'
+      }
+    ],
+    functionName: 'contributions',
+    args: userAddress ? [userAddress] : undefined,
+    query: {
+      enabled: !!userAddress,
+      refetchInterval: 1000, // Refetch every 1 second to catch updates quickly
+      staleTime: 0, // Always consider data stale to force fresh queries
+    },
+  })
+  
+  const hasExistingContribution = existingContribution && existingContribution[0] > 0n
 
   const currentLockWeeks = contribution.lockDuration
   const lockColor = getLockColor(currentLockWeeks)
@@ -81,19 +111,40 @@ export function ContributionInterface({ pool }: ContributionInterfaceProps) {
     faucet.claimUSDC()
   }
 
-  // Reset form on successful contribution
-  if (contribution.contribution.isConfirmed) {
-    contribution.resetForm()
-  }
+  // Trigger refetch of contribution data when contribution is confirmed
+  useEffect(() => {
+    if (contribution.contribution.isConfirmed) {
+      // Instead of resetting form, refetch the contribution data to switch to existing contribution interface
+      // Add a small delay to ensure the transaction has been processed
+      const timer = setTimeout(() => {
+        refetchContribution()
+      }, 500)
+      
+      return () => clearTimeout(timer)
+    }
+  }, [contribution.contribution.isConfirmed, refetchContribution])
 
   // Refresh balance after successful faucet claim
   // Note: The balance should refresh automatically via wagmi's query invalidation
 
+  // If user has existing contribution, show existing contribution interface
+  if (hasExistingContribution && existingContribution) {
+    return (
+      <ExistingContribution 
+        pool={pool}
+        contribution={{
+          amount: existingContribution[0],
+          lockDuration: Number(existingContribution[1]),
+          shares: existingContribution[2],
+          timestamp: existingContribution[3]
+        }}
+        onTransactionSuccess={() => refetchContribution()}
+      />
+    )
+  }
+
   return (
     <div className="space-y-6">
-      {/* Debug Component - Remove after fixing */}
-      <BalanceDebug />
-      
       {/* Contribution Form */}
       <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
         <CardHeader>
@@ -311,9 +362,9 @@ export function ContributionInterface({ pool }: ContributionInterfaceProps) {
 
           {/* Mint Success */}
           {faucet.success && (
-            <Alert className="border-blue-500/50 bg-blue-500/10">
+            <Alert className="border-green-500/50 bg-green-500/10">
               <Info className="h-4 w-4" />
-              <AlertDescription className="text-blue-400">
+              <AlertDescription className="text-green-400">
                 <strong>USDC Claimed!</strong> 10,000 USDC has been added to your wallet for testing.
               </AlertDescription>
             </Alert>

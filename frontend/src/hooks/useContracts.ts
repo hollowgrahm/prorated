@@ -175,6 +175,8 @@ export function useTokenBalance(tokenAddress: Address, userAddress?: Address) {
     args: userAddress ? [userAddress] : undefined,
     query: {
       enabled: !!tokenAddress && !!userAddress,
+      refetchInterval: 5000, // Refetch every 5 seconds
+      staleTime: 0, // Always consider stale to force fresh data
     },
   })
 }
@@ -296,6 +298,70 @@ export function useMintUSDC() {
   
   return {
     mint,
+    hash,
+    isPending,
+    isConfirming: receipt.isLoading,
+    isConfirmed: receipt.isSuccess,
+    error: error || receipt.error,
+  }
+}
+
+export function useIncreaseContribution() {
+  const { data: hash, writeContract, isPending, error } = useWriteContract()
+  
+  const increaseContribution = (poolAddress: Address, amount: bigint) => {
+    writeContract({
+      address: poolAddress,
+      abi: [
+        {
+          inputs: [{ name: 'amount', type: 'uint256' }],
+          name: 'increaseContribution',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function'
+        }
+      ],
+      functionName: 'increaseContribution',
+      args: [amount],
+    })
+  }
+  
+  const receipt = useWaitForTransactionReceipt({ hash })
+  
+  return {
+    increaseContribution,
+    hash,
+    isPending,
+    isConfirming: receipt.isLoading,
+    isConfirmed: receipt.isSuccess,
+    error: error || receipt.error,
+  }
+}
+
+export function useIncreaseLockDuration() {
+  const { data: hash, writeContract, isPending, error } = useWriteContract()
+  
+  const increaseLockDuration = (poolAddress: Address, newLockDuration: bigint) => {
+    writeContract({
+      address: poolAddress,
+      abi: [
+        {
+          inputs: [{ name: 'newLockDuration', type: 'uint256' }],
+          name: 'increaseLockDuration',
+          outputs: [],
+          stateMutability: 'nonpayable',
+          type: 'function'
+        }
+      ],
+      functionName: 'increaseLockDuration',
+      args: [newLockDuration],
+    })
+  }
+  
+  const receipt = useWaitForTransactionReceipt({ hash })
+  
+  return {
+    increaseLockDuration,
     hash,
     isPending,
     isConfirming: receipt.isLoading,

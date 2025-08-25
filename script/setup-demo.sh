@@ -57,6 +57,19 @@ fi
 
 echo "✅ Environment file created successfully"
 
+# Send ETH to demo wallet for testing
+echo "💰 Sending ETH to demo wallet..."
+DEMO_WALLET="0x9b7e5d40fCb79bbF4171521F5a8e2e15808f82D7"
+cast send $DEMO_WALLET --value 10ether \
+    --private-key 0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80 \
+    --rpc-url http://localhost:8545 > /dev/null 2>&1
+
+if [ $? -eq 0 ]; then
+    echo "✅ Sent 10 ETH to demo wallet: $DEMO_WALLET"
+else
+    echo "⚠️  Failed to send ETH to demo wallet (continuing anyway)"
+fi
+
 # Update frontend configuration automatically
 echo "🔄 Updating frontend configuration..."
 if node script/update-frontend-config.js; then
@@ -74,7 +87,8 @@ echo "1. Start your frontend: cd frontend && npm run dev"
 echo "2. Visit http://localhost:3000 to test the demo"
 echo ""
 echo "💡 Demo features:"
-echo "- USDC Faucet: Get 1000 USDC per click"
+echo "- Auto-funded wallet: 10 ETH sent to demo wallet automatically"
+echo "- USDC Faucet: Get 10,000 USDC per click"
 echo "- Auto-approval: No approval transactions needed"
 echo "- Time controls: Skip time to test different pool states"
 echo "- Pre-funded pools: Test all scenarios immediately"

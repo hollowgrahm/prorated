@@ -15,7 +15,7 @@ export function DemoInstructions() {
       </CardHeader>
       
       <CardContent className="space-y-4">
-        <Alert className="border-blue-500/20 bg-blue-500/5">
+        <Alert className="border-green-500/20 bg-green-500/5">
           <Info className="h-4 w-4" />
           <AlertDescription>
             <strong>Welcome to the Prorated Protocol Demo!</strong> Follow these steps to get started:

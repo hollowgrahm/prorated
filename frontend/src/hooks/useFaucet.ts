@@ -14,21 +14,17 @@ const MOCK_USDC_ABI = [
 ] as const
 
 export function useFaucet() {
-  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState(false)
 
-  const { writeContract, data: hash } = useWriteContract()
+  const { writeContract, data: hash, isPending, error: writeError } = useWriteContract()
 
-  const { isLoading: isConfirming } = useWaitForTransactionReceipt({
+  const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({
     hash,
   })
 
   const claimUSDC = async () => {
     try {
-      setIsLoading(true)
       setError(null)
-      setSuccess(false)
 
       const mockUSDCAddress = process.env.NEXT_PUBLIC_MOCK_USDC_ADDRESS as `0x${string}`
       
@@ -41,20 +37,17 @@ export function useFaucet() {
         abi: MOCK_USDC_ABI,
         functionName: 'faucet',
       })
-
-      setSuccess(true)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to claim USDC')
-    } finally {
-      setIsLoading(false)
     }
   }
 
   return {
     claimUSDC,
-    isLoading: isLoading || isConfirming,
-    error,
-    success,
+    isLoading: isPending,
+    isConfirming,
+    error: error || writeError?.message,
+    success: isConfirmed,
     hash,
   }
 }

@@ -62,7 +62,7 @@ export function NetworkHelper() {
 
   if (!isConnected) {
     return (
-      <Alert className="border-blue-500/20 bg-blue-500/5">
+      <Alert className="border-green-500/20 bg-green-500/5">
         <Info className="h-4 w-4" />
         <AlertDescription>
           <strong>Demo Setup:</strong> Connect your wallet first, then make sure you're on the Anvil Local network to interact with the demo contracts.

@@ -1,7 +1,7 @@
 // Wagmi Configuration for Prorated Protocol
-import { http, createConfig } from 'wagmi'
+import { http } from 'wagmi'
 import { defineChain } from 'viem'
-import { injected, metaMask, mock } from 'wagmi/connectors'
+import { getDefaultConfig } from '@rainbow-me/rainbowkit'
 import { env } from './env'
 
 // Define Anvil Local Chain
@@ -27,21 +27,15 @@ export const anvilLocal = defineChain({
   testnet: true,
 })
 
-// Wagmi Configuration
-export const config = createConfig({
+// RainbowKit Configuration
+export const config = getDefaultConfig({
+  appName: 'Prorated Protocol',
+  projectId: 'prorated-demo', // For demo purposes
   chains: [anvilLocal],
-  connectors: [
-    injected(),
-    metaMask(),
-    // Note: walletConnect requires a projectId for production
-    // walletConnect({ projectId: 'your-project-id' }),
-  ],
   transports: {
     [anvilLocal.id]: http(env.rpcUrl),
   },
   ssr: true, // Enable server-side rendering support
-  // Ensure read calls work without connected wallet
-  multiInjectedProviderDiscovery: false,
 })
 
 // Re-export types for convenience

@@ -8,6 +8,8 @@ import {
   useApproveToken, 
   useContributeToPool,
   useMintUSDC,
+  useIncreaseContribution,
+  useIncreaseLockDuration,
   useDeployToken,
   useDeployPair,
   useDeployLiquidity,
@@ -32,6 +34,8 @@ export function useContribution(poolAddress: Address) {
   const approveHook = useApproveToken()
   const contributeHook = useContributeToPool()
   const mintHook = useMintUSDC()
+  const increaseContributionHook = useIncreaseContribution()
+  const increaseLockDurationHook = useIncreaseLockDuration()
   
   // Contribution state
   const [contributionAmount, setContributionAmount] = useState('')
@@ -103,6 +107,14 @@ export function useContribution(poolAddress: Address) {
     mintHook.mint(userAddress, mintAmount)
   }
   
+  const increaseContribution = (amount: bigint) => {
+    increaseContributionHook.increaseContribution(poolAddress, amount)
+  }
+  
+  const increaseLockDuration = (newLockDuration: number) => {
+    increaseLockDurationHook.increaseLockDuration(poolAddress, BigInt(newLockDuration))
+  }
+  
   // Reset form after successful contribution
   const resetForm = () => {
     setContributionAmount('')
@@ -110,8 +122,10 @@ export function useContribution(poolAddress: Address) {
   }
   
   // Overall transaction state
-  const isTransacting = approveHook.isPending || contributeHook.isPending || mintHook.isPending
-  const isConfirming = approveHook.isConfirming || contributeHook.isConfirming || mintHook.isConfirming
+  const isTransacting = approveHook.isPending || contributeHook.isPending || mintHook.isPending || 
+                       increaseContributionHook.isPending || increaseLockDurationHook.isPending
+  const isConfirming = approveHook.isConfirming || contributeHook.isConfirming || mintHook.isConfirming ||
+                      increaseContributionHook.isConfirming || increaseLockDurationHook.isConfirming
   
   return {
     // Form state
@@ -137,6 +151,8 @@ export function useContribution(poolAddress: Address) {
     approveTokens,
     contribute,
     mintUSDC,
+    increaseContribution,
+    increaseLockDuration,
     resetForm,
     
     // Transaction states
@@ -166,6 +182,22 @@ export function useContribution(poolAddress: Address) {
       isConfirmed: mintHook.isConfirmed,
       error: mintHook.error,
       hash: mintHook.hash,
+    },
+    
+    increaseContributionTx: {
+      isPending: increaseContributionHook.isPending,
+      isConfirming: increaseContributionHook.isConfirming,
+      isConfirmed: increaseContributionHook.isConfirmed,
+      error: increaseContributionHook.error,
+      hash: increaseContributionHook.hash,
+    },
+    
+    increaseLockDurationTx: {
+      isPending: increaseLockDurationHook.isPending,
+      isConfirming: increaseLockDurationHook.isConfirming,
+      isConfirmed: increaseLockDurationHook.isConfirmed,
+      error: increaseLockDurationHook.error,
+      hash: increaseLockDurationHook.hash,
     },
   }
 }

@@ -14,6 +14,10 @@ const TOKEN_ADDRESSES: Record<string, string> = {
   
   // Mock/Test addresses (add more as needed)
   '0x1234567890123456789012345678901234567890': 'MOCK',
+  
+  // Current demo MockUSDC address
+  '0x5eb3Bc0a489C5A8288765d2336659EbCA68FCd00': 'USDC',
+  '0x5eb3bc0a489c5a8288765d2336659ebca68fcd00': 'USDC', // lowercase
 }
 
 /**

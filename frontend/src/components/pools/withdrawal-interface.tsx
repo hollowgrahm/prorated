@@ -1,6 +1,6 @@
 'use client'
 
-import { AlertTriangle, RefreshCw, CheckCircle, ExternalLink } from 'lucide-react'
+import { AlertTriangle, RefreshCw, CheckCircle, ExternalLink, Info } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -26,7 +26,7 @@ export function WithdrawalInterface({ pool }: WithdrawalInterfaceProps) {
     error,
     txHash,
     claimRefund
-  } = usePoolWithdrawal(pool.address)
+  } = usePoolWithdrawal()
 
   if (isSuccess) {
     return (
@@ -107,6 +107,15 @@ export function WithdrawalInterface({ pool }: WithdrawalInterfaceProps) {
             This pool failed to reach the minimum funding target of{' '}
             {pool.minTotalContributions.toLocaleString()} {fundingTokenSymbol}.
             All contributors can claim a full refund of their contributions.
+          </AlertDescription>
+        </Alert>
+
+        {/* Demo Notice */}
+        <Alert className="border-green-500/50 bg-green-500/10">
+          <Info className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Demo Mode:</strong> This is a demonstration of the refund interface. 
+            Clicking "Claim Refund" will mint 10,000 USDC to your wallet to simulate receiving your refund.
           </AlertDescription>
         </Alert>
 
