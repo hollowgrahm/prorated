@@ -16,8 +16,8 @@ const TOKEN_ADDRESSES: Record<string, string> = {
   '0x1234567890123456789012345678901234567890': 'MOCK',
   
   // Current demo MockUSDC address
-  '0x5eb3Bc0a489C5A8288765d2336659EbCA68FCd00': 'USDC',
-  '0x5eb3bc0a489c5a8288765d2336659ebca68fcd00': 'USDC', // lowercase
+  '0x7Cf4be31f546c04787886358b9486ca3d62B9acf': 'USDC',
+  '0x7cf4be31f546c04787886358b9486ca3d62b9acf': 'USDC', // lowercase
 }
 
 /**

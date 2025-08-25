@@ -7,9 +7,10 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { ArrowUpDown, Settings, Info, TrendingUp, Zap } from 'lucide-react'
+import { ArrowUpDown, Settings, Info, TrendingUp, Zap, Gift, Activity } from 'lucide-react'
 import { Project } from '@/types/project'
 import { getTokenSymbol } from '@/lib/token-utils'
+import { useDemoProswap } from '@/hooks/useDemoProswap'
 
 interface ProswapInterfaceProps {
   project: Project
@@ -56,24 +57,35 @@ const calculateAmountOut = (amountIn: number, reserveIn: number, reserveOut: num
 }
 
 const calculatePriceImpact = (amountIn: number, amountOut: number, reserveIn: number, reserveOut: number) => {
-  if (amountIn <= 0 || amountOut <= 0) return 0
+  if (amountIn <= 0 || amountOut <= 0 || reserveIn <= 0 || reserveOut <= 0) return 0
   
-  const spotPrice = reserveOut / reserveIn
-  const executionPrice = amountOut / amountIn
-  const priceImpact = ((spotPrice - executionPrice) / spotPrice) * 100
+  // Use constant product AMM formula for more accurate price impact
+  // Price impact = (amountIn / (reserveIn + amountIn)) * 100
+  // This represents how much of the reserve you're consuming
+  const priceImpact = (amountIn / (reserveIn + amountIn)) * 100
   
-  return Math.abs(priceImpact)
+  // Cap at reasonable maximum
+  return Math.min(priceImpact, 50)
 }
 
 export function ProswapInterface({ project }: ProswapInterfaceProps) {
   const [fromAmount, setFromAmount] = useState('')
   const [toAmount, setToAmount] = useState('')
-  const [isFromToken80, setIsFromToken80] = useState(true) // Start with project token -> funding token
+  const [isFromToken80, setIsFromToken80] = useState(false) // Start with USDC -> PRO for demo
   const [slippageTolerance, setSlippageTolerance] = useState(0.5)
-  const [isSwapping, setIsSwapping] = useState(false)
   
   const fundingTokenSymbol = getTokenSymbol(project.fundingTokenSymbol)
-  const reserves = getMockReserves(project)
+  
+  // Use demo hook for real contract integration
+  const demoProswap = useDemoProswap(project.address as `0x${string}`)
+  
+  // Use real data if available, fallback to mock
+  const reserves = demoProswap.isDemoMode ? {
+    token80Reserve: 16800000, // 16.8M PRO tokens (80% of pool)
+    token20Reserve: 500000, // 500K USDC (20% of pool) - realistic for launched project
+  } : getMockReserves(project)
+  
+  const isSwapping = demoProswap.isSwapping
   
   // Define tokens based on the 80/20 weighting
   const token80: TokenInfo = {
@@ -84,8 +96,8 @@ export function ProswapInterface({ project }: ProswapInterfaceProps) {
   }
   
   const token20: TokenInfo = {
-    address: project.fundingTokenSymbol, // Using symbol as address for demo
-    symbol: fundingTokenSymbol,
+    address: demoProswap.isDemoMode ? demoProswap.usdcAddress || project.fundingTokenSymbol : project.fundingTokenSymbol,
+    symbol: demoProswap.isDemoMode ? 'USDC' : fundingTokenSymbol,
     decimals: 6, // Most stablecoins use 6 decimals
     isToken80: false
   }
@@ -98,13 +110,21 @@ export function ProswapInterface({ project }: ProswapInterfaceProps) {
   // Calculate output amount when input changes
   useEffect(() => {
     if (fromAmount && !isNaN(parseFloat(fromAmount))) {
-      const amountIn = parseFloat(fromAmount)
-      const amountOut = calculateAmountOut(amountIn, fromReserve, toReserve, isFromToken80)
-      setToAmount(amountOut.toString())
+      if (demoProswap.isDemoMode) {
+        // Use demo calculation with real exchange rates
+        const fromTokenType = isFromToken80 ? 'PRO' : 'USDC'
+        const outputAmount = demoProswap.calculateOutputAmount(fromAmount, fromTokenType)
+        setToAmount(outputAmount)
+      } else {
+        // Use mock calculation for other projects
+        const amountIn = parseFloat(fromAmount)
+        const amountOut = calculateAmountOut(amountIn, fromReserve, toReserve, isFromToken80)
+        setToAmount(amountOut.toString())
+      }
     } else {
       setToAmount('')
     }
-  }, [fromAmount, fromReserve, toReserve, isFromToken80])
+  }, [fromAmount, fromReserve, toReserve, isFromToken80, demoProswap])
 
   const handleSwapDirection = () => {
     setIsFromToken80(!isFromToken80)
@@ -113,33 +133,93 @@ export function ProswapInterface({ project }: ProswapInterfaceProps) {
   }
 
   const handleMaxClick = () => {
-    // Mock user balance - in real app, fetch from wallet
-    const mockBalance = isFromToken80 ? 1000 : 5000
-    setFromAmount(mockBalance.toString())
+    if (demoProswap.isDemoMode) {
+      // Use real balances for demo
+      const balance = isFromToken80 
+        ? parseFloat(demoProswap.proBalance.formatted)
+        : parseFloat(demoProswap.usdcBalance.formatted)
+      setFromAmount(balance.toString())
+    } else {
+      // Mock user balance for other projects
+      const mockBalance = isFromToken80 ? 1000 : 5000
+      setFromAmount(mockBalance.toString())
+    }
   }
 
   const handleSwap = async () => {
-    setIsSwapping(true)
-    
-    // Simulate transaction
-    setTimeout(() => {
-      setIsSwapping(false)
-      setFromAmount('')
-      setToAmount('')
-      // In real app: execute swap transaction
-    }, 3000)
+    if (demoProswap.isDemoMode) {
+      // Use demo swap simulation
+      const fromTokenType = isFromToken80 ? 'PRO' : 'USDC'
+      await demoProswap.simulateSwap(fromTokenType, fromAmount)
+      
+      // Reset form on success
+      if (demoProswap.isSuccess) {
+        setFromAmount('')
+        setToAmount('')
+      }
+    } else {
+      // Mock swap for other projects
+      setTimeout(() => {
+        setFromAmount('')
+        setToAmount('')
+      }, 3000)
+    }
   }
 
   const fromAmountNum = parseFloat(fromAmount) || 0
   const toAmountNum = parseFloat(toAmount) || 0
-  const priceImpact = calculatePriceImpact(fromAmountNum, toAmountNum, fromReserve, toReserve)
+  
+  // Calculate price impact using realistic reserves for demo mode
+  const priceImpact = demoProswap.isDemoMode 
+    ? calculatePriceImpact(fromAmountNum, toAmountNum, fromReserve, toReserve)
+    : calculatePriceImpact(fromAmountNum, toAmountNum, fromReserve, toReserve)
+    
   const rate = fromAmountNum > 0 ? toAmountNum / fromAmountNum : 0
 
   const isValidTrade = fromAmountNum > 0 && toAmountNum > 0 && priceImpact < 10 // Max 10% impact
 
   return (
     <div className="space-y-6">
+      {/* Demo Notice */}
+      {demoProswap.isDemoMode && (
+        <Alert className="border-green-500/50 bg-green-500/10">
+          <Gift className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Demo Trading:</strong> This is connected to real Prorated Protocol contracts! 
+            Get USDC from the faucet below and try purchasing PRO tokens on the live DEX.
+          </AlertDescription>
+        </Alert>
+      )}
 
+      {/* USDC Faucet for Demo */}
+      {demoProswap.isDemoMode && (
+        <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-medium">Your USDC Balance</p>
+                <p className="text-2xl font-bold text-primary">
+                  {demoProswap.usdcBalance.formatted} USDC
+                </p>
+              </div>
+              <Button
+                onClick={demoProswap.faucet.claimUSDC}
+                disabled={demoProswap.faucet.isLoading}
+                className="bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700"
+              >
+                {demoProswap.faucet.isLoading ? (
+                  <>
+                    <Activity className="mr-2 h-4 w-4 animate-pulse" />
+                    Claiming...
+                  </>
+                ) : (
+                  'Get 10K USDC'
+                )}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Swap Interface */}
       <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
@@ -163,11 +243,16 @@ export function ProswapInterface({ project }: ProswapInterfaceProps) {
           <div className="grid grid-cols-3 gap-4 p-3 bg-secondary/20 rounded-lg border border-border/30">
             <div className="text-center">
               <p className="text-xs text-muted-foreground">Pool Composition</p>
-              <p className="text-sm font-medium">{project.symbol} (80%) / {fundingTokenSymbol} (20%)</p>
+              <p className="text-sm font-medium">{project.symbol} (80%) / {demoProswap.isDemoMode ? 'USDC' : fundingTokenSymbol} (20%)</p>
             </div>
             <div className="text-center">
               <p className="text-xs text-muted-foreground">{project.symbol} Price</p>
-              <p className="text-sm font-medium">{(reserves.token20Reserve / reserves.token80Reserve).toFixed(4)} {fundingTokenSymbol}</p>
+              <p className="text-sm font-medium">
+                {demoProswap.isDemoMode 
+                  ? `${demoProswap.exchangeRate.proToUsdc.toFixed(4)} USDC`
+                  : `${(reserves.token20Reserve / reserves.token80Reserve).toFixed(4)} ${fundingTokenSymbol}`
+                }
+              </p>
             </div>
             <div className="text-center">
               <p className="text-xs text-muted-foreground">Trading Fee</p>
@@ -182,7 +267,11 @@ export function ProswapInterface({ project }: ProswapInterfaceProps) {
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">From</span>
               <span className="text-xs text-muted-foreground">
-                Balance: 1,000 {fromToken.symbol}
+                Balance: {demoProswap.isDemoMode ? (
+                  isFromToken80 
+                    ? parseFloat(demoProswap.proBalance.formatted).toLocaleString()
+                    : parseFloat(demoProswap.usdcBalance.formatted).toLocaleString()
+                ) : '1,000'} {fromToken.symbol}
               </span>
             </div>
             <div className="relative">
@@ -219,7 +308,11 @@ export function ProswapInterface({ project }: ProswapInterfaceProps) {
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">To</span>
               <span className="text-xs text-muted-foreground">
-                Balance: 5,000 {toToken.symbol}
+                Balance: {demoProswap.isDemoMode ? (
+                  isFromToken80 
+                    ? parseFloat(demoProswap.usdcBalance.formatted).toLocaleString()
+                    : parseFloat(demoProswap.proBalance.formatted).toLocaleString()
+                ) : '5,000'} {toToken.symbol}
               </span>
             </div>
             <div className="relative">
@@ -243,7 +336,15 @@ export function ProswapInterface({ project }: ProswapInterfaceProps) {
             <div className="space-y-3 p-3 bg-secondary/20 rounded-lg border border-border/30">
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Rate</span>
-                <span>1 {fromToken.symbol} = {rate.toFixed(4)} {toToken.symbol}</span>
+                <span>
+                  {demoProswap.isDemoMode ? (
+                    isFromToken80 
+                      ? `1 PRO = ${demoProswap.exchangeRate.proToUsdc.toFixed(4)} USDC`
+                      : `1 USDC = ${demoProswap.exchangeRate.usdcToPro.toFixed(4)} PRO`
+                  ) : (
+                    `1 ${fromToken.symbol} = ${rate.toFixed(4)} ${toToken.symbol}`
+                  )}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Price Impact</span>
@@ -286,14 +387,23 @@ export function ProswapInterface({ project }: ProswapInterfaceProps) {
             {isSwapping ? (
               <div className="flex items-center space-x-2">
                 <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Swapping...</span>
+                <span>
+                  {demoProswap.isDemoMode && demoProswap.isConfirming ? 'Confirming...' : 'Swapping...'}
+                </span>
+              </div>
+            ) : demoProswap.isDemoMode && demoProswap.isSuccess ? (
+              <div className="flex items-center space-x-2">
+                <Activity className="h-4 w-4" />
+                <span>Swap Successful!</span>
               </div>
             ) : !isValidTrade ? (
               fromAmountNum === 0 ? 'Enter Amount' : 'Invalid Trade'
             ) : (
               <div className="flex items-center space-x-2">
                 <TrendingUp className="h-4 w-4" />
-                <span>Swap {fromToken.symbol} for {toToken.symbol}</span>
+                <span>
+                  {demoProswap.isDemoMode ? 'Demo Swap' : 'Swap'} {fromToken.symbol} for {toToken.symbol}
+                </span>
               </div>
             )}
           </Button>
