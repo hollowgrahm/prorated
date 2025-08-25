@@ -72,7 +72,7 @@ export function ProswapInterface({ project }: ProswapInterfaceProps) {
   const [fromAmount, setFromAmount] = useState('')
   const [toAmount, setToAmount] = useState('')
   const [isFromToken80, setIsFromToken80] = useState(false) // Start with USDC -> PRO for demo
-  const [slippageTolerance, setSlippageTolerance] = useState(0.5)
+  const [slippageTolerance] = useState(0.5)
   
   const fundingTokenSymbol = getTokenSymbol(project.fundingTokenSymbol)
   

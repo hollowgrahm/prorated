@@ -10,13 +10,37 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
-import { PoolCard } from './pool-card'
-import { PoolData, PoolFilters as ContractPoolFilters } from '@/types'
+import { PoolCard } from './pool-card-old'
 import { LoadingSpinner, CardLoadingSkeleton } from '@/components/ui/loading-spinner'
 import { ErrorDisplay } from '@/components/ui/error-boundary'
-import { useFilteredPools, usePoolStats } from '@/hooks/usePools'
+import { PoolFilters, Pool } from '@/types/pool'
+import { useLoadingState } from '@/hooks/useLoadingState'
 
 // Real contract data - no more mock data!
+const mockPools = [
+  {
+    id: '1',
+    address: '0x1234...5678',
+    tokenName: 'DeFi Protocol',
+    tokenSymbol: 'DEFI',
+    tokenTotalSupply: 1000000,
+    developmentFund: 25000,
+    liquidityFund: 15000,
+    minTotalContributions: 40000,
+    fundingToken: '0xA0b86a33E6411c88f7f3A3c4D79F85B8b52E8e',
+    fundingTokenSymbol: 'USDC',
+    startTime: (Date.now() - 86400000 * 5) / 1000, // 5 days ago (in seconds)
+    endTime: (Date.now() + 86400000 * 10) / 1000, // 10 days from now (in seconds)
+    developerPercent: 15,
+    treasuryPercent: 25,
+    daoPercent: 60,
+    totalContributions: 32500,
+    totalShares: 2275000, // Average ~70 weeks lock
+    contributors: 42,
+    status: 'active',
+    developer: '0xdeveloper...1234',
+    description: 'Revolutionary DeFi protocol with automated yield farming and governance features.'
+  },
   {
     id: '2',
     address: '0x5678...9012',

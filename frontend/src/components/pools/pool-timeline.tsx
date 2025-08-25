@@ -5,7 +5,6 @@ import { Badge } from '@/components/ui/badge'
 import { 
   Calendar,
   Clock,
-  Users,
   Target,
   Rocket,
   CheckCircle,
@@ -229,7 +228,7 @@ export function PoolTimeline({ pool }: PoolTimelineProps) {
                 {/* Additional data for milestones */}
                 {event.type === 'milestone' && event.data && typeof event.data === 'object' && 'percentage' in event.data && (
                   <div className="mt-2 text-xs text-primary">
-                    🎯 {(event.data as any).percentage}% milestone achieved
+                    🎯 {(event.data as { percentage: number }).percentage}% milestone achieved
                   </div>
                 )}
               </div>

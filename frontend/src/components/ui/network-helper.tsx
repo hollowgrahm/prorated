@@ -65,7 +65,7 @@ export function NetworkHelper() {
       <Alert className="border-green-500/20 bg-green-500/5">
         <Info className="h-4 w-4" />
         <AlertDescription>
-          <strong>Demo Setup:</strong> Connect your wallet first, then make sure you're on the Anvil Local network to interact with the demo contracts.
+                      <strong>Demo Setup:</strong> Connect your wallet first, then make sure you&apos;re on the Anvil Local network to interact with the demo contracts.
         </AlertDescription>
       </Alert>
     )
@@ -76,7 +76,7 @@ export function NetworkHelper() {
       <Alert className="border-green-500/20 bg-green-500/5">
         <CheckCircle className="h-4 w-4" />
         <AlertDescription className="text-green-400">
-          <strong>Ready!</strong> You're connected to Anvil Local network. You can now interact with the demo contracts.
+          <strong>Ready!</strong> You&apos;re connected to Anvil Local network. You can now interact with the demo contracts.
         </AlertDescription>
       </Alert>
     )
@@ -116,11 +116,4 @@ export function NetworkHelper() {
   )
 }
 
-// Extend the Window interface to include ethereum
-declare global {
-  interface Window {
-    ethereum?: {
-      request: (args: { method: string; params?: any[] }) => Promise<any>
-    }
-  }
-}
+

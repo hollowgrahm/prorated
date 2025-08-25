@@ -13,7 +13,6 @@ import {
   Lock, 
   Vote, 
   Clock, 
-  CheckCircle, 
   ExternalLink, 
   Info,
   Activity,
@@ -23,8 +22,6 @@ import {
   ArrowRight
 } from 'lucide-react'
 import { Project } from '@/types/project'
-import { useVeNFTManagement } from '@/hooks/useVeNFTMinting'
-import { parseUnits, formatUnits } from 'viem'
 
 interface VeNFTCreationInterfaceProps {
   project: Project

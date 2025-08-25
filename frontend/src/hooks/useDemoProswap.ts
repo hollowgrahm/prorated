@@ -1,8 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Address, formatUnits, parseUnits } from 'viem'
-import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
+import { useState } from 'react'
+import { Address, formatUnits } from 'viem'
+import { useAccount, useReadContract } from 'wagmi'
 import { CONTRACT_ADDRESSES } from '@/lib/contracts-config'
 import { usePool } from './usePool'
 import { useFaucet } from './useFaucet'
@@ -63,7 +63,7 @@ export function useDemoProswap(projectAddress: Address) {
     functionName: 'balanceOf',
     args: userAddress ? [userAddress] : undefined,
     query: {
-      enabled: !!userAddress && !!tokenAddress && isDemoPool(),
+      enabled: Boolean(userAddress && tokenAddress && isDemoPool()),
       refetchInterval: 5000
     }
   })
@@ -83,7 +83,7 @@ export function useDemoProswap(projectAddress: Address) {
     functionName: 'balanceOf',
     args: userAddress ? [userAddress] : undefined,
     query: {
-      enabled: !!userAddress && !!usdcAddress && isDemoPool(),
+      enabled: Boolean(userAddress && usdcAddress && isDemoPool()),
       refetchInterval: 5000
     }
   })
@@ -106,7 +106,7 @@ export function useDemoProswap(projectAddress: Address) {
     ],
     functionName: 'getReserves',
     query: {
-      enabled: !!pairAddress && isDemoPool(),
+      enabled: Boolean(pairAddress && isDemoPool()),
       refetchInterval: 10000
     }
   })
@@ -124,15 +124,15 @@ export function useDemoProswap(projectAddress: Address) {
 
   // Calculate exchange rate from reserves
   const exchangeRate = pairReserves ? {
-    proToUsdc: Number(formatUnits((pairReserves as any)[1], 6)) / Number(formatUnits((pairReserves as any)[0], 18)),
-    usdcToPro: Number(formatUnits((pairReserves as any)[0], 18)) / Number(formatUnits((pairReserves as any)[1], 6))
+    proToUsdc: Number(formatUnits((pairReserves as readonly [bigint, bigint, number])[1], 6)) / Number(formatUnits((pairReserves as readonly [bigint, bigint, number])[0], 18)),
+    usdcToPro: Number(formatUnits((pairReserves as readonly [bigint, bigint, number])[0], 18)) / Number(formatUnits((pairReserves as readonly [bigint, bigint, number])[1], 6))
   } : { proToUsdc: 1.5, usdcToPro: 0.67 } // Mock rates
 
   // Debug logging for exchange rates
   if (isDemoPool() && pairReserves) {
     console.log('🔄 Real Exchange Rates from Reserves:', {
-      proReserve: formatUnits((pairReserves as any)[0], 18),
-      usdcReserve: formatUnits((pairReserves as any)[1], 6),
+      proReserve: formatUnits((pairReserves as readonly [bigint, bigint, number])[0], 18),
+      usdcReserve: formatUnits((pairReserves as readonly [bigint, bigint, number])[1], 6),
       proToUsdc: exchangeRate.proToUsdc,
       usdcToPro: exchangeRate.usdcToPro
     })

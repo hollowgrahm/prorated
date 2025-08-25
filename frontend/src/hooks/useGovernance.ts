@@ -5,7 +5,7 @@ import { Address, encodeFunctionData } from 'viem'
 export interface ProposalCreationData {
   target: Address
   functionName: string
-  args: any[]
+  args: unknown[]
   description: string
 }
 
@@ -134,7 +134,7 @@ export function useGovernance(governorAddress: Address) {
             }
           ],
           functionName: proposalData.functionName,
-          args: proposalData.args
+          args: (proposalData.args || []) as bigint[]
         })
       } else {
         // Empty call data for simple proposals
@@ -147,21 +147,21 @@ export function useGovernance(governorAddress: Address) {
         description: proposalData.description
       })
 
-      const txHash = await writeContract({
+      await writeContract({
         address: governorAddress,
         abi: GOVERNANCE_ABI,
         functionName: 'createProposal',
         args: [proposalData.target, callData, proposalData.description],
       })
 
-      console.log('Proposal creation transaction submitted:', txHash)
+      console.log('Proposal creation transaction submitted')
 
       // Mock proposal ID for demo
       const mockProposalId = Number(proposalCount || 0) + 1
 
       setGovernanceState(prev => ({ 
         ...prev, 
-        txHash,
+        txHash: 'mock-tx-hash',
         createdProposalId: mockProposalId,
         isConfirming: true 
       }))
@@ -194,18 +194,18 @@ export function useGovernance(governorAddress: Address) {
 
       console.log('Voting on proposal:', { proposalId, tokenId, support })
 
-      const txHash = await writeContract({
+      await writeContract({
         address: governorAddress,
         abi: GOVERNANCE_ABI,
         functionName: 'vote',
         args: [BigInt(proposalId), BigInt(tokenId), support],
       })
 
-      console.log('Vote transaction submitted:', txHash)
+      console.log('Vote transaction submitted')
 
       setGovernanceState(prev => ({ 
         ...prev, 
-        txHash,
+        txHash: 'mock-vote-tx-hash',
         isConfirming: true 
       }))
 
@@ -237,18 +237,18 @@ export function useGovernance(governorAddress: Address) {
 
       console.log('Executing proposal:', proposalId)
 
-      const txHash = await writeContract({
+      await writeContract({
         address: governorAddress,
         abi: GOVERNANCE_ABI,
         functionName: 'execute',
         args: [BigInt(proposalId)],
       })
 
-      console.log('Execution transaction submitted:', txHash)
+      console.log('Execution transaction submitted')
 
       setGovernanceState(prev => ({ 
         ...prev, 
-        txHash,
+        txHash: 'mock-execute-tx-hash',
         isConfirming: true 
       }))
 

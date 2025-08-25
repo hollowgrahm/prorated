@@ -194,7 +194,7 @@ export function useDemoDeployment(
  * Get all demo deployment statuses for a pool
  */
 export function useDemoDeploymentStatus(poolAddress: Address) {
-  const [deployments, setDeployments] = useState<Record<string, any>>(() => {
+  const [deployments, setDeployments] = useState<{[stepId: string]: { address: string; txHash: string; timestamp: number }}>(() => {
     // Initialize with current storage state
     const storage = getDemoStorage()
     return storage[poolAddress] || {}

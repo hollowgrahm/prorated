@@ -1,7 +1,7 @@
 'use client'
 
 import { useAccount, useReadContract } from 'wagmi'
-import { Address } from 'viem'
+
 import { mockUSDCConfig } from '@/lib/contracts'
 import { formatUSD } from '@/lib/utils'
 

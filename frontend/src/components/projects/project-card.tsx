@@ -5,7 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { TrendingUp, TrendingDown, Users, DollarSign, Lock, ExternalLink, Globe, Twitter } from 'lucide-react'
-import { Project, ProjectCardProps } from '@/types/project'
+import { ProjectCardProps } from '@/types/project'
 
 function formatNumber(num: number, decimals: number = 2): string {
   if (num >= 1000000) {
@@ -59,15 +59,9 @@ export function ProjectCard({ project, onClick, className = '' }: ProjectCardPro
     }
   }
 
-  const CardWrapper = onClick ? 'div' : Link
-  const cardProps = onClick 
-    ? { onClick: handleClick }
-    : { href: `/projects/${project.address}` }
-
   const priceChangeIsPositive = project.priceChange24h >= 0
 
-  return (
-    <CardWrapper {...cardProps}>
+  const cardContent = (
       <Card className={`group hover:shadow-xl hover:shadow-primary/30 transition-all duration-300 cursor-pointer hover:-translate-y-1 border-border border-2 hover:border-primary/60 relative overflow-hidden bg-card backdrop-blur-sm shadow-lg ${className}`}>
         {/* Background gradients */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/12 via-transparent to-accent/12" />
@@ -202,6 +196,15 @@ export function ProjectCard({ project, onClick, className = '' }: ProjectCardPro
           </div>
         </CardContent>
       </Card>
-    </CardWrapper>
+  )
+
+  return onClick ? (
+    <div onClick={handleClick}>
+      {cardContent}
+    </div>
+  ) : (
+    <Link href={`/projects/${project.address}`}>
+      {cardContent}
+    </Link>
   )
 }

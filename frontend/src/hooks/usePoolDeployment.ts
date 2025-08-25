@@ -85,13 +85,13 @@ export function usePoolDeployment() {
       console.log('Deploying pool with config:', poolConfig)
       console.log('Salt:', saltBytes32)
 
-      const txHash = await writeContract({
+      await writeContract({
         ...proratedFactoryConfig,
         functionName: 'createPool',
         args: [poolConfig, saltBytes32],
       })
 
-      console.log('Pool deployment transaction submitted:', txHash)
+      console.log('Pool deployment transaction submitted')
 
       // For now, we'll generate a mock pool address
       // In a real implementation, we'd parse the transaction receipt for the actual address
@@ -102,7 +102,7 @@ export function usePoolDeployment() {
       setDeploymentState(prev => ({ 
         ...prev, 
         result: {
-          txHash,
+          txHash: 'mock-pool-deployment-tx',
           poolAddress: mockPoolAddress
         },
         isConfirming: true 

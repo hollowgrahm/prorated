@@ -188,9 +188,10 @@ export function useDemoVeNFTManagement(veNFTAddress: Address, tokenId: number) {
     }, 3000)
   }
 
-  const increaseLockAmount = async (_additionalAmount: bigint) => {
+  const increaseLockAmount = async (additionalAmount: bigint) => {
     try {
       setManagementState(prev => ({ ...prev, isIncreasingAmount: true, error: null }))
+      console.log('Increasing lock amount by:', additionalAmount)
       await simulateTransaction('increase lock amount')
     } catch (error) {
       setManagementState(prev => ({ 
@@ -201,9 +202,10 @@ export function useDemoVeNFTManagement(veNFTAddress: Address, tokenId: number) {
     }
   }
 
-  const increaseLockDuration = async (_newDuration: bigint) => {
+  const increaseLockDuration = async (newDuration: bigint) => {
     try {
       setManagementState(prev => ({ ...prev, isExtendingDuration: true, error: null }))
+      console.log('Extending lock duration to:', newDuration)
       await simulateTransaction('increase lock duration')
     } catch (error) {
       setManagementState(prev => ({ 

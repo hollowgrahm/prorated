@@ -83,7 +83,7 @@ export function ProposalCreationInterface({ project }: ProposalCreationInterface
       title: template.title,
       description: template.description,
       functionName: template.functionName,
-      category: template.targetType as any
+      category: template.targetType as ProposalFormData['category']
     }))
   }
 
@@ -339,7 +339,7 @@ export function ProposalCreationInterface({ project }: ProposalCreationInterface
             <p className="text-xs text-red-400">{errors.description}</p>
           )}
           <p className="text-xs text-muted-foreground">
-            Minimum 50 characters. Be specific about the proposal's purpose and impact.
+            Minimum 50 characters. Be specific about the proposal&apos;s purpose and impact.
           </p>
         </div>
 

@@ -1,6 +1,6 @@
 'use client'
 
-import { TrendingUp, Users, DollarSign, Target, Rocket, CheckCircle, AlertTriangle } from 'lucide-react'
+import { TrendingUp, Users, DollarSign, Target, Rocket, CheckCircle } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { usePoolStats } from '@/hooks'
 import { formatTokenAmount } from '@/lib/utils'

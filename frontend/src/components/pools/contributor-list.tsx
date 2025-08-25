@@ -32,8 +32,6 @@ export function ContributorList({ pool }: ContributorListProps) {
     const contributorCount = Math.min(pool.contributors, 20) // Show top 20 with full width
     
     // Generate realistic contributor distribution
-    let remainingContributions = pool.totalContributions
-    let remainingShares = pool.totalShares
     
     for (let i = 0; i < contributorCount; i++) {
       const isWhale = i < 3 // Top 3 are whales
@@ -62,8 +60,7 @@ export function ContributorList({ pool }: ContributorListProps) {
         rank: i + 1
       })
       
-      remainingContributions -= amount
-      remainingShares -= shares
+
     }
     
     // Sort by shares (highest first)

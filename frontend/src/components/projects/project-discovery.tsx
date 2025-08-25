@@ -22,6 +22,8 @@ export function ProjectDiscovery() {
     sortBy: 'newest'
   })
 
+
+
   // Use real launched projects from blockchain
   const { projects, isLoading, error } = useLaunchedProjects()
 
@@ -276,7 +278,7 @@ function FilterSidebar({ filters, setFilters, categoryStats }: FilterSidebarProp
             <Input
               placeholder="Search by name, symbol, or description..."
               value={filters.search}
-              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
+              onChange={(e) => setFilters({...filters, search: e.target.value })}
               className="pl-10"
             />
           </div>
@@ -293,7 +295,7 @@ function FilterSidebar({ filters, setFilters, categoryStats }: FilterSidebarProp
             <Button
               key={category}
               variant={filters.category === category ? "default" : "ghost"}
-              onClick={() => setFilters(prev => ({ ...prev, category: category as ProjectFilters['category'] }))}
+              onClick={() => setFilters({...filters, category: category as ProjectFilters['category'] })}
               className={`w-full justify-between ${
                 filters.category === category ? 'btn-primary-custom' : ''
               }`}
@@ -314,7 +316,7 @@ function FilterSidebar({ filters, setFilters, categoryStats }: FilterSidebarProp
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Select value={filters.sortBy} onValueChange={(value) => setFilters(prev => ({ ...prev, sortBy: value as ProjectFilters['sortBy'] }))}>
+          <Select value={filters.sortBy} onValueChange={(value) => setFilters({...filters, sortBy: value as ProjectFilters['sortBy'] })}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>

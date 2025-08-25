@@ -5,7 +5,7 @@ import { Address } from 'viem'
 import { useAllPoolsData } from './usePools'
 import { usePool } from './usePool'
 import { PoolData } from '@/types'
-import { Project } from '@/types/project'
+import { Project, ProjectCategory } from '@/types/project'
 import { CONTRACT_ADDRESSES } from '@/lib/contracts-config'
 
 /**
@@ -23,7 +23,7 @@ function poolDataToProject(poolData: PoolData): Project {
   const totalValueLocked = fundingRaised * 1.2 // Mock TVL
   
   // Determine category based on token name/symbol
-  let category = 'defi' // Default
+  let category: ProjectCategory = 'defi' // Default
   const name = poolData.config.tokenName.toLowerCase()
   if (name.includes('ai') || name.includes('ml')) category = 'ai'
   if (name.includes('game') || name.includes('nft')) category = 'gaming'
@@ -158,7 +158,7 @@ export function useLaunchedProject(address: string) {
  */
 export function isLaunchedProject(address: string): boolean {
   // Check if it's our known launched pool
-  const launchedPoolAddress = (CONTRACT_ADDRESSES as any).launchedPool
+  const launchedPoolAddress = (CONTRACT_ADDRESSES as Record<string, string>).launchedPool
   if (launchedPoolAddress && address.toLowerCase() === launchedPoolAddress.toLowerCase()) {
     return true
   }

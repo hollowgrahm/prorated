@@ -3,7 +3,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { WagmiProvider } from 'wagmi'
 import { RainbowKitProvider, Theme, darkTheme } from '@rainbow-me/rainbowkit'
-import { config, anvilLocal } from './wagmi'
+import { config } from './wagmi'
 import '@rainbow-me/rainbowkit/styles.css'
 
 // Create a query client for React Query

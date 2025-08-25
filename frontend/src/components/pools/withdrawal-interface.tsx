@@ -115,7 +115,7 @@ export function WithdrawalInterface({ pool }: WithdrawalInterfaceProps) {
           <Info className="h-4 w-4" />
           <AlertDescription>
             <strong>Demo Mode:</strong> This is a demonstration of the refund interface. 
-            Clicking "Claim Refund" will mint 10,000 USDC to your wallet to simulate receiving your refund.
+            Clicking &quot;Claim Refund&quot; will mint 10,000 USDC to your wallet to simulate receiving your refund.
           </AlertDescription>
         </Alert>
 

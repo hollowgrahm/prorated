@@ -4,7 +4,7 @@ import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { AlertTriangle, RefreshCw, Home, ExternalLink } from 'lucide-react'
+import { AlertTriangle, RefreshCw, Home } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface ErrorDisplayProps {
@@ -161,7 +161,10 @@ export class ErrorBoundary extends React.Component<
   }>,
   ErrorBoundaryState
 > {
-  constructor(props: any) {
+  constructor(props: React.PropsWithChildren<{
+    fallback?: React.ComponentType<{ error: Error; resetError: () => void }>
+    onError?: (error: Error, errorInfo: React.ErrorInfo) => void
+  }>) {
     super(props)
     this.state = { hasError: false }
   }

@@ -33,7 +33,7 @@ export function DemoInstructions() {
                 <h4 className="font-medium">Connect Your Wallet</h4>
               </div>
               <p className="text-sm text-muted-foreground">
-                Click "Connect Wallet" in the top right and connect your MetaMask or other Ethereum wallet.
+                Click &quot;Connect Wallet&quot; in the top right and connect your MetaMask or other Ethereum wallet.
               </p>
             </div>
           </div>
@@ -48,7 +48,7 @@ export function DemoInstructions() {
                 <h4 className="font-medium">Add Anvil Local Network</h4>
               </div>
               <p className="text-sm text-muted-foreground">
-                Use the "Add Network" button above to automatically add the local Anvil network to your wallet.
+                Use the &quot;Add Network&quot; button above to automatically add the local Anvil network to your wallet.
               </p>
             </div>
           </div>
@@ -63,7 +63,7 @@ export function DemoInstructions() {
                 <h4 className="font-medium">Get Demo USDC</h4>
               </div>
               <p className="text-sm text-muted-foreground">
-                Click the "Get 10K USDC" button in the header or on pool pages to mint demo USDC for testing.
+                Click the &quot;Get 10K USDC&quot; button in the header or on pool pages to mint demo USDC for testing.
               </p>
             </div>
           </div>

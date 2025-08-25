@@ -106,8 +106,7 @@ export function useAllPoolAddresses() {
       index: i, 
       data: q.data, 
       isLoading: q.isLoading, 
-      error: q.error?.message,
-      queryKey: q.queryKey 
+      error: q.error?.message
     })),
     addresses,
     factoryAddress: proratedFactoryConfig.address

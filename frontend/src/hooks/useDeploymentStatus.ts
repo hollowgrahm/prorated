@@ -34,8 +34,7 @@ export function useDeploymentStatus(poolAddress: Address): DeploymentStatus {
   const { 
     data: poolData, 
     isLoading, 
-    error,
-    refetch 
+    error
   } = useReadContract({
     ...getProratedPoolConfig(poolAddress),
     functionName: 'getPoolData',
@@ -75,10 +74,10 @@ export function useDeploymentStatus(poolAddress: Address): DeploymentStatus {
   //                     proratedToken, proswapPair, proratedVeNFT, proratedGovernor, 
   //                     proratedTreasury, prolendPair80, prolendPair20]
   const [
-    config,
-    totalContributions,
-    totalShares,
-    minTotalContributions,
+    ,// config - unused
+    ,// totalContributions - unused
+    ,// totalShares - unused
+    ,// minTotalContributions - unused
     proratedToken,
     proswapPair,
     proratedVeNFT,

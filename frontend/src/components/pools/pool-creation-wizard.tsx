@@ -258,9 +258,4 @@ export function PoolCreationWizard() {
   )
 }
 
-// Helper function to generate random salt for CREATE2
-function generateRandomSalt(): string {
-  return '0x' + Array.from({ length: 64 }, () => 
-    Math.floor(Math.random() * 16).toString(16)
-  ).join('')
-}
+

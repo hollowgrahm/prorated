@@ -28,7 +28,7 @@ function isDemoPool(poolAddress: string): boolean {
     CONTRACT_ADDRESSES.activePool.toLowerCase(),
     CONTRACT_ADDRESSES.successfulPool.toLowerCase(),
     // Add launched pool if it exists (will be available after deployment)
-    ...((CONTRACT_ADDRESSES as any).launchedPool ? [(CONTRACT_ADDRESSES as any).launchedPool.toLowerCase()] : [])
+    ...((CONTRACT_ADDRESSES as Record<string, string>).launchedPool ? [(CONTRACT_ADDRESSES as Record<string, string>).launchedPool.toLowerCase()] : [])
   ]
   return demoAddresses.includes(poolAddress.toLowerCase())
 }

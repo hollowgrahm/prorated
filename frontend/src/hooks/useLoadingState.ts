@@ -1,20 +1,20 @@
 import { useState, useCallback } from 'react'
 
-export interface LoadingState {
+export interface LoadingState<T = unknown> {
   isLoading: boolean
   error: Error | string | null
-  data: any
+  data: T | undefined
 }
 
-export interface LoadingActions {
+export interface LoadingActions<T = unknown> {
   setLoading: (loading: boolean) => void
   setError: (error: Error | string | null) => void
-  setData: (data: any) => void
+  setData: (data: T) => void
   reset: () => void
-  execute: <T>(asyncFn: () => Promise<T>) => Promise<T | null>
+  execute: <U>(asyncFn: () => Promise<U>) => Promise<U | null>
 }
 
-export function useLoadingState<T = any>(initialData?: T): LoadingState & LoadingActions {
+export function useLoadingState<T = unknown>(initialData?: T): LoadingState<T> & LoadingActions<T> {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<Error | string | null>(null)
   const [data, setData] = useState<T | undefined>(initialData)
@@ -43,11 +43,11 @@ export function useLoadingState<T = any>(initialData?: T): LoadingState & Loadin
     setData(initialData)
   }, [initialData])
 
-  const execute = useCallback(async <T>(asyncFn: () => Promise<T>): Promise<T | null> => {
+  const execute = useCallback(async <U>(asyncFn: () => Promise<U>): Promise<U | null> => {
     try {
       setLoading(true)
       const result = await asyncFn()
-      handleSetData(result as any)
+      handleSetData(result as unknown as T)
       return result
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err))
@@ -91,7 +91,7 @@ export function useMultipleLoadingStates() {
     setState(key, { error, isLoading: false })
   }, [setState])
 
-  const setData = useCallback((key: string, data: any) => {
+  const setData = useCallback((key: string, data: unknown) => {
     setState(key, { data, error: null, isLoading: false })
   }, [setState])
 
@@ -137,7 +137,7 @@ export function useMultipleLoadingStates() {
 }
 
 // Hook for handling form submission states
-export function useFormSubmission<T = any>() {
+export function useFormSubmission<T = unknown>() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState<Error | string | null>(null)
