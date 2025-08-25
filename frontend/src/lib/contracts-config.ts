@@ -1,11 +1,12 @@
 // Auto-generated contract addresses
 // This file is automatically updated by the deployment script
 // DO NOT EDIT MANUALLY - changes will be overwritten
+// Network: Hyperliquid Testnet
 
 export const CONTRACT_ADDRESSES = {
   // Core contracts
   mockUSDC: '0x7Cf4be31f546c04787886358b9486ca3d62B9acf',
-  proratedFactory: '0x4eaB29997D332A666c3C366217Ab177cF9A7C436',
+  proratedFactory: '0xA419eBB6D13bdFf90d71572E0A3d58d80d308a80',
   
   // Proswap contracts
   proswapFactory: '0x0c626FC4A447b01554518550e30600136864640B',
@@ -30,14 +31,15 @@ export const CONTRACT_ADDRESSES = {
 } as const
 
 export const NETWORK_CONFIG = {
-  chainId: 31337,
-  rpcUrl: 'http://localhost:8545',
-  name: 'Anvil Local',
+  chainId: 998,
+  rpcUrl: 'https://rpc.hyperliquid-testnet.xyz/evm',
+  name: 'Hyperliquid Testnet',
 } as const
 
 // Deployment metadata
 export const DEPLOYMENT_INFO = {
-  timestamp: '2025-08-25T04:03:21.302Z',
-  deployer: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
+  timestamp: '2025-08-25T16:22:40.426Z',
+  deployer: 'Your Hyperliquid Wallet',
+  network: 'hyperliquid',
   blockNumber: 'latest',
 } as const

@@ -27,13 +27,41 @@ export const anvilLocal = defineChain({
   testnet: true,
 })
 
+// Define Hyperliquid Testnet Chain
+export const hyperliquidTestnet = defineChain({
+  id: 998,
+  name: 'Hyperliquid Testnet',
+  network: 'hyperliquid-testnet',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'HYPE',
+    symbol: 'HYPE',
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://rpc.hyperliquid-testnet.xyz/evm'],
+    },
+    public: {
+      http: ['https://rpc.hyperliquid-testnet.xyz/evm'],
+    },
+  },
+  blockExplorers: {
+    default: { 
+      name: 'Purrsec Explorer', 
+      url: 'https://testnet.purrsec.com' 
+    },
+  },
+  testnet: true,
+})
+
 // RainbowKit Configuration
 export const config = getDefaultConfig({
   appName: 'Prorated Protocol',
   projectId: 'prorated-demo', // For demo purposes
-  chains: [anvilLocal],
+  chains: [anvilLocal, hyperliquidTestnet],
   transports: {
     [anvilLocal.id]: http(env.rpcUrl),
+    [hyperliquidTestnet.id]: http('https://rpc.hyperliquid-testnet.xyz/evm'),
   },
   ssr: true, // Enable server-side rendering support
 })

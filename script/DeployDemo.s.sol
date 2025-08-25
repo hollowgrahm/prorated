@@ -419,10 +419,13 @@ contract DeployDemo is Script {
         pool.deployTreasury();
         console.log("Treasury deployed");
 
-        // Deploy Prolend
+        // Deploy Prolend (temporarily disabled for testnet deployment)
         console.log("7/7 Deploying lending pairs...");
-        pool.deployProlend();
-        console.log("Prolend pairs deployed");
+        console.log(
+            "Prolend deployment skipped for testnet (gas limit issues)"
+        );
+        // pool.deployProlend();
+        // console.log("Prolend pairs deployed");
 
         console.log("Prorated Protocol ecosystem fully deployed!");
         console.log("Pool status should now be 'launched'");

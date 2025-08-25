@@ -13,3 +13,17 @@ remappings = [
     "solady/=lib/solady/src/",
     "velodrome/=lib/contracts/",
 ]
+
+# Hyperliquid Testnet Profile
+[profile.hyperliquid]
+src = 'src'
+out = 'out'
+libs = ['lib']
+solc = "0.8.10"
+fs_permissions = [{ access = "read-write", path = "./frontend" }]
+rpc_url = "${HYPERLIQUID_RPC_URL}"
+chain_id = 998
+# Use big blocks for contract deployment (30M gas limit)
+gas_limit = 30000000
+# Higher gas price for testnet
+gas_price = 1000000000 # 1 gwei
