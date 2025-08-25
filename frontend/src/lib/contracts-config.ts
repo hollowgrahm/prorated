@@ -4,28 +4,29 @@
 
 export const CONTRACT_ADDRESSES = {
   // Core contracts
-  mockUSDC: '0x34B40BA116d5Dec75548a9e9A8f15411461E8c70',
-  proratedFactory: '0xab16A69A5a8c12C732e0DEFF4BE56A70bb64c926',
+  mockUSDC: '0x7Cf4be31f546c04787886358b9486ca3d62B9acf',
+  proratedFactory: '0x4eaB29997D332A666c3C366217Ab177cF9A7C436',
   
   // Proswap contracts
-  proswapFactory: '0x07882Ae1ecB7429a84f1D53048d35c4bB2056877',
-  proswapRouter: '0x22753E4264FDDc6181dc7cce468904A80a363E44',
+  proswapFactory: '0x0c626FC4A447b01554518550e30600136864640B',
+  proswapRouter: '0xA21DDc1f17dF41589BC6A5209292AED2dF61Cc94',
   
   // Prolend contracts
-  prolendFactory: '0xA7c59f010700930003b33aB25a7a0679C860f29c',
+  prolendFactory: '0x2A590C461Db46bca129E8dBe5C3998A8fF402e76',
   
   // Deployer contracts
-  tokenDeployer: '0xfaAddC93baf78e89DCf37bA67943E1bE8F37Bb8c',
-  pairDeployer: '0x276C216D241856199A83bf27b2286659e5b877D3',
-  liquidityDeployer: '0x3347B4d90ebe72BeFb30444C9966B2B990aE9FcB',
-  veNFTDeployer: '0x3155755b79aA083bd953911C92705B7aA82a18F9',
-  governorDeployer: '0x5bf5b11053e734690269C6B9D438F8C9d48F528A',
-  treasuryDeployer: '0xffa7CA1AEEEbBc30C874d32C7e22F052BbEa0429',
-  prolendDeployer: '0x3aAde2dCD2Df6a8cAc689EE797591b2913658659',
+  tokenDeployer: '0x158d291D8b47F056751cfF47d1eEcd19FDF9B6f8',
+  pairDeployer: '0x2F54D1563963fC04770E85AF819c89Dc807f6a06',
+  liquidityDeployer: '0xF342E904702b1D021F03f519D6D9614916b03f37',
+  veNFTDeployer: '0x9849832a1d8274aaeDb1112ad9686413461e7101',
+  governorDeployer: '0xa4E00CB342B36eC9fDc4B50b3d527c3643D4C49e',
+  treasuryDeployer: '0x8ac5eE52F70AE01dB914bE459D8B3d50126fd6aE',
+  prolendDeployer: '0x325c8Df4CFb5B068675AFF8f62aA668D1dEc3C4B',
   
   // Example pools
-  activePool: '0xcD7611F4cE3fac58BA4b8f7a2001a2197a7F23e0',
-  successfulPool: '0x4dB7c2CD655e40C9CD85A7C923aa598E2FAEce67',
+  activePool: '0xd717922EE2B59C3C9763B76D66AE204E08935B23',
+  successfulPool: '0x5f03cEdB9E9b75291253E9DF6d6B0DACFc40BBC2',
+  launchedPool: '0x832Ddd6368701613FF247a9b7e5b8cF44cd3A5D1',
 } as const
 
 export const NETWORK_CONFIG = {
@@ -36,7 +37,7 @@ export const NETWORK_CONFIG = {
 
 // Deployment metadata
 export const DEPLOYMENT_INFO = {
-  timestamp: '2025-08-25T03:02:05.019Z',
+  timestamp: '2025-08-25T04:03:21.302Z',
   deployer: '0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266',
   blockNumber: 'latest',
 } as const

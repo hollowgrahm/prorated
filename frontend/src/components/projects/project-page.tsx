@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -15,8 +15,9 @@ import { VeNFTClaimInterface } from '../pools/venft-claim-interface'
 import { Pool } from '@/types/pool'
 import { PageLoadingSpinner } from '@/components/ui/loading-spinner'
 import { PageErrorDisplay } from '@/components/ui/error-boundary'
+import { useLaunchedProject } from '@/hooks/useLaunchedProjects'
 
-// Mock data - will be replaced with real contract data
+// Mock data - will be replaced with real contract data (keeping for fallback)
 const mockProjects: Project[] = [
   {
     id: '1',
@@ -106,29 +107,29 @@ interface ProjectPageProps {
 }
 
 // Helper function to convert Project to Pool for veNFT claiming
-function projectToPool(project: Project): Pool {
+function finalProjectToPool(finalProject: Project): Pool {
   return {
-    id: project.id,
-    address: project.address,
-    tokenName: project.name,
-    tokenSymbol: project.symbol,
-    tokenTotalSupply: project.totalSupply,
-    developmentFund: project.fundingRaised * 0.6, // Estimate based on typical allocation
-    liquidityFund: project.fundingRaised * 0.4,
-    minTotalContributions: project.fundingRaised,
+    id: finalProject.id,
+    address: finalProject.address,
+    tokenName: finalProject.name,
+    tokenSymbol: finalProject.symbol,
+    tokenTotalSupply: finalProject.totalSupply,
+    developmentFund: finalProject.fundingRaised * 0.6, // Estimate based on typical allocation
+    liquidityFund: finalProject.fundingRaised * 0.4,
+    minTotalContributions: finalProject.fundingRaised,
     fundingToken: '0xA0b86a33E6411c88f7f3A3c4D79F85B8b52E8e', // Mock USDC address
-    fundingTokenSymbol: project.fundingTokenSymbol,
-    startTime: project.launchDate - 86400 * 30, // 30 days before launch
-    endTime: project.launchDate - 86400 * 2, // 2 days before launch
+    fundingTokenSymbol: finalProject.fundingTokenSymbol,
+    startTime: finalProject.launchDate - 86400 * 30, // 30 days before launch
+    endTime: finalProject.launchDate - 86400 * 2, // 2 days before launch
     developerPercent: 15,
     treasuryPercent: 25,
     daoPercent: 60,
-    totalContributions: project.fundingRaised,
-    totalShares: project.fundingRaised * 50, // Estimate average 50 week lock
-    contributors: Math.floor(project.holders * 0.3), // Estimate 30% of holders contributed
+    totalContributions: finalProject.fundingRaised,
+    totalShares: finalProject.fundingRaised * 50, // Estimate average 50 week lock
+    contributors: Math.floor(finalProject.holders * 0.3), // Estimate 30% of holders contributed
     status: 'launched' as const,
     developer: '0xdeveloper...1234',
-    description: project.description
+    description: finalProject.description
   }
 }
 
@@ -176,42 +177,38 @@ function getCategoryColor(category: string): string {
 export function ProjectPage({ address }: ProjectPageProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const [project, setProject] = useState<Project | null>(null)
-  const [loading, setLoading] = useState(true)
 
   // Get initial tab from URL params or default to trade
   const initialTab = searchParams.get('tab') || 'trade'
   const [activeTab, setActiveTab] = useState(initialTab)
 
-  useEffect(() => {
-    // Simulate loading and finding project by address
-    const foundProject = mockProjects.find(p => 
-      p.address.toLowerCase() === address.toLowerCase() ||
-      p.address.slice(0, 10) === address.slice(0, 10) // Handle shortened addresses
-    )
-    
-    setTimeout(() => {
-      setProject(foundProject || null)
-      setLoading(false)
-    }, 500)
-  }, [address])
+  // Use real launched project data
+  const { project, isLoading: loading, error } = useLaunchedProject(address)
+
+  // Fallback to mock data if no real project found (for demo purposes)
+  const fallbackProject = mockProjects.find(p => 
+    p.address.toLowerCase() === address.toLowerCase() ||
+    p.address.slice(0, 10) === address.slice(0, 10) // Handle shortened addresses
+  )
+
+  const finalProject = project || fallbackProject
 
   if (loading) {
     return <PageLoadingSpinner text="Loading project details..." />
   }
 
-  if (!project) {
+  if (!finalProject) {
     return (
       <PageErrorDisplay
-        error={`Project at address ${address} not found`}
+        error={error || `Project at address ${address} not found`}
         title="Project Not Found"
-        description="The project you're looking for doesn't exist or may have been removed."
+        description="The finalProject you're looking for doesn't exist or may have been removed."
         onRetry={() => window.location.reload()}
       />
     )
   }
 
-  const priceChangeIsPositive = project.priceChange24h >= 0
+  const priceChangeIsPositive = finalProject.priceChange24h >= 0
 
   return (
     <div className="min-h-screen bg-background">
@@ -219,7 +216,7 @@ export function ProjectPage({ address }: ProjectPageProps) {
         {/* Back Button */}
         <Button 
           variant="ghost" 
-          onClick={() => router.push('/projects')}
+          onClick={() => router.push('/finalProjects')}
           className="mb-6 text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -231,60 +228,60 @@ export function ProjectPage({ address }: ProjectPageProps) {
           <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
             <div className="flex-1">
               <div className="flex items-center space-x-3 mb-3">
-                <h1 className="text-3xl font-bold gradient-text">{project.name}</h1>
+                <h1 className="text-3xl font-bold gradient-text">{finalProject.name}</h1>
                 <Badge variant="outline" className="text-sm font-medium">
-                  {project.symbol}
+                  {finalProject.symbol}
                 </Badge>
                 <Badge 
                   variant="outline" 
-                  className={`text-sm font-medium ${getCategoryColor(project.category)}`}
+                  className={`text-sm font-medium ${getCategoryColor(finalProject.category)}`}
                 >
-                  {project.category.toUpperCase()}
+                  {finalProject.category.toUpperCase()}
                 </Badge>
               </div>
               
               <p className="text-foreground text-lg mb-4 max-w-3xl">
-                {project.description}
+                {finalProject.description}
               </p>
               
               <div className="flex flex-wrap items-center gap-4 text-sm text-muted-foreground">
-                <span>Launched {formatTimeAgo(project.launchDate)}</span>
+                <span>Launched {formatTimeAgo(finalProject.launchDate)}</span>
                 <span>•</span>
-                <span>{project.holders.toLocaleString()} holders</span>
+                <span>{finalProject.holders.toLocaleString()} holders</span>
                 <span>•</span>
-                <span>{formatNumber(project.fundingRaised)} raised</span>
+                <span>{formatNumber(finalProject.fundingRaised)} raised</span>
               </div>
             </div>
 
             {/* Social Links */}
             <div className="flex items-center space-x-3">
-              {project.website && (
+              {finalProject.website && (
                 <Button variant="outline" size="sm" asChild>
-                  <a href={project.website} target="_blank" rel="noopener noreferrer">
+                  <a href={finalProject.website} target="_blank" rel="noopener noreferrer">
                     <Globe className="h-4 w-4 mr-2" />
                     Website
                   </a>
                 </Button>
               )}
-              {project.twitter && (
+              {finalProject.twitter && (
                 <Button variant="outline" size="sm" asChild>
-                  <a href={project.twitter} target="_blank" rel="noopener noreferrer">
+                  <a href={finalProject.twitter} target="_blank" rel="noopener noreferrer">
                     <Twitter className="h-4 w-4 mr-2" />
                     Twitter
                   </a>
                 </Button>
               )}
-              {project.github && (
+              {finalProject.github && (
                 <Button variant="outline" size="sm" asChild>
-                  <a href={project.github} target="_blank" rel="noopener noreferrer">
+                  <a href={finalProject.github} target="_blank" rel="noopener noreferrer">
                     <Github className="h-4 w-4 mr-2" />
                     Github
                   </a>
                 </Button>
               )}
-              {project.discord && (
+              {finalProject.discord && (
                 <Button variant="outline" size="sm" asChild>
-                  <a href={project.discord} target="_blank" rel="noopener noreferrer">
+                  <a href={finalProject.discord} target="_blank" rel="noopener noreferrer">
                     <MessageCircle className="h-4 w-4 mr-2" />
                     Discord
                   </a>
@@ -304,7 +301,7 @@ export function ProjectPage({ address }: ProjectPageProps) {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center">
-                  <p className="text-xl font-bold">${project.tokenPrice.toFixed(2)}</p>
+                  <p className="text-xl font-bold">${finalProject.tokenPrice.toFixed(2)}</p>
                   <p className="text-xs text-muted-foreground">Current Price</p>
                   <div className="flex items-center justify-center space-x-1 mt-1">
                     {priceChangeIsPositive ? (
@@ -313,22 +310,22 @@ export function ProjectPage({ address }: ProjectPageProps) {
                       <TrendingDown className="h-3 w-3 text-red-400" />
                     )}
                     <span className={`text-xs ${priceChangeIsPositive ? 'text-green-400' : 'text-red-400'}`}>
-                      {priceChangeIsPositive ? '+' : ''}{project.priceChange24h.toFixed(1)}%
+                      {priceChangeIsPositive ? '+' : ''}{finalProject.priceChange24h.toFixed(1)}%
                     </span>
                   </div>
                 </div>
                 <div className="text-center">
-                  <p className="text-xl font-bold">{formatNumber(project.marketCap)}</p>
+                  <p className="text-xl font-bold">{formatNumber(finalProject.marketCap)}</p>
                   <p className="text-xs text-muted-foreground">Market Cap</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border/30">
                 <div className="text-center">
-                  <p className="text-sm font-medium">${project.allTimeHigh.toFixed(2)}</p>
+                  <p className="text-sm font-medium">${finalProject.allTimeHigh.toFixed(2)}</p>
                   <p className="text-xs text-muted-foreground">All Time High</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-medium">${project.allTimeLow.toFixed(2)}</p>
+                  <p className="text-sm font-medium">${finalProject.allTimeLow.toFixed(2)}</p>
                   <p className="text-xs text-muted-foreground">All Time Low</p>
                 </div>
               </div>
@@ -343,21 +340,21 @@ export function ProjectPage({ address }: ProjectPageProps) {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="text-center">
-                  <p className="text-xl font-bold">{formatNumber(project.totalValueLocked)}</p>
+                  <p className="text-xl font-bold">{formatNumber(finalProject.totalValueLocked)}</p>
                   <p className="text-xs text-muted-foreground">Total Value Locked</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-xl font-bold">{formatNumber(project.volume24h)}</p>
+                  <p className="text-xl font-bold">{formatNumber(finalProject.volume24h)}</p>
                   <p className="text-xs text-muted-foreground">24h Volume</p>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border/30">
                 <div className="text-center">
-                  <p className="text-sm font-medium">{project.holders.toLocaleString()}</p>
+                  <p className="text-sm font-medium">{finalProject.holders.toLocaleString()}</p>
                   <p className="text-xs text-muted-foreground">Token Holders</p>
                 </div>
                 <div className="text-center">
-                  <p className="text-sm font-medium">{project.totalSupply.toLocaleString()}</p>
+                  <p className="text-sm font-medium">{finalProject.totalSupply.toLocaleString()}</p>
                   <p className="text-xs text-muted-foreground">Total Supply</p>
                 </div>
               </div>
@@ -371,11 +368,11 @@ export function ProjectPage({ address }: ProjectPageProps) {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="text-center">
-                <p className="text-xl font-bold text-accent">{formatNumber(project.fundingRaised)}</p>
-                <p className="text-xs text-muted-foreground">Total Raised in {project.fundingTokenSymbol}</p>
+                <p className="text-xl font-bold text-accent">{formatNumber(finalProject.fundingRaised)}</p>
+                <p className="text-xs text-muted-foreground">Total Raised in {finalProject.fundingTokenSymbol}</p>
               </div>
               <div className="pt-2 border-t border-border/30 text-center">
-                <p className="text-sm font-medium">{formatTimeAgo(project.launchDate)}</p>
+                <p className="text-sm font-medium">{formatTimeAgo(finalProject.launchDate)}</p>
                 <p className="text-xs text-muted-foreground">Launch Date</p>
               </div>
             </CardContent>
@@ -383,7 +380,7 @@ export function ProjectPage({ address }: ProjectPageProps) {
         </div>
 
         {/* veNFT Claim Interface - Show if user has unclaimed positions */}
-        <VeNFTClaimInterface pool={projectToPool(project)} />
+        <VeNFTClaimInterface pool={finalProjectToPool(finalProject)} />
 
         {/* DeFi Interface Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
@@ -413,21 +410,21 @@ export function ProjectPage({ address }: ProjectPageProps) {
               value="trade" 
               className="space-y-6 animate-in fade-in-50 slide-in-from-bottom-4 duration-500"
             >
-              <ProswapInterface project={project} />
+              <ProswapInterface project={finalProject} />
             </TabsContent>
 
             <TabsContent 
               value="lend" 
               className="space-y-6 animate-in fade-in-50 slide-in-from-bottom-4 duration-500"
             >
-              <ProlendInterface project={project} />
+              <ProlendInterface project={finalProject} />
             </TabsContent>
 
             <TabsContent 
               value="govern" 
               className="space-y-6 animate-in fade-in-50 slide-in-from-bottom-4 duration-500"
             >
-              <GovernanceInterface project={project} />
+              <GovernanceInterface project={finalProject} />
             </TabsContent>
           </div>
         </Tabs>

@@ -200,16 +200,19 @@ contract DeployDemo is Script {
         );
         console.log("Demo Failed Pool created at:", failedPool);
 
-        // 4. Launched Pool (fully deployed ecosystem) - Social/Creator Economy
-        launchedPool = createDemoPool(
-            "Creator Economy DAO",
-            "CREATOR",
-            15000000 * 10 ** 18, // 15M tokens
-            300000 * 10 ** 6, // 300K USDC dev fund (60%)
-            200000 * 10 ** 6, // 200K USDC liquidity fund (40%)
+        // 4. Launched Pool (fully deployed ecosystem) - Prorated Protocol
+        launchedPool = createDemoPoolWithAllocations(
+            "Prorated Protocol",
+            "PRO",
+            21000000 * 10 ** 18, // 21M tokens
+            250000 * 10 ** 6, // 250K USDC dev fund (25%)
+            250000 * 10 ** 6, // 250K USDC liquidity fund (25%)
             currentTime - 30 days, // Started 30 days ago
             currentTime - 23 days, // Ended 23 days ago
-            bytes32("demo-launched")
+            bytes32("demo-launched"),
+            25, // 25% to developer
+            25, // 25% to treasury
+            50 // 50% to DAO (community)
         );
         console.log("Demo Launched Pool created at:", launchedPool);
 
@@ -230,6 +233,35 @@ contract DeployDemo is Script {
         uint256 endTime,
         bytes32 salt
     ) internal returns (address) {
+        return
+            createDemoPoolWithAllocations(
+                tokenName,
+                tokenSymbol,
+                tokenTotalSupply,
+                developmentFund,
+                liquidityFund,
+                startTime,
+                endTime,
+                salt,
+                40, // Default: 40% to developer
+                30, // Default: 30% to treasury
+                30 // Default: 30% to DAO
+            );
+    }
+
+    function createDemoPoolWithAllocations(
+        string memory tokenName,
+        string memory tokenSymbol,
+        uint256 tokenTotalSupply,
+        uint256 developmentFund,
+        uint256 liquidityFund,
+        uint256 startTime,
+        uint256 endTime,
+        bytes32 salt,
+        uint256 developerPercent,
+        uint256 treasuryPercent,
+        uint256 daoPercent
+    ) internal returns (address) {
         DemoProratedPool.PoolConfig memory config = DemoProratedPool
             .PoolConfig({
                 owner: msg.sender,
@@ -241,9 +273,9 @@ contract DeployDemo is Script {
                 startTime: startTime,
                 endTime: endTime,
                 fundingToken: mockUSDC,
-                developerPercent: 40, // 40% to developer
-                treasuryPercent: 30, // 30% to treasury
-                daoPercent: 30 // 30% to DAO (users)
+                developerPercent: developerPercent,
+                treasuryPercent: treasuryPercent,
+                daoPercent: daoPercent
             });
 
         return
@@ -350,6 +382,52 @@ contract DeployDemo is Script {
         console.log("Pool progress: ~30% (intentionally failed)");
     }
 
+    function deployLaunchedEcosystem() internal {
+        console.log("\n=== Deploying Launched Pool Ecosystem ===");
+
+        DemoProratedPool pool = DemoProratedPool(launchedPool);
+
+        console.log("Deploying full ecosystem for Prorated Protocol...");
+
+        // Deploy Token
+        console.log("1/7 Deploying PRO token...");
+        pool.deployToken();
+        console.log("PRO token deployed");
+
+        // Deploy Trading Pair
+        console.log("2/7 Deploying trading pair...");
+        pool.deployPair();
+        console.log("PRO/USDC pair deployed");
+
+        // Deploy Liquidity
+        console.log("3/7 Seeding initial liquidity...");
+        pool.deployLiquidity();
+        console.log("Initial liquidity seeded");
+
+        // Deploy veNFT
+        console.log("4/7 Deploying veNFT system...");
+        pool.deployVeNFT();
+        console.log("veNFT deployed");
+
+        // Deploy Governor
+        console.log("5/7 Deploying DAO governor...");
+        pool.deployGovernor();
+        console.log("Governor deployed");
+
+        // Deploy Treasury
+        console.log("6/7 Deploying treasury...");
+        pool.deployTreasury();
+        console.log("Treasury deployed");
+
+        // Deploy Prolend
+        console.log("7/7 Deploying lending pairs...");
+        pool.deployProlend();
+        console.log("Prolend pairs deployed");
+
+        console.log("Prorated Protocol ecosystem fully deployed!");
+        console.log("Pool status should now be 'launched'");
+    }
+
     function fundDemoPools() internal {
         console.log("\n=== Funding Demo Pools ===");
 
@@ -358,7 +436,12 @@ contract DeployDemo is Script {
         fundFailedPool();
         simulateLaunchedPool();
 
-        console.log("Demo pools funded successfully");
+        // Deploy real ecosystem for launched pool
+        deployLaunchedEcosystem();
+
+        console.log(
+            "Demo pools funded and launched pool ecosystem deployed successfully"
+        );
     }
 
     function registerDemoContracts() internal {
@@ -415,5 +498,6 @@ contract DeployDemo is Script {
         console.log("NEXT_PUBLIC_PROLEND_DEPLOYER_ADDRESS=", prolendDeployer);
         console.log("NEXT_PUBLIC_ACTIVE_POOL_ADDRESS=", activePool);
         console.log("NEXT_PUBLIC_SUCCESSFUL_POOL_ADDRESS=", successfulPool);
+        console.log("NEXT_PUBLIC_LAUNCHED_POOL_ADDRESS=", launchedPool);
     }
 }

@@ -21,7 +21,9 @@ import {
 import { Pool } from '@/types/pool'
 import { getTokenSymbol } from '@/lib/token-utils'
 import { useVeNFTMinting } from '@/hooks/useVeNFTMinting'
+import { useDemoVeNFTMinting } from '@/hooks/useDemoVeNFTMinting'
 import { formatUnits } from 'viem'
+import { CONTRACT_ADDRESSES } from '@/lib/contracts-config'
 
 interface VeNFTClaimInterfaceProps {
   pool: Pool
@@ -31,6 +33,17 @@ interface VeNFTClaimInterfaceProps {
 
 export function VeNFTClaimInterface({ pool }: VeNFTClaimInterfaceProps) {
   const fundingTokenSymbol = getTokenSymbol(pool.fundingToken)
+  
+  // Check if this is the demo launched pool
+  const isDemoPool = () => {
+    const launchedPoolAddress = (CONTRACT_ADDRESSES as Record<string, string>).launchedPool
+    return launchedPoolAddress && pool.address.toLowerCase() === launchedPoolAddress.toLowerCase()
+  }
+  
+  // Use demo hook for launched pool, real hook for others
+  const realHook = useVeNFTMinting(pool.address as `0x${string}`)
+  const demoHook = useDemoVeNFTMinting(pool.address as `0x${string}`)
+  
   const {
     isClaiming,
     isConfirming,
@@ -40,8 +53,10 @@ export function VeNFTClaimInterface({ pool }: VeNFTClaimInterfaceProps) {
     claimedTokenId,
     userContribution,
     hasUnclaimedContribution,
-    claimVeNFTPosition
-  } = useVeNFTMinting(pool.address as `0x${string}`)
+    claimVeNFTPosition,
+    isDemoMode,
+    resetDemo
+  } = isDemoPool() ? demoHook : { ...realHook, isDemoMode: false, resetDemo: () => {} }
 
   // Debug logging
   console.log('VeNFTClaimInterface rendering:', {
@@ -79,6 +94,49 @@ export function VeNFTClaimInterface({ pool }: VeNFTClaimInterfaceProps) {
   // For demo, assume not claimed unless real data says otherwise
   const isClaimed = userContribution?.claimed || false
   
+  // Show demo reset interface if demo was completed but not currently in success state
+  if (isDemoMode && isClaimed && !isSuccess) {
+    return (
+      <div className="space-y-6">
+        <Alert className="border-green-500/50 bg-green-500/10">
+          <Gift className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Demo Completed:</strong> You&apos;ve successfully tried the veNFT minting simulation! 
+            The interface is now hidden as it would be in a real scenario after claiming.
+          </AlertDescription>
+        </Alert>
+        
+        <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
+          <CardContent className="py-8 text-center">
+            <CheckCircle className="h-12 w-12 text-green-400 mx-auto mb-4" />
+            <h3 className="text-xl font-bold text-green-400 mb-2">Demo veNFT Already Claimed</h3>
+            <p className="text-muted-foreground mb-6">
+              In a real scenario, you would now manage your veNFT position through the governance interface.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Button 
+                onClick={resetDemo}
+                variant="default"
+                className="bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
+              >
+                <Gift className="mr-2 h-4 w-4" />
+                Try Demo Again
+              </Button>
+              <Button 
+                variant="outline" 
+                className="btn-outline-custom"
+                onClick={() => window.open(`/projects/${pool.address}/govern`, '_blank')}
+              >
+                <Vote className="mr-2 h-4 w-4" />
+                View Governance
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+  
   if (isClaimed) {
     return (
       <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
@@ -103,7 +161,19 @@ export function VeNFTClaimInterface({ pool }: VeNFTClaimInterfaceProps) {
 
   if (isSuccess && claimedTokenId) {
     return (
-      <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
+      <div className="space-y-6">
+        {/* Demo Notice for Success */}
+        {isDemoMode && (
+          <Alert className="border-green-500/50 bg-green-500/10">
+            <Gift className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Demo Success:</strong> This was a simulated transaction! In a real scenario, you would now own veNFT #{claimedTokenId} 
+              with actual governance rights in the Prorated Protocol.
+            </AlertDescription>
+          </Alert>
+        )}
+        
+        <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
         <CardHeader className="text-center">
           <div className="mx-auto mb-4 h-16 w-16 rounded-full bg-green-500/20 flex items-center justify-center">
             <Trophy className="h-8 w-8 text-green-400" />
@@ -175,20 +245,33 @@ export function VeNFTClaimInterface({ pool }: VeNFTClaimInterfaceProps) {
           </div>
         </CardContent>
       </Card>
+      </div>
     )
   }
 
   return (
-    <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
-      <CardHeader>
-        <CardTitle className="flex items-center space-x-2">
-          <Gift className="h-5 w-5 text-primary" />
-          <span>Claim Your veNFT Position</span>
-        </CardTitle>
-        <p className="text-sm text-muted-foreground">
-          Convert your pool contribution into a vote-escrowed NFT for governance participation
-        </p>
-      </CardHeader>
+    <div className="space-y-6">
+      {/* Demo Notice */}
+      {isDemoMode && (
+        <Alert className="border-green-500/50 bg-green-500/10">
+          <Gift className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Demo Mode:</strong> This is a simulated veNFT minting experience for the Prorated Protocol showcase. 
+            Your mock contribution of 10,000 USDC with 52-week lock is ready to be converted into a governance NFT!
+          </AlertDescription>
+        </Alert>
+      )}
+      
+      <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
+        <CardHeader>
+          <CardTitle className="flex items-center space-x-2">
+            <Gift className="h-5 w-5 text-primary" />
+            <span>Claim Your veNFT Position</span>
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Convert your pool contribution into a vote-escrowed NFT for governance participation
+          </p>
+        </CardHeader>
       <CardContent className="space-y-6">
         
         {/* Contribution Summary */}
@@ -333,5 +416,6 @@ export function VeNFTClaimInterface({ pool }: VeNFTClaimInterfaceProps) {
         </Alert>
       </CardContent>
     </Card>
+    </div>
   )
 }

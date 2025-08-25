@@ -27,7 +27,8 @@ function isDemoPool(poolAddress: string): boolean {
   const demoAddresses = [
     CONTRACT_ADDRESSES.activePool.toLowerCase(),
     CONTRACT_ADDRESSES.successfulPool.toLowerCase(),
-    // Add other demo pool addresses from deployment
+    // Add launched pool if it exists (will be available after deployment)
+    ...((CONTRACT_ADDRESSES as any).launchedPool ? [(CONTRACT_ADDRESSES as any).launchedPool.toLowerCase()] : [])
   ]
   return demoAddresses.includes(poolAddress.toLowerCase())
 }

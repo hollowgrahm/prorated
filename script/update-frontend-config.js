@@ -65,6 +65,7 @@ export const CONTRACT_ADDRESSES = {
   // Example pools
   activePool: '${addresses.NEXT_PUBLIC_ACTIVE_POOL_ADDRESS}',
   successfulPool: '${addresses.NEXT_PUBLIC_SUCCESSFUL_POOL_ADDRESS}',
+  launchedPool: '${addresses.NEXT_PUBLIC_LAUNCHED_POOL_ADDRESS}',
 } as const
 
 export const NETWORK_CONFIG = {

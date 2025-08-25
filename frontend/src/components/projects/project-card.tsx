@@ -96,17 +96,31 @@ export function ProjectCard({ project, onClick, className = '' }: ProjectCardPro
               </Badge>
               <div className="flex items-center space-x-1">
                 {project.website && (
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" asChild>
-                    <a href={project.website} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                      <Globe className="h-3 w-3" />
-                    </a>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 w-6 p-0" 
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      window.open(project.website, '_blank', 'noopener,noreferrer')
+                    }}
+                  >
+                    <Globe className="h-3 w-3" />
                   </Button>
                 )}
                 {project.twitter && (
-                  <Button variant="ghost" size="sm" className="h-6 w-6 p-0" asChild>
-                    <a href={project.twitter} target="_blank" rel="noopener noreferrer" onClick={(e) => e.stopPropagation()}>
-                      <Twitter className="h-3 w-3" />
-                    </a>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 w-6 p-0" 
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      window.open(project.twitter, '_blank', 'noopener,noreferrer')
+                    }}
+                  >
+                    <Twitter className="h-3 w-3" />
                   </Button>
                 )}
               </div>

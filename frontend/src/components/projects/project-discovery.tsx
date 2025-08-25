@@ -1,103 +1,19 @@
 'use client'
 
-import { useState, useEffect } from 'react'
-import { Search, Filter, TrendingUp, Zap, ArrowUpDown, ExternalLink, RefreshCw } from 'lucide-react'
+import { useState, useMemo } from 'react'
+import { Search, Filter, TrendingUp, Zap, ArrowUpDown, RefreshCw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet'
 import { ProjectCard } from './project-card'
 import { Project, ProjectFilters } from '@/types/project'
-import { getTokenSymbol } from '@/lib/token-utils'
 import { LoadingSpinner, CardLoadingSkeleton } from '@/components/ui/loading-spinner'
 import { ErrorDisplay } from '@/components/ui/error-boundary'
-import { useLoadingState } from '@/hooks/useLoadingState'
+import { useLaunchedProjects } from '@/hooks/useLaunchedProjects'
 
-// Mock data for launched projects - will be replaced with real contract data
-const mockProjects: Project[] = [
-  {
-    id: '1',
-    address: '0x1234567890123456789012345678901234567890',
-    name: 'DeFi Nexus',
-    symbol: 'DEFI',
-    description: 'Next-generation DeFi infrastructure with automated yield farming and cross-chain capabilities.',
-    category: 'defi',
-    launchDate: Date.now() / 1000 - 86400 * 30, // 30 days ago
-    fundingRaised: 150000,
-    fundingTokenSymbol: 'USDC',
-    totalSupply: 1000000,
-    tokenPrice: 2.45,
-    marketCap: 2450000,
-    totalValueLocked: 850000,
-    volume24h: 125000,
-    holders: 1250,
-    tokenAddress: '0xtoken1234567890123456789012345678901234567890',
-    pairAddress: '0xpair1234567890123456789012345678901234567890',
-    lendingAddress: '0xlend1234567890123456789012345678901234567890',
-    governanceAddress: '0xgov1234567890123456789012345678901234567890',
-    website: 'https://definexus.com',
-    twitter: 'https://twitter.com/definexus',
-    priceChange24h: 8.5,
-    priceChange7d: -2.3,
-    allTimeHigh: 3.20,
-    allTimeLow: 1.80
-  },
-  {
-    id: '2', 
-    address: '0x2345678901234567890123456789012345678901',
-    name: 'AI Trading Protocol',
-    symbol: 'AITP',
-    description: 'Autonomous trading strategies powered by machine learning and on-chain analytics.',
-    category: 'ai',
-    launchDate: Date.now() / 1000 - 86400 * 15, // 15 days ago
-    fundingRaised: 80000,
-    fundingTokenSymbol: 'USDC',
-    totalSupply: 500000,
-    tokenPrice: 1.92,
-    marketCap: 960000,
-    totalValueLocked: 420000,
-    volume24h: 85000,
-    holders: 890,
-    tokenAddress: '0xtoken2345678901234567890123456789012345678901',
-    pairAddress: '0xpair2345678901234567890123456789012345678901',
-    website: 'https://aitp.finance',
-    twitter: 'https://twitter.com/aitpfinance',
-    priceChange24h: -3.2,
-    priceChange7d: 12.8,
-    allTimeHigh: 2.15,
-    allTimeLow: 1.50
-  },
-  {
-    id: '3',
-    address: '0x3456789012345678901234567890123456789012', 
-    name: 'GameChain Studios',
-    symbol: 'GAME',
-    description: 'Web3 gaming platform with play-to-earn mechanics and NFT marketplace integration.',
-    category: 'gaming',
-    launchDate: Date.now() / 1000 - 86400 * 45, // 45 days ago
-    fundingRaised: 200000,
-    fundingTokenSymbol: 'USDT',
-    totalSupply: 2000000,
-    tokenPrice: 0.85,
-    marketCap: 1700000,
-    totalValueLocked: 620000,
-    volume24h: 95000,
-    holders: 2150,
-    tokenAddress: '0xtoken3456789012345678901234567890123456789012',
-    pairAddress: '0xpair3456789012345678901234567890123456789012',
-    governanceAddress: '0xgov3456789012345678901234567890123456789012',
-    website: 'https://gamechain.studios',
-    twitter: 'https://twitter.com/gamechain',
-    discord: 'https://discord.gg/gamechain',
-    priceChange24h: 15.2,
-    priceChange7d: 28.5,
-    allTimeHigh: 1.20,
-    allTimeLow: 0.65
-  }
-]
+// Real launched projects from blockchain data
 
 export function ProjectDiscovery() {
   const [filters, setFilters] = useState<ProjectFilters>({
@@ -106,24 +22,8 @@ export function ProjectDiscovery() {
     sortBy: 'newest'
   })
 
-  const { isLoading, error, data: projects, execute } = useLoadingState<Project[]>([])
-
-  // Simulate loading projects from contract
-  const loadProjects = async () => {
-    // Simulate API delay and potential errors
-    await new Promise(resolve => setTimeout(resolve, 900))
-    
-    // Simulate random error for demo (4% chance)
-    if (Math.random() < 0.04) {
-      throw new Error('Failed to fetch launched projects from blockchain')
-    }
-    
-    return mockProjects
-  }
-
-  useEffect(() => {
-    execute(loadProjects)
-  }, [execute])
+  // Use real launched projects from blockchain
+  const { projects, isLoading, error } = useLaunchedProjects()
 
   // Apply filters and sorting
   const filteredProjects = (projects || [])
@@ -155,19 +55,21 @@ export function ProjectDiscovery() {
       }
     })
 
-  // Get category counts for quick stats
-  const categoryStats = {
-    all: mockProjects.length,
-    defi: mockProjects.filter(p => p.category === 'defi').length,
-    ai: mockProjects.filter(p => p.category === 'ai').length,
-    gaming: mockProjects.filter(p => p.category === 'gaming').length,
-    social: mockProjects.filter(p => p.category === 'social').length,
-    infrastructure: mockProjects.filter(p => p.category === 'infrastructure').length
-  }
+  // Memoize category counts for quick stats to prevent infinite re-renders
+  const categoryStats = useMemo(() => ({
+    all: projects.length,
+    defi: projects.filter(p => p.category === 'defi').length,
+    ai: projects.filter(p => p.category === 'ai').length,
+    gaming: projects.filter(p => p.category === 'gaming').length,
+    social: projects.filter(p => p.category === 'social').length,
+    infrastructure: projects.filter(p => p.category === 'infrastructure').length
+  }), [projects])
 
-  const totalMarketCap = mockProjects.reduce((sum, p) => sum + p.marketCap, 0)
-  const totalTVL = mockProjects.reduce((sum, p) => sum + p.totalValueLocked, 0)
-  const totalVolume24h = mockProjects.reduce((sum, p) => sum + p.volume24h, 0)
+  const { totalMarketCap, totalTVL, totalVolume24h } = useMemo(() => ({
+    totalMarketCap: projects.reduce((sum, p) => sum + p.marketCap, 0),
+    totalTVL: projects.reduce((sum, p) => sum + p.totalValueLocked, 0),
+    totalVolume24h: projects.reduce((sum, p) => sum + p.volume24h, 0)
+  }), [projects])
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-background/80">
@@ -191,7 +93,7 @@ export function ProjectDiscovery() {
           <Card className="border-border/50 bg-card/95 backdrop-blur-sm shadow-lg">
             <CardContent className="p-6 text-center">
               <TrendingUp className="h-8 w-8 text-primary mx-auto mb-2" />
-              <p className="text-2xl font-bold text-accent">{mockProjects.length}</p>
+              <p className="text-2xl font-bold text-accent">{projects.length}</p>
               <p className="text-sm text-muted-foreground">Launched Projects</p>
             </CardContent>
           </Card>
@@ -272,7 +174,7 @@ export function ProjectDiscovery() {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => execute(loadProjects)}
+                    onClick={() => window.location.reload()}
                     disabled={isLoading}
                     className="hidden md:flex"
                   >
@@ -308,7 +210,7 @@ export function ProjectDiscovery() {
                   error={error}
                   title="Failed to load projects"
                   description="We couldn't fetch the latest launched projects from the blockchain. Please try again."
-                  onRetry={() => execute(loadProjects)}
+                  onRetry={() => window.location.reload()}
                   variant="destructive"
                 />
               </div>
@@ -374,7 +276,7 @@ function FilterSidebar({ filters, setFilters, categoryStats }: FilterSidebarProp
             <Input
               placeholder="Search by name, symbol, or description..."
               value={filters.search}
-              onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+              onChange={(e) => setFilters(prev => ({ ...prev, search: e.target.value }))}
               className="pl-10"
             />
           </div>
@@ -391,7 +293,7 @@ function FilterSidebar({ filters, setFilters, categoryStats }: FilterSidebarProp
             <Button
               key={category}
               variant={filters.category === category ? "default" : "ghost"}
-              onClick={() => setFilters({ ...filters, category: category as ProjectFilters['category'] })}
+              onClick={() => setFilters(prev => ({ ...prev, category: category as ProjectFilters['category'] }))}
               className={`w-full justify-between ${
                 filters.category === category ? 'btn-primary-custom' : ''
               }`}
@@ -412,7 +314,7 @@ function FilterSidebar({ filters, setFilters, categoryStats }: FilterSidebarProp
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <Select value={filters.sortBy} onValueChange={(value) => setFilters({ ...filters, sortBy: value as ProjectFilters['sortBy'] })}>
+          <Select value={filters.sortBy} onValueChange={(value) => setFilters(prev => ({ ...prev, sortBy: value as ProjectFilters['sortBy'] }))}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
