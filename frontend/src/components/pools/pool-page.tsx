@@ -10,6 +10,7 @@ import { Address } from 'viem'
 import { PoolData } from '@/types'
 import { ContributionInterface } from './contribution-interface'
 import { DeploymentWizard } from './deployment-wizard'
+import { DemoDeploymentWizard } from './demo-deployment-wizard'
 import { PoolTimeline } from './pool-timeline'
 import { ContributorList } from './contributor-list'
 import { WithdrawalInterface } from './withdrawal-interface'
@@ -19,6 +20,17 @@ import { usePool } from '@/hooks/usePool'
 import { formatUSD, formatTimeRemaining, truncateAddress, formatTokenAmount } from '@/lib/utils'
 import { NetworkHelper } from '@/components/ui/network-helper'
 import { Pool } from '@/types/pool'
+import { CONTRACT_ADDRESSES } from '@/lib/contracts-config'
+
+// Check if a pool is a demo pool
+function isDemoPool(poolAddress: string): boolean {
+  const demoAddresses = [
+    CONTRACT_ADDRESSES.activePool.toLowerCase(),
+    CONTRACT_ADDRESSES.successfulPool.toLowerCase(),
+    // Add other demo pool addresses from deployment
+  ]
+  return demoAddresses.includes(poolAddress.toLowerCase())
+}
 
 // Temporary adapter function to convert PoolData to Pool for legacy components
 function poolDataToPool(poolData: PoolData): Pool {
@@ -171,7 +183,11 @@ export function PoolPage({ address }: PoolPageProps) {
             {pool.status === 'active' ? (
               <ContributionInterface pool={pool} />
             ) : pool.status === 'deploying' || pool.status === 'success-pending' ? (
-              <DeploymentWizard pool={legacyPool} />
+              isDemoPool(pool.address) ? (
+                <DemoDeploymentWizard pool={pool} />
+              ) : (
+                <DeploymentWizard pool={legacyPool} />
+              )
             ) : pool.status === 'failed' ? (
               <WithdrawalInterface pool={legacyPool} />
             ) : (

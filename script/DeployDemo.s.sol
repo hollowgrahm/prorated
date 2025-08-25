@@ -74,8 +74,8 @@ contract DeployDemo is Script {
         // Step 7: Register demo contracts with MockUSDC for auto-approval
         registerDemoContracts();
 
-        // Step 8: Fund pools after registration (skip for now to avoid deployment failure)
-        // fundDemoPools();
+        // Step 8: Fund pools after registration
+        fundDemoPools();
 
         // Step 9: Log all deployed addresses
         logDeployedAddresses();
@@ -161,63 +161,63 @@ contract DeployDemo is Script {
 
         uint256 currentTime = block.timestamp;
 
-        // 1. Active Pool (accepting contributions)
+        // 1. Active Pool (accepting contributions) - Gaming/Entertainment focus
         activePool = createDemoPool(
-            "DemoActive Token",
-            "DACTIVE",
-            1000000 * 10 ** 18, // 1M tokens
-            25000 * 10 ** 6, // 25K USDC dev fund
-            25000 * 10 ** 6, // 25K USDC liquidity fund
+            "GameFi Protocol",
+            "GAMEFI",
+            10000000 * 10 ** 18, // 10M tokens
+            150000 * 10 ** 6, // 150K USDC dev fund (30%)
+            350000 * 10 ** 6, // 350K USDC liquidity fund (70%)
             currentTime - 1 hours, // Started 1 hour ago
             currentTime + 7 days, // Ends in 7 days
             bytes32("demo-active")
         );
         console.log("Demo Active Pool created at:", activePool);
 
-        // 2. Successful Pool (ready for deployment)
+        // 2. Successful Pool (ready for deployment) - DeFi Infrastructure
         successfulPool = createDemoPool(
-            "DemoSuccess Token",
-            "DSUCCESS",
-            500000 * 10 ** 18, // 500K tokens
-            15000 * 10 ** 6, // 15K USDC dev fund
-            15000 * 10 ** 6, // 15K USDC liquidity fund
+            "DeFi Yield Optimizer",
+            "DEFIYO",
+            5000000 * 10 ** 18, // 5M tokens
+            200000 * 10 ** 6, // 200K USDC dev fund (40%)
+            300000 * 10 ** 6, // 300K USDC liquidity fund (60%)
             currentTime - 6 days, // Started 6 days ago
             currentTime - 1 days, // Ended 1 day ago
             bytes32("demo-success")
         );
         console.log("Demo Successful Pool created at:", successfulPool);
 
-        // 3. Failed Pool (for refund testing)
+        // 3. Failed Pool (for refund testing) - AI/ML Platform
         failedPool = createDemoPool(
-            "DemoFailed Token",
-            "DFAILED",
-            300000 * 10 ** 18, // 300K tokens
-            50000 * 10 ** 6, // 50K USDC dev fund (high target)
-            50000 * 10 ** 6, // 50K USDC liquidity fund (high target)
+            "AI Compute Network",
+            "AICOMP",
+            8000000 * 10 ** 18, // 8M tokens
+            400000 * 10 ** 6, // 400K USDC dev fund (50%)
+            400000 * 10 ** 6, // 400K USDC liquidity fund (50%)
             currentTime - 10 days, // Started 10 days ago
             currentTime - 3 days, // Ended 3 days ago
             bytes32("demo-failed")
         );
         console.log("Demo Failed Pool created at:", failedPool);
 
-        // 4. Launched Pool (fully deployed ecosystem)
+        // 4. Launched Pool (fully deployed ecosystem) - Social/Creator Economy
         launchedPool = createDemoPool(
-            "DemoLaunched Token",
-            "DLAUNCHED",
-            2000000 * 10 ** 18, // 2M tokens
-            30000 * 10 ** 6, // 30K USDC dev fund
-            30000 * 10 ** 6, // 30K USDC liquidity fund
+            "Creator Economy DAO",
+            "CREATOR",
+            15000000 * 10 ** 18, // 15M tokens
+            300000 * 10 ** 6, // 300K USDC dev fund (60%)
+            200000 * 10 ** 6, // 200K USDC liquidity fund (40%)
             currentTime - 30 days, // Started 30 days ago
             currentTime - 23 days, // Ended 23 days ago
             bytes32("demo-launched")
         );
         console.log("Demo Launched Pool created at:", launchedPool);
 
-        // Fund the successful pool to meet minimum requirements (skip for now)
-        // fundSuccessfulPool();
+        // Fund the successful pool to meet minimum requirements
+        // fundSuccessfulPool(); // This will be called by fundDemoPools()
 
-        // Simulate launched pool (fully deployed) (skip for now)
-        // simulateLaunchedPool();
+        // Simulate launched pool (fully deployed)
+        // simulateLaunchedPool(); // This will be called by fundDemoPools()
     }
 
     function createDemoPool(
@@ -258,16 +258,16 @@ contract DeployDemo is Script {
 
         console.log("Minimum required funding:", minRequired);
 
-        // Get USDC from faucet for funding
-        MockUSDC(mockUSDC).faucet(); // Get 1000 USDC
-        MockUSDC(mockUSDC).faucet(); // Get another 1000 USDC
-        MockUSDC(mockUSDC).faucet(); // Get another 1000 USDC
+        // Get USDC from faucet for funding (need more for larger amounts)
+        for (uint i = 0; i < 60; i++) {
+            MockUSDC(mockUSDC).faucet(); // Get 600K USDC total
+        }
 
         // Rewind time to make pool active for contribution
         pool.rewindTime(5 days);
 
-        // Make a contribution to meet minimum
-        uint256 contributionAmount = minRequired + 5000 * 10 ** 6; // Add 5K USDC extra
+        // Make a contribution to meet minimum + extra
+        uint256 contributionAmount = minRequired + 50000 * 10 ** 6; // Add 50K USDC extra
         pool.contribute(contributionAmount, 52); // 52 weeks lock
 
         // Skip time forward to end the pool
@@ -284,16 +284,16 @@ contract DeployDemo is Script {
         DemoProratedPool pool = DemoProratedPool(launchedPool);
         uint256 minRequired = pool.minTotalContributions();
 
-        // Get USDC from faucet
-        for (uint i = 0; i < 10; i++) {
-            MockUSDC(mockUSDC).faucet(); // Get 10K USDC total
+        // Get USDC from faucet (need more for larger amounts)
+        for (uint i = 0; i < 70; i++) {
+            MockUSDC(mockUSDC).faucet(); // Get 700K USDC total
         }
 
         // Rewind time to make pool active
         pool.rewindTime(25 days);
 
         // Make a large contribution
-        uint256 contributionAmount = minRequired + 20000 * 10 ** 6; // Add 20K USDC extra
+        uint256 contributionAmount = minRequired + 100000 * 10 ** 6; // Add 100K USDC extra
         pool.contribute(contributionAmount, 104); // 2 years lock
 
         // Skip time forward to current
@@ -303,10 +303,59 @@ contract DeployDemo is Script {
         console.log("Pool reached minimum:", pool.hasReachedMinimum());
     }
 
+    function fundActivePool() internal {
+        console.log("\n=== Funding Active Pool (~10%) ===");
+
+        DemoProratedPool pool = DemoProratedPool(activePool);
+        uint256 minRequired = pool.minTotalContributions();
+
+        // Get USDC from faucet
+        for (uint i = 0; i < 6; i++) {
+            MockUSDC(mockUSDC).faucet(); // Get 60K USDC total
+        }
+
+        // Fund to ~10% of minimum (50K out of 500K)
+        uint256 contributionAmount = 50000 * 10 ** 6; // 50K USDC
+        pool.contribute(contributionAmount, 26); // 26 weeks lock
+
+        console.log("Contributed", contributionAmount, "to active pool");
+        console.log("Pool total contributions:", pool.totalContributions());
+        console.log("Pool progress: ~10%");
+    }
+
+    function fundFailedPool() internal {
+        console.log("\n=== Funding Failed Pool (Partially) ===");
+
+        DemoProratedPool pool = DemoProratedPool(failedPool);
+        uint256 minRequired = pool.minTotalContributions();
+
+        // Get USDC from faucet
+        for (uint i = 0; i < 25; i++) {
+            MockUSDC(mockUSDC).faucet(); // Get 250K USDC total
+        }
+
+        // Rewind time to make pool active for contribution
+        pool.rewindTime(8 days);
+
+        // Fund to ~30% of minimum (240K out of 800K) - not enough to succeed
+        uint256 contributionAmount = 240000 * 10 ** 6; // 240K USDC
+        pool.contribute(contributionAmount, 78); // 78 weeks lock
+
+        // Skip time forward to end the pool
+        pool.skipTime(8 days);
+
+        console.log("Contributed", contributionAmount, "to failed pool");
+        console.log("Pool total contributions:", pool.totalContributions());
+        console.log("Pool reached minimum:", pool.hasReachedMinimum());
+        console.log("Pool progress: ~30% (intentionally failed)");
+    }
+
     function fundDemoPools() internal {
         console.log("\n=== Funding Demo Pools ===");
 
+        fundActivePool();
         fundSuccessfulPool();
+        fundFailedPool();
         simulateLaunchedPool();
 
         console.log("Demo pools funded successfully");
