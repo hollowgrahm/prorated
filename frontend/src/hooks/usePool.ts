@@ -1,8 +1,7 @@
 // Pool-specific hooks using direct viem calls since Wagmi is stuck
 import { useMemo, useState, useEffect } from 'react'
-import { Address, createPublicClient, http } from 'viem'
-import { anvilLocal } from '@/lib/wagmi'
-import { env } from '@/lib/env'
+import { Address } from 'viem'
+import { createCurrentNetworkClient } from '@/lib/network-utils'
 import { PoolData, PoolStatus } from '@/types'
 
 // ABI for individual pool contract calls
@@ -35,10 +34,7 @@ const POOL_ABI = [
 ] as const
 
 // Create a direct public client for pool calls
-const publicClient = createPublicClient({
-  chain: anvilLocal,
-  transport: http(env.rpcUrl)
-})
+const publicClient = createCurrentNetworkClient()
 
 export function usePool(poolAddress: Address) {
   const [poolData, setPoolData] = useState<PoolData | null>(null)

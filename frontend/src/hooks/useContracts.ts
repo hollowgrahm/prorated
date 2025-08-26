@@ -1,9 +1,8 @@
 // Contract hooks using Wagmi for Prorated Protocol
 import { useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { useEffect, useState } from 'react'
-import { Address, createPublicClient, http } from 'viem'
-import { anvilLocal } from '@/lib/wagmi'
-import { env } from '@/lib/env'
+import { Address } from 'viem'
+import { createCurrentNetworkClient } from '@/lib/network-utils'
 import { 
   proratedFactoryConfig, 
   mockUSDCConfig,
@@ -13,10 +12,7 @@ import {
 } from '@/lib/contracts'
 
 // Create a direct public client for testing
-const publicClient = createPublicClient({
-  chain: anvilLocal,
-  transport: http(env.rpcUrl)
-})
+const publicClient = createCurrentNetworkClient()
 
 // Factory Contract Hooks - Using direct viem calls since Wagmi is stuck
 export function useAllPoolsLength() {

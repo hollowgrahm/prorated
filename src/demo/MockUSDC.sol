@@ -12,6 +12,10 @@ contract MockUSDC is ERC20 {
         _mint(msg.sender, 10000 * 10 ** 6); // 10,000 USDC
     }
 
+    function mint(uint256 amount) external {
+        _mint(msg.sender, amount);
+    }
+
     function addDemoContract(address contractAddress) external {
         demoContracts[contractAddress] = true;
     }

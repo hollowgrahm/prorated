@@ -9,6 +9,7 @@ import { env } from '@/lib/env'
 import { CONTRACTS } from '@/lib/contracts'
 import { formatTokenAmount, truncateAddress } from '@/lib/utils'
 import { useAllPoolsLength, useUSDCBalance } from '@/hooks'
+import { NETWORK_CONFIG } from '@/lib/contracts-config'
 
 export function Web3Test() {
   const { address, isConnected, chain } = useAccount()
@@ -25,7 +26,7 @@ export function Web3Test() {
       <CardHeader>
         <CardTitle className="gradient-text">Prorated Protocol</CardTitle>
         <CardDescription>
-          Web3 Integration Test - Anvil Local Development
+          Web3 Integration Test - {NETWORK_CONFIG.name}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

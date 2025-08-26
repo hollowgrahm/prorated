@@ -5,7 +5,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Info, Plus, CheckCircle } from 'lucide-react'
 import { useState } from 'react'
 import { useAccount, useChainId } from 'wagmi'
-import { anvilLocal } from '@/lib/wagmi'
+import { NETWORK_CONFIG } from '@/lib/contracts-config'
+import { anvilLocal, hyperliquidTestnet } from '@/lib/wagmi'
 
 export function NetworkHelper() {
   const { isConnected } = useAccount()
@@ -13,9 +14,11 @@ export function NetworkHelper() {
   const [isAdding, setIsAdding] = useState(false)
   const [isAdded, setIsAdded] = useState(false)
 
-  const isOnCorrectNetwork = chainId === anvilLocal.id
+  // Determine the target network based on config
+  const targetNetwork = NETWORK_CONFIG.chainId === 998 ? hyperliquidTestnet : anvilLocal
+  const isOnCorrectNetwork = chainId === targetNetwork.id
 
-  const addAnvilNetwork = async () => {
+  const addTargetNetwork = async () => {
     if (!window.ethereum) {
       alert('Please install MetaMask or another Ethereum wallet')
       return
@@ -28,11 +31,11 @@ export function NetworkHelper() {
         method: 'wallet_addEthereumChain',
         params: [
           {
-            chainId: `0x${anvilLocal.id.toString(16)}`, // Convert to hex
-            chainName: anvilLocal.name,
-            nativeCurrency: anvilLocal.nativeCurrency,
-            rpcUrls: [anvilLocal.rpcUrls.default.http[0]],
-            blockExplorerUrls: [anvilLocal.blockExplorers?.default.url],
+            chainId: `0x${targetNetwork.id.toString(16)}`, // Convert to hex
+            chainName: targetNetwork.name,
+            nativeCurrency: targetNetwork.nativeCurrency,
+            rpcUrls: [targetNetwork.rpcUrls.default.http[0]],
+            blockExplorerUrls: [targetNetwork.blockExplorers?.default.url],
           },
         ],
       })
@@ -45,18 +48,18 @@ export function NetworkHelper() {
     }
   }
 
-  const switchToAnvilNetwork = async () => {
+  const switchToTargetNetwork = async () => {
     if (!window.ethereum) return
 
     try {
       await window.ethereum.request({
         method: 'wallet_switchEthereumChain',
-        params: [{ chainId: `0x${anvilLocal.id.toString(16)}` }],
+        params: [{ chainId: `0x${targetNetwork.id.toString(16)}` }],
       })
     } catch (error) {
       console.error('Failed to switch network:', error)
       // If the network doesn't exist, add it
-      await addAnvilNetwork()
+      await addTargetNetwork()
     }
   }
 
@@ -65,7 +68,7 @@ export function NetworkHelper() {
       <Alert className="border-green-500/20 bg-green-500/5">
         <Info className="h-4 w-4" />
         <AlertDescription>
-                      <strong>Demo Setup:</strong> Connect your wallet first, then make sure you&apos;re on the Anvil Local network to interact with the demo contracts.
+                      <strong>Demo Setup:</strong> Connect your wallet first, then make sure you&apos;re on the {targetNetwork.name} to interact with the demo contracts.
         </AlertDescription>
       </Alert>
     )
@@ -76,7 +79,7 @@ export function NetworkHelper() {
       <Alert className="border-green-500/20 bg-green-500/5">
         <CheckCircle className="h-4 w-4" />
         <AlertDescription className="text-green-400">
-          <strong>Ready!</strong> You&apos;re connected to Anvil Local network. You can now interact with the demo contracts.
+          <strong>Ready!</strong> You&apos;re connected to {targetNetwork.name}. You can now interact with the demo contracts.
         </AlertDescription>
       </Alert>
     )
@@ -88,14 +91,14 @@ export function NetworkHelper() {
       <AlertDescription>
         <div className="flex items-center justify-between">
           <div>
-            <strong>Wrong Network:</strong> Please switch to Anvil Local network to use the demo.
+            <strong>Wrong Network:</strong> Please switch to {targetNetwork.name} to use the demo.
           </div>
           <div className="flex gap-2 ml-4">
             {!isAdded && (
               <Button
                 variant="outline"
                 size="sm"
-                onClick={addAnvilNetwork}
+                onClick={addTargetNetwork}
                 disabled={isAdding}
               >
                 <Plus className="h-4 w-4 mr-1" />
@@ -105,7 +108,7 @@ export function NetworkHelper() {
             <Button
               variant="outline"
               size="sm"
-              onClick={switchToAnvilNetwork}
+              onClick={switchToTargetNetwork}
             >
               Switch Network
             </Button>

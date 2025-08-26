@@ -1,18 +1,14 @@
 // Pool discovery and management hooks
 import { useMemo, useEffect, useState } from 'react'
-import { Address, createPublicClient, http } from 'viem'
-import { anvilLocal } from '@/lib/wagmi'
-import { env } from '@/lib/env'
+import { Address } from 'viem'
 import { proratedFactoryConfig } from '@/lib/contracts'
 import { useAllPools } from './useContracts'
 import { usePool } from './usePool'
 import { PoolData, PoolStatus, PoolFilters } from '@/types'
+import { createCurrentNetworkClient, getCurrentNetwork, getCurrentRpcUrl } from '@/lib/network-utils'
 
 // Direct viem client for testing
-const publicClient = createPublicClient({
-  chain: anvilLocal,
-  transport: http(env.rpcUrl)
-})
+const publicClient = createCurrentNetworkClient()
 
 // Direct viem-based hook as fallback
 export function useDirectPoolCount() {
@@ -28,8 +24,8 @@ export function useDirectPoolCount() {
         setIsLoading(true)
         console.log('🔍 Direct viem call starting:', {
           address: proratedFactoryConfig.address,
-          rpcUrl: env.rpcUrl,
-          chainId: anvilLocal.id
+          rpcUrl: getCurrentRpcUrl(),
+          chainId: getCurrentNetwork().id
         })
         const result = await publicClient.readContract({
           address: proratedFactoryConfig.address,

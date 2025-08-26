@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Info, Wallet, Network, Coins } from 'lucide-react'
+import { NETWORK_CONFIG } from '@/lib/contracts-config'
 
 export function DemoInstructions() {
   return (
@@ -45,10 +46,10 @@ export function DemoInstructions() {
             <div>
               <div className="flex items-center space-x-2 mb-1">
                 <Network className="h-4 w-4 text-primary" />
-                <h4 className="font-medium">Add Anvil Local Network</h4>
+                <h4 className="font-medium">Add {NETWORK_CONFIG.name}</h4>
               </div>
               <p className="text-sm text-muted-foreground">
-                Use the &quot;Add Network&quot; button above to automatically add the local Anvil network to your wallet.
+                Use the &quot;Add Network&quot; button above to automatically add the {NETWORK_CONFIG.name} to your wallet.
               </p>
             </div>
           </div>
