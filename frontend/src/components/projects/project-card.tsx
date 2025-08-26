@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -53,10 +54,18 @@ function getCategoryColor(category: string): string {
 }
 
 export function ProjectCard({ project, onClick, className = '' }: ProjectCardProps) {
+  const router = useRouter()
+  
   const handleClick = () => {
     if (onClick) {
       onClick(project)
     }
+  }
+
+  const handleViewProject = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    router.push(`/projects/${project.address}`)
   }
 
   const priceChangeIsPositive = project.priceChange24h >= 0
@@ -187,11 +196,9 @@ export function ProjectCard({ project, onClick, className = '' }: ProjectCardPro
                 <span>Govern</span>
               </div>
             </div>
-            <Button size="sm" className="btn-primary-custom" asChild>
-              <Link href={`/projects/${project.address}`} onClick={(e) => e.stopPropagation()}>
-                <ExternalLink className="h-4 w-4 mr-1" />
-                View Project
-              </Link>
+            <Button size="sm" className="btn-primary-custom" onClick={handleViewProject}>
+              <ExternalLink className="h-4 w-4 mr-1" />
+              View Project
             </Button>
           </div>
         </CardContent>

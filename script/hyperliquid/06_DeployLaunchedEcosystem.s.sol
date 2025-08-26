@@ -6,7 +6,9 @@ import "forge-std/console.sol";
 import "../../src/demo/DemoProratedPool.sol";
 
 contract DeployLaunchedEcosystem is Script {
-    function run(address launchedPoolAddress) external {
+    function run() external {
+        // Get the launched pool address from command line arguments
+        address launchedPoolAddress = vm.envAddress("LAUNCHED_POOL_ADDRESS");
         vm.startBroadcast();
 
         console.log("=== Deploying Launched Pool Ecosystem ===");

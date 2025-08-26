@@ -25,9 +25,9 @@ export const CONTRACT_ADDRESSES = {
   prolendDeployer: '0x9758d6b0f8409C71141E519b8A07af477e7Df414',
   
   // Example pools
-  activePool: '',
-  successfulPool: '',
-  launchedPool: '',
+  activePool: '0x3b4064943f3c5b09545a8ef206f79060ae72dc35',
+  successfulPool: '0x6f916986579d086028a84a66074d9a9baf20793a',
+  launchedPool: '0x27122CA0259C3970a4DD4f5423Ac18359a1c156E',
 } as const
 
 export const NETWORK_CONFIG = {
