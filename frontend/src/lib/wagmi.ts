@@ -1,5 +1,5 @@
 // Wagmi Configuration for Prorated Protocol
-import { http } from 'wagmi'
+import { http, fallback } from 'wagmi'
 import { defineChain } from 'viem'
 import { getDefaultConfig } from '@rainbow-me/rainbowkit'
 import { env } from './env'
@@ -27,6 +27,15 @@ export const anvilLocal = defineChain({
   testnet: true,
 })
 
+// Get Hyperliquid RPC URLs from environment
+function getHyperliquidRpcUrls() {
+  const rpcs = [process.env.NEXT_PUBLIC_RPC_URL || 'https://rpc.hyperliquid-testnet.xyz/evm']
+  if (process.env.NEXT_PUBLIC_RPC_URL_BACKUP) {
+    rpcs.push(process.env.NEXT_PUBLIC_RPC_URL_BACKUP)
+  }
+  return rpcs
+}
+
 // Define Hyperliquid Testnet Chain
 export const hyperliquidTestnet = defineChain({
   id: 998,
@@ -39,10 +48,10 @@ export const hyperliquidTestnet = defineChain({
   },
   rpcUrls: {
     default: {
-      http: ['https://rpc.hyperliquid-testnet.xyz/evm'],
+      http: getHyperliquidRpcUrls(),
     },
     public: {
-      http: ['https://rpc.hyperliquid-testnet.xyz/evm'],
+      http: getHyperliquidRpcUrls(),
     },
   },
   blockExplorers: {

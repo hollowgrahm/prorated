@@ -6,6 +6,7 @@ import { CONTRACT_ADDRESSES, NETWORK_CONFIG, DEPLOYMENT_INFO } from './contracts
 interface EnvConfig {
   chainId: number
   rpcUrl: string
+  rpcUrlBackup?: string
   contractAddresses: {
     mockUSDC: string
     proratedFactory: string
@@ -40,6 +41,7 @@ interface EnvConfig {
 export const env: EnvConfig = {
   chainId: NETWORK_CONFIG.chainId,
   rpcUrl: NETWORK_CONFIG.rpcUrl,
+  rpcUrlBackup: process.env.NEXT_PUBLIC_RPC_URL_BACKUP,
   
   contractAddresses: {
     mockUSDC: CONTRACT_ADDRESSES.mockUSDC,
@@ -79,9 +81,16 @@ export const env: EnvConfig = {
 if (process.env.NODE_ENV === 'development') {
   console.log('🔧 Environment Configuration:')
   console.log(`  Chain ID: ${env.chainId}`)
-  console.log(`  RPC URL: ${env.rpcUrl}`)
+  console.log(`  Primary RPC: ${env.rpcUrl}`)
+  if (env.rpcUrlBackup) {
+    console.log(`  Backup RPC: ${env.rpcUrlBackup}`)
+    console.log('  🔄 Fallback transport enabled for RPC redundancy')
+  } else {
+    console.log('  ⚠️  No backup RPC configured')
+  }
   console.log(`  Factory: ${env.contractAddresses.proratedFactory}`)
   console.log('🔍 Environment Variables Debug:')
   console.log(`  NEXT_PUBLIC_PRORATED_FACTORY_ADDRESS: ${process.env.NEXT_PUBLIC_PRORATED_FACTORY_ADDRESS}`)
+  console.log(`  NEXT_PUBLIC_RPC_URL_BACKUP: ${process.env.NEXT_PUBLIC_RPC_URL_BACKUP}`)
   console.log(`  All NEXT_PUBLIC vars:`, Object.keys(process.env).filter(key => key.startsWith('NEXT_PUBLIC')))
 }
