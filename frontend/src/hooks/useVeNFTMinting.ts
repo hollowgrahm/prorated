@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useWriteContract, useWaitForTransactionReceipt, useAccount, useReadContract } from 'wagmi'
+import { useWaitForTransactionReceipt, useAccount, useReadContract } from 'wagmi'
 import { Address } from 'viem'
 import { getProratedPoolConfig } from '@/lib/contracts'
 
@@ -129,7 +129,7 @@ export function useVeNFTMinting(poolAddress: Address) {
 }
 
 // Hook for managing existing veNFT positions
-export function useVeNFTManagement(veNFTAddress: Address, tokenId: number) {
+export function useVeNFTManagement(_veNFTAddress: Address, _tokenId: number) {
   const [managementState, setManagementState] = useState({
     isIncreasingAmount: false,
     isExtendingDuration: false,
@@ -156,7 +156,7 @@ export function useVeNFTManagement(veNFTAddress: Address, tokenId: number) {
     }
   }
 
-  const increaseLockDuration = async (newDuration: bigint) => {
+  const increaseLockDuration = async (_newDuration: bigint) => {
     try {
       setManagementState(prev => ({ ...prev, isExtendingDuration: true, error: null }))
 

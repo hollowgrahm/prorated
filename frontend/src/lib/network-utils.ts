@@ -5,8 +5,8 @@ import { anvilLocal, hyperliquidTestnet } from './wagmi'
 import { env } from './env'
 
 // Get Hyperliquid testnet RPC endpoints from environment
-function getHyperliquidRpcs() {
-  const rpcs = [NETWORK_CONFIG.rpcUrl] // Primary RPC from config
+function getHyperliquidRpcs(): string[] {
+  const rpcs: string[] = [NETWORK_CONFIG.rpcUrl] // Primary RPC from config
   
   // Add backup RPC if available in environment
   if (env.rpcUrlBackup) {
@@ -85,7 +85,7 @@ export async function testRpcConnectivity() {
       
       results.push({
         url: rpc,
-        status: 'healthy',
+        status: 'healthy' as const,
         chainId,
         responseTime,
         error: null
@@ -93,7 +93,7 @@ export async function testRpcConnectivity() {
     } catch (error) {
       results.push({
         url: rpc,
-        status: 'error',
+        status: 'error' as const,
         chainId: null,
         responseTime: null,
         error: error instanceof Error ? error.message : 'Unknown error'

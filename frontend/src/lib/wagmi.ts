@@ -1,5 +1,5 @@
 // Wagmi Configuration for Prorated Protocol
-import { http, fallback } from 'wagmi'
+import { http } from 'wagmi'
 import { defineChain } from 'viem'
 import { getDefaultConfig } from '@rainbow-me/rainbowkit'
 import { env } from './env'
