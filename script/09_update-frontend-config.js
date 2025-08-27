@@ -89,7 +89,7 @@ function generateConfigFile(addresses, network = 'anvil') {
   if (network === 'hyperliquid') {
     try {
       const fs = require('fs');
-      const stateFile = 'script/.deployment-state.json';
+      const stateFile = path.join(__dirname, '.deployment-state.json');
       if (fs.existsSync(stateFile)) {
         const state = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
         const steps = state.steps || {};

@@ -222,7 +222,7 @@ deploy_step_01_infrastructure() {
     
     print_color $YELLOW "🔨 Deploying infrastructure contracts..."
     
-    forge script script/hyperliquid/01_DeployInfrastructure.s.sol:DeployInfrastructure \
+    forge script script/01_DeployInfrastructure.s.sol:DeployInfrastructure \
         --rpc-url $HYPERLIQUID_RPC_URL \
         --private-key $HYPERLIQUID_PRIVATE_KEY \
         --broadcast \
@@ -289,7 +289,7 @@ deploy_step_02_deployers() {
     print_color $YELLOW "🔨 Deploying deployer contracts..."
     print_color $BLUE "📋 Using ProlendFactory: $prolend_factory"
     
-    forge script script/hyperliquid/02_DeployDeployers.s.sol:DeployDeployers \
+    forge script script/02_DeployDeployers.s.sol:DeployDeployers \
         --rpc-url $HYPERLIQUID_RPC_URL \
         --private-key $HYPERLIQUID_PRIVATE_KEY \
         --broadcast \
@@ -378,7 +378,7 @@ deploy_step_03_factory() {
     print_color $BLUE "📋 Using ProswapFactory: $proswap_factory"
     print_color $BLUE "📋 Using ProswapRouter: $proswap_router"
     
-    forge script script/hyperliquid/03_DeployFactory.s.sol:DeployFactory \
+    forge script script/03_DeployFactory.s.sol:DeployFactory \
         --rpc-url $HYPERLIQUID_RPC_URL \
         --private-key $HYPERLIQUID_PRIVATE_KEY \
         --broadcast \
@@ -427,7 +427,7 @@ deploy_step_04_active_pool() {
     print_color $BLUE "📋 Using Factory: $factory_address"
     print_color $BLUE "📋 Using MockUSDC: $mock_usdc"
     
-    forge script script/hyperliquid/04_CreateActivePool.s.sol:CreateActivePool \
+    forge script script/04_CreateActivePool.s.sol:CreateActivePool \
         --rpc-url $HYPERLIQUID_RPC_URL \
         --private-key $HYPERLIQUID_PRIVATE_KEY \
         --broadcast \
@@ -472,7 +472,7 @@ deploy_step_05_failed_pool() {
     
     print_color $YELLOW "🔨 Creating failed demo pool..."
     
-    forge script script/hyperliquid/05_CreateFailedPool.s.sol:CreateFailedPool \
+    forge script script/05_CreateFailedPool.s.sol:CreateFailedPool \
         --rpc-url $HYPERLIQUID_RPC_URL \
         --private-key $HYPERLIQUID_PRIVATE_KEY \
         --broadcast \
@@ -517,7 +517,7 @@ deploy_step_06_success_pool() {
     
     print_color $YELLOW "🔨 Creating successful demo pool..."
     
-    forge script script/hyperliquid/06_CreateSuccessPool.s.sol:CreateSuccessPool \
+    forge script script/06_CreateSuccessPool.s.sol:CreateSuccessPool \
         --rpc-url $HYPERLIQUID_RPC_URL \
         --private-key $HYPERLIQUID_PRIVATE_KEY \
         --broadcast \
@@ -562,7 +562,7 @@ deploy_step_07_launched_pool() {
     
     print_color $YELLOW "🔨 Creating launched pool (Prorated Protocol)..."
     
-    forge script script/hyperliquid/07_CreateLaunchedPool.s.sol:CreateLaunchedPool \
+    forge script script/07_CreateLaunchedPool.s.sol:CreateLaunchedPool \
         --rpc-url $HYPERLIQUID_RPC_URL \
         --private-key $HYPERLIQUID_PRIVATE_KEY \
         --broadcast \
@@ -607,7 +607,7 @@ deploy_step_08_ecosystem() {
     print_color $YELLOW "🔨 Deploying launched pool ecosystem..."
     print_color $BLUE "📋 Using Launched Pool: $launched_pool"
     
-    forge script script/hyperliquid/08_DeployLaunchedEcosystem.s.sol:DeployLaunchedEcosystem \
+    forge script script/08_DeployLaunchedEcosystem.s.sol:DeployLaunchedEcosystem \
         --rpc-url $HYPERLIQUID_RPC_URL \
         --private-key $HYPERLIQUID_PRIVATE_KEY \
         --broadcast \
@@ -635,7 +635,7 @@ deploy_step_09_frontend_config() {
     print_color $YELLOW "🔧 Updating frontend configuration..."
     
     # Update frontend config with deployed addresses
-    node script/update-frontend-config.js hyperliquid
+    node script/09_update-frontend-config.js hyperliquid
     
     if [ $? -eq 0 ]; then
         print_color $GREEN "✅ Frontend configuration updated successfully"
