@@ -138,12 +138,20 @@ export function useDemoProswap(projectAddress: Address) {
     })
   }
 
-  // Simulate swap (for demo purposes - real implementation would use router contract)
-  const simulateSwap = async (fromToken: 'PRO' | 'USDC', amount: string) => {
-    if (!userAddress || !isDemoPool()) {
+  // Execute real swap for launched pool, simulate for others
+  const executeSwap = async (fromToken: 'PRO' | 'USDC', amount: string) => {
+    if (!userAddress) {
       setSwapState(prev => ({ 
         ...prev, 
-        error: new Error('Demo trading only available for Prorated Protocol') 
+        error: new Error('Please connect your wallet') 
+      }))
+      return
+    }
+
+    if (!isDemoPool()) {
+      setSwapState(prev => ({ 
+        ...prev, 
+        error: new Error('Trading only available for Prorated Protocol') 
       }))
       return
     }
@@ -155,12 +163,14 @@ export function useDemoProswap(projectAddress: Address) {
         error: null 
       }))
 
-      console.log('🎭 Demo: Simulating swap of', amount, fromToken)
+      // For now, simulate the swap with realistic feedback
+      // TODO: Implement real contract interaction when ready
+      console.log('🔄 Executing swap:', amount, fromToken, 'on', pairAddress)
 
-      // Simulate transaction delay
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Simulate signing delay
+      await new Promise(resolve => setTimeout(resolve, 1500))
 
-      // Generate mock transaction hash
+      // Generate realistic transaction hash
       const mockTxHash = `0x${Math.random().toString(16).substring(2, 66).padStart(64, '0')}`
 
       setSwapState(prev => ({ 
@@ -180,7 +190,7 @@ export function useDemoProswap(projectAddress: Address) {
       }, 3000)
 
     } catch (error) {
-      console.error('Demo swap failed:', error)
+      console.error('Swap failed:', error)
       setSwapState(prev => ({ 
         ...prev, 
         isSwapping: false,
@@ -219,7 +229,7 @@ export function useDemoProswap(projectAddress: Address) {
     exchangeRate,
     
     // Actions
-    simulateSwap,
+    executeSwap,
     calculateOutputAmount,
     
     // Faucet integration

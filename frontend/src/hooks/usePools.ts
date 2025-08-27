@@ -22,17 +22,13 @@ export function useDirectPoolCount() {
     const fetchPoolCount = async () => {
       try {
         setIsLoading(true)
-        console.log('🔍 Direct viem call starting:', {
-          address: proratedFactoryConfig.address,
-          rpcUrl: getCurrentRpcUrl(),
-          chainId: getCurrentNetwork().id
-        })
+        // Direct viem call starting (debug removed)
         const result = await publicClient.readContract({
           address: proratedFactoryConfig.address,
           abi: proratedFactoryConfig.abi,
           functionName: 'getPoolCount',
         })
-        console.log('✅ Direct viem call result:', result, 'type:', typeof result)
+        // Direct viem call result (debug removed)
         setPoolCount(Number(result))
         setError(null)
       } catch (err) {
@@ -51,26 +47,17 @@ export function useDirectPoolCount() {
 
 // Hook to get all pool addresses
 export function useAllPoolAddresses() {
-  console.log('🎯 useAllPoolAddresses hook called')
   // Use direct Viem calls instead of Wagmi (Wagmi was having connection issues)
   const { poolCount: directPoolCount, isLoading: directLoading, error: directError } = useDirectPoolCount()
   
-  // Debug logging
-  console.log('useAllPoolAddresses Debug:', {
-    directPoolCount,
-    directLoading,
-    directError: directError?.message
-  })
+  // Debug logging (removed for production)
   
   // We'll use a maximum reasonable number of pools to avoid infinite hook calls
   // In production, this should be paginated or have a reasonable limit
   const MAX_POOLS = 100
   const poolCount = Math.min(directPoolCount || 0, MAX_POOLS)
   
-  console.log('Pool count conversion debug:', {
-    directPoolCount,
-    finalPoolCount: poolCount
-  })
+  // Pool count conversion debug (removed for production)
   
   // Fetch pool addresses for available indices (only fetch pools that exist)
   const pool0 = useAllPools(poolCount > 0 ? 0 : -1)
@@ -95,18 +82,7 @@ export function useAllPoolAddresses() {
         addresses.push(poolQueries[i].data as Address)
       }
     }
-      console.log('Pool addresses debug:', {
-    poolCount,
-    poolQueriesLength: poolQueries.length,
-    poolQueriesData: poolQueries.map((q, i) => ({ 
-      index: i, 
-      data: q.data, 
-      isLoading: q.isLoading, 
-      error: q.error?.message
-    })),
-    addresses,
-    factoryAddress: proratedFactoryConfig.address
-  })
+    // Pool addresses debug (removed for production)
     return addresses
   }, [poolQueries, poolCount])
   
@@ -117,14 +93,7 @@ export function useAllPoolAddresses() {
   const isLoading = stillLoadingPoolCount || loadingIndividualPools
   const error = directError || (hasPoolCount && poolQueries.slice(0, poolCount).find(query => query.error)?.error)
   
-  console.log('useAllPoolAddresses loading debug:', {
-    directLoading,
-    hasPoolCount,
-    stillLoadingPoolCount,
-    loadingIndividualPools,
-    finalIsLoading: isLoading,
-    poolAddressesLength: poolAddresses.length
-  })
+  // useAllPoolAddresses loading debug (removed for production)
   
   return {
     addresses: poolAddresses,
@@ -136,16 +105,9 @@ export function useAllPoolAddresses() {
 
 // Hook to get all pools with enriched data
 export function useAllPoolsData() {
-  console.log('🎪 useAllPoolsData hook called')
   const { addresses, count, isLoading: isAddressesLoading, error: addressesError } = useAllPoolAddresses()
   
-  console.log('useAllPoolsData input debug:', {
-    addresses,
-    addressesLength: addresses?.length,
-    count,
-    isAddressesLoading,
-    addressesError: addressesError instanceof Error ? addressesError.message : addressesError
-  })
+  // useAllPoolsData input debug (removed for production)
   
   // For now, we'll limit to the first few pools to avoid too many hook calls
   // In production, this should be properly paginated
@@ -161,10 +123,7 @@ export function useAllPoolsData() {
   const addr3 = limitedAddresses[3] || defaultAddress
   const addr4 = limitedAddresses[4] || defaultAddress
   
-  console.log('Pool addresses for usePool calls:', {
-    addr0, addr1, addr2, addr3, addr4,
-    hasRealAddresses: limitedAddresses.length > 0
-  })
+  // Pool addresses for usePool calls (debug removed)
   
   // Fetch pool data for each address - hooks must be called unconditionally
   const pool0Data = usePool(addr0)
@@ -180,10 +139,7 @@ export function useAllPoolsData() {
   const pools = useMemo(() => {
     // Only process results if we have addresses and they're not loading
     if (isAddressesLoading || limitedAddresses.length === 0) {
-      console.log('useAllPoolsData debug: skipping due to loading or no addresses', {
-        isAddressesLoading,
-        addressesLength: limitedAddresses.length
-      })
+      // useAllPoolsData debug: skipping due to loading or no addresses (removed)
       return []
     }
     
@@ -198,27 +154,7 @@ export function useAllPoolsData() {
       })
       .filter(Boolean) as PoolData[]
     
-      console.log('useAllPoolsData debug:', {
-    addresses,
-    count,
-    limitedAddresses,
-    isAddressesLoading,
-    poolQueriesData: poolQueries.map((q, i) => ({ 
-      index: i, 
-      address: limitedAddresses[i],
-      data: q.data, 
-      isLoading: q.isLoading, 
-      error: q.error?.message,
-      hasData: !!q.data,
-      dataKeys: q.data ? Object.keys(q.data) : []
-    })),
-    resultCount: result.length,
-    result: result.map(pool => ({
-      address: pool?.address,
-      tokenName: pool?.config?.tokenName,
-      status: pool?.status
-    }))
-  })
+    // useAllPoolsData debug (removed for production)
     
     return result
   }, [poolQueries, limitedAddresses, addresses, count, isAddressesLoading, defaultAddress])

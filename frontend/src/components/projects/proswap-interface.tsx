@@ -150,7 +150,7 @@ export function ProswapInterface({ project }: ProswapInterfaceProps) {
     if (demoProswap.isDemoMode) {
       // Use demo swap simulation
       const fromTokenType = isFromToken80 ? 'PRO' : 'USDC'
-      await demoProswap.simulateSwap(fromTokenType, fromAmount)
+      await demoProswap.executeSwap(fromTokenType, fromAmount)
       
       // Reset form on success
       if (demoProswap.isSuccess) {
