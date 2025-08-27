@@ -5,29 +5,30 @@
 
 export const CONTRACT_ADDRESSES = {
   // Core contracts
-  mockUSDC: '0x291897356440776DC65B30A14aF33f3aDD77DFe2',
-  proratedFactory: '0x84e8A5CC02C86D550DB7cBa1BC7D39F648d66E10',
+  mockUSDC: '0xfbdd398f7e8016d82cc96c5d2cec1d1234a3da0a',
+  proratedFactory: '0x2d8b7a61913b2e0745b6f5206a8a4c601a4fb2a9',
   
   // Proswap contracts
-  proswapFactory: '0x8764a0618b4161838943dA5Dee23652AF48a6367',
-  proswapRouter: '0xCC332D3dbFe77f01789E6DEA32c558D5F80272d1',
+  proswapFactory: '0x96c684a39e559306f3c4672f5385a6a86431dbe8',
+  proswapRouter: '0x9f36aed9417a82d30151adecf5231b37ca7f01d3',
   
   // Prolend contracts
-  prolendFactory: '0xE0f50385f9aB0199b40F9f9e40dFCBa43A3AD246',
+  prolendFactory: '0x877777a2d9a71e415bee13bb2aab14f5bc81be77',
   
   // Deployer contracts
-  tokenDeployer: '0x1880dEFf98E52fc11dc0027465cc936a323ff388',
-  pairDeployer: '0x0B9aaDdD456e79a193b141F106bdBD9a8a814720',
-  liquidityDeployer: '0x62282F0996c83CaAb395d803A778D86aC777Cf09',
-  veNFTDeployer: '0x32359a647D68883b365DBEa9992f6b1c13430c31',
-  governorDeployer: '0x36962Ced93d2CfcE70F7944F915a4E57cF7Be0cF',
-  treasuryDeployer: '0xB1E327350a5A013659A5A62722177Ab827FB8823',
-  prolendDeployer: '0x9758d6b0f8409C71141E519b8A07af477e7Df414',
+  tokenDeployer: '0x438d87174d86b2d6d5d44969b7394e5dfe100456',
+  pairDeployer: '0x2edb2cc433a98a42d9319467623c073296265b84',
+  liquidityDeployer: '0xe212f5d0a02123212af16604c62a849ad57f8886',
+  veNFTDeployer: '0x143f9a4c60a57fde72ffe6ead4dc7c71ff859c3c',
+  governorDeployer: '0x525f305559688d95b1da01b932d439eeddec4db9',
+  treasuryDeployer: '0xa31bca3b74a6e22351fed64ea88b069d5edffcb4',
+  prolendDeployer: '0x7ad39cffeca1687900f46678bda892fce1abb173',
   
   // Example pools
-  activePool: '0x3b4064943f3c5b09545a8ef206f79060ae72dc35',
-  successfulPool: '0x6f916986579d086028a84a66074d9a9baf20793a',
-  launchedPool: '0x27122CA0259C3970a4DD4f5423Ac18359a1c156E',
+  activePool: '0x4a264574ee07cb389d4e72370eb9f74d4cfb1856',
+  successfulPool: '0xdb6a142d27f7b896ad6f1bb6d2d36aae37717665',
+  launchedPool: '0xd24c5fa05aaebba9c6c6ef0274a71bbdaeb51cfc',
+  failedPool: '0x2f37937a9013ab1df378953eb6419413ada6a478',
 } as const
 
 export const NETWORK_CONFIG = {
@@ -38,7 +39,7 @@ export const NETWORK_CONFIG = {
 
 // Deployment metadata
 export const DEPLOYMENT_INFO = {
-  timestamp: '2025-08-26T07:45:07.469Z',
+  timestamp: '2025-08-27T09:47:01.807Z',
   deployer: 'Your Hyperliquid Wallet',
   network: 'hyperliquid',
   blockNumber: 'latest',

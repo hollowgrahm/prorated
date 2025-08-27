@@ -1,0 +1,86 @@
+{
+  "network": "hyperliquid",
+  "chainId": 998,
+  "rpcUrl": "https://rpc.hyperliquid-testnet.xyz/evm",
+  "deployer": "0x9b7e5d40fCb79bbF4171521F5a8e2e15808f82D7",
+  "lastUpdated": "2025-08-27T09:47:01Z",
+  "steps": {
+    "01_infrastructure": {
+      "completed": true,
+      "timestamp": "2025-08-27T09:40:01Z",
+      "txHash": "",
+      "addresses": {
+        "mockUSDC": "0xfbdd398f7e8016d82cc96c5d2cec1d1234a3da0a",
+        "proswapFactory": "0x96c684a39e559306f3c4672f5385a6a86431dbe8",
+        "proswapRouter": "0x9f36aed9417a82d30151adecf5231b37ca7f01d3",
+        "prolendFactory": "0x877777a2d9a71e415bee13bb2aab14f5bc81be77"
+      }
+    },
+    "02_deployers": {
+      "completed": true,
+      "timestamp": "2025-08-27T09:41:02Z",
+      "txHash": "",
+      "addresses": {
+        "tokenDeployer": "0x438d87174d86b2d6d5d44969b7394e5dfe100456",
+        "pairDeployer": "0x2edb2cc433a98a42d9319467623c073296265b84",
+        "liquidityDeployer": "0xe212f5d0a02123212af16604c62a849ad57f8886",
+        "venftDeployer": "0x143f9a4c60a57fde72ffe6ead4dc7c71ff859c3c",
+        "governorDeployer": "0x525f305559688d95b1da01b932d439eeddec4db9",
+        "treasuryDeployer": "0xa31bca3b74a6e22351fed64ea88b069d5edffcb4",
+        "prolendDeployer": "0x7ad39cffeca1687900f46678bda892fce1abb173"
+      }
+    },
+    "03_factory": {
+      "completed": true,
+      "timestamp": "2025-08-27T09:42:01Z",
+      "txHash": "",
+      "addresses": {
+        "factory": "0x2d8b7a61913b2e0745b6f5206a8a4c601a4fb2a9"
+      }
+    },
+    "04_active_pool": {
+      "completed": true,
+      "timestamp": "2025-08-27T09:43:08Z",
+      "txHash": "",
+      "addresses": {
+        "activePool": "0x4a264574ee07cb389d4e72370eb9f74d4cfb1856"
+      }
+    },
+    "05_failed_pool": {
+      "completed": true,
+      "timestamp": "2025-08-27T09:44:10Z",
+      "txHash": "",
+      "addresses": {
+        "failedPool": "0x2f37937a9013ab1df378953eb6419413ada6a478"
+      }
+    },
+    "06_success_pool": {
+      "completed": true,
+      "timestamp": "2025-08-27T09:45:07Z",
+      "txHash": "",
+      "addresses": {
+        "successPool": "0xdb6a142d27f7b896ad6f1bb6d2d36aae37717665"
+      }
+    },
+    "07_launched_pool": {
+      "completed": true,
+      "timestamp": "2025-08-27T09:46:08Z",
+      "txHash": "",
+      "addresses": {
+        "launchedPool": "0xd24c5fa05aaebba9c6c6ef0274a71bbdaeb51cfc"
+      }
+    },
+    "08_ecosystem": {
+      "completed": true,
+      "timestamp": "2025-08-27T09:47:01Z",
+      "txHash": "",
+      "addresses": {}
+    },
+    "09_frontend_config": {
+      "completed": true,
+      "timestamp": "2025-08-27T09:47:01Z",
+      "txHash": "",
+      "addresses": {}
+    }
+  }
+}

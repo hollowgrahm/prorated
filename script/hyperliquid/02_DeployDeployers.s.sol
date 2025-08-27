@@ -12,11 +12,7 @@ import "../../src/deployers/TreasuryDeployer.sol";
 import "../../src/deployers/ProlendDeployer.sol";
 
 contract DeployDeployers is Script {
-    function run(
-        address proswapFactory,
-        address proswapRouter,
-        address prolendFactory
-    ) external {
+    function run(address prolendFactory) external {
         vm.startBroadcast();
 
         console.log("=== Deploying Deployer Contracts ===");

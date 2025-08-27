@@ -83,6 +83,55 @@ function generateConfigFile(addresses, network = 'anvil') {
     rpcUrl: 'http://localhost:8545',
     name: 'Anvil Local',
   };
+
+  // For hyperliquid, also read pool addresses from state file
+  let poolAddresses = {};
+  if (network === 'hyperliquid') {
+    try {
+      const fs = require('fs');
+      const stateFile = 'script/.deployment-state.json';
+      if (fs.existsSync(stateFile)) {
+        const state = JSON.parse(fs.readFileSync(stateFile, 'utf8'));
+        const steps = state.steps || {};
+        
+        // Extract pool addresses from state
+        poolAddresses = {
+          activePool: steps['04_active_pool']?.addresses?.activePool || '',
+          successfulPool: steps['06_success_pool']?.addresses?.successPool || '',
+          launchedPool: steps['07_launched_pool']?.addresses?.launchedPool || '',
+          failedPool: steps['05_failed_pool']?.addresses?.failedPool || '',
+        };
+
+        // Also extract core contract addresses from state
+        const infrastructure = steps['01_infrastructure']?.addresses || {};
+        const deployers = steps['02_deployers']?.addresses || {};
+        const factory = steps['03_factory']?.addresses || {};
+        
+        // Override addresses with state file data if available
+        Object.assign(addresses, {
+          // Infrastructure contracts
+          NEXT_PUBLIC_MOCK_USDC_ADDRESS: infrastructure.mockUSDC || addresses.NEXT_PUBLIC_MOCK_USDC_ADDRESS,
+          NEXT_PUBLIC_PROSWAP_FACTORY_ADDRESS: infrastructure.proswapFactory || addresses.NEXT_PUBLIC_PROSWAP_FACTORY_ADDRESS,
+          NEXT_PUBLIC_PROSWAP_ROUTER_ADDRESS: infrastructure.proswapRouter || addresses.NEXT_PUBLIC_PROSWAP_ROUTER_ADDRESS,
+          NEXT_PUBLIC_PROLEND_FACTORY_ADDRESS: infrastructure.prolendFactory || addresses.NEXT_PUBLIC_PROLEND_FACTORY_ADDRESS,
+          
+          // Factory contract
+          NEXT_PUBLIC_PRORATED_FACTORY_ADDRESS: factory.factory || addresses.NEXT_PUBLIC_PRORATED_FACTORY_ADDRESS,
+          
+          // Deployer contracts
+          NEXT_PUBLIC_TOKEN_DEPLOYER_ADDRESS: deployers.tokenDeployer || addresses.NEXT_PUBLIC_TOKEN_DEPLOYER_ADDRESS,
+          NEXT_PUBLIC_PAIR_DEPLOYER_ADDRESS: deployers.pairDeployer || addresses.NEXT_PUBLIC_PAIR_DEPLOYER_ADDRESS,
+          NEXT_PUBLIC_LIQUIDITY_DEPLOYER_ADDRESS: deployers.liquidityDeployer || addresses.NEXT_PUBLIC_LIQUIDITY_DEPLOYER_ADDRESS,
+          NEXT_PUBLIC_VENFT_DEPLOYER_ADDRESS: deployers.venftDeployer || addresses.NEXT_PUBLIC_VENFT_DEPLOYER_ADDRESS,
+          NEXT_PUBLIC_GOVERNOR_DEPLOYER_ADDRESS: deployers.governorDeployer || addresses.NEXT_PUBLIC_GOVERNOR_DEPLOYER_ADDRESS,
+          NEXT_PUBLIC_TREASURY_DEPLOYER_ADDRESS: deployers.treasuryDeployer || addresses.NEXT_PUBLIC_TREASURY_DEPLOYER_ADDRESS,
+          NEXT_PUBLIC_PROLEND_DEPLOYER_ADDRESS: deployers.prolendDeployer || addresses.NEXT_PUBLIC_PROLEND_DEPLOYER_ADDRESS,
+        });
+      }
+    } catch (error) {
+      console.warn('Could not read pool addresses from state file:', error.message);
+    }
+  }
   
   const configContent = `// Auto-generated contract addresses
 // This file is automatically updated by the deployment script
@@ -111,9 +160,10 @@ export const CONTRACT_ADDRESSES = {
   prolendDeployer: '${addresses.NEXT_PUBLIC_PROLEND_DEPLOYER_ADDRESS || ''}',
   
   // Example pools
-  activePool: '${addresses.NEXT_PUBLIC_ACTIVE_POOL_ADDRESS || ''}',
-  successfulPool: '${addresses.NEXT_PUBLIC_SUCCESSFUL_POOL_ADDRESS || ''}',
-  launchedPool: '${addresses.NEXT_PUBLIC_LAUNCHED_POOL_ADDRESS || ''}',
+  activePool: '${poolAddresses.activePool || addresses.NEXT_PUBLIC_ACTIVE_POOL_ADDRESS || ''}',
+  successfulPool: '${poolAddresses.successfulPool || addresses.NEXT_PUBLIC_SUCCESSFUL_POOL_ADDRESS || ''}',
+  launchedPool: '${poolAddresses.launchedPool || addresses.NEXT_PUBLIC_LAUNCHED_POOL_ADDRESS || ''}',
+  failedPool: '${poolAddresses.failedPool || ''}',
 } as const
 
 export const NETWORK_CONFIG = {
