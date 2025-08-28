@@ -15,9 +15,9 @@ export function usePoolWithdrawal() {
 
   // Mock user contribution data - will be replaced with actual contract reads
   const userContribution: UserContribution = {
-    amount: 25000, // Realistic contribution to failed pool
+    amount: 10000, // Matches faucet amount
     lockWeeks: 78,
-    shares: 1950000, // 25000 * 78 weeks
+    shares: 780000, // 10000 * 78 weeks
     claimed: false
   }
 

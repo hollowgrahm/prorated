@@ -2,6 +2,7 @@
 
 import { useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { useState } from 'react'
+import { CONTRACT_ADDRESSES } from '@/lib/contracts-config'
 
 const MOCK_USDC_ABI = [
   {
@@ -26,7 +27,7 @@ export function useFaucet() {
     try {
       setError(null)
 
-      const mockUSDCAddress = process.env.NEXT_PUBLIC_MOCK_USDC_ADDRESS as `0x${string}`
+      const mockUSDCAddress = CONTRACT_ADDRESSES.mockUSDC as `0x${string}`
       
       if (!mockUSDCAddress) {
         throw new Error('MockUSDC address not configured')
