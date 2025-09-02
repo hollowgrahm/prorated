@@ -12,14 +12,14 @@ import {
 const steps = [
   {
     step: 1,
-    title: "Create Fundraising Pool",
+    title: "Create Contribution Pool",
     description: "Launch a crowdfunding campaign for your DAO with customizable parameters.",
     icon: Rocket,
     details: [
       "Set token name, symbol, and total supply",
       "Define funding goals and duration", 
       "Configure developer, treasury and DAO allocations",
-      "Deploy your Prorated Fundraising Pool",
+      "Deploy your Prorated Contribution Pool",
       "Share and grow your community!"
     ]
   },
@@ -30,7 +30,7 @@ const steps = [
     icon: Users,
     details: [
       "Contributors deposit assets to support your project",
-      "Voter Escrow lock duration (1-208 weeks) is a multiplier on ownership shares of the pool",
+      "Voter Escrow lock duration (1-208 weeks) is a multiplier on allocation of LP tokens",
       "Transparent funding progress and milestones",
       "Minimum funding threshold protection, oversubscription creates even deeper liquidity"
     ]
