@@ -4,10 +4,8 @@ out/
 broadcast/
 
 # Environment files
-.env
-.env.local
-.env.*.local
-.env.hyperliquid
+.env*
+!.env.example
 
 # Dependencies
 node_modules/
